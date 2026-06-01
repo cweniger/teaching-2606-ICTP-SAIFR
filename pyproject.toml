@@ -1,0 +1,59 @@
+[build-system]
+requires = ["setuptools>=64", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "samma_sbi"
+version = "0.1.0"
+description = "Hands-on materials for the ICTP-SAIFR SAMMA 2026 PhD school: Machine Learning for Astroparticle Physics — A Crash-Course in Simulation-Based Inference"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+authors = [
+  { name = "Christoph Weniger", email = "christoph.weniger@gmail.com" },
+]
+keywords = ["simulation-based-inference", "sbi", "astroparticle-physics", "gravitational-waves", "teaching"]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Intended Audience :: Education",
+  "License :: OSI Approved :: MIT License",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Topic :: Scientific/Engineering :: Physics",
+]
+# Core deps. Pinned loosely for now; pin precisely ~1 week before the school
+# after a fresh Colab smoke test.
+dependencies = [
+  "numpy>=1.24",
+  "scipy>=1.10",
+  "matplotlib>=3.7",
+  "torch>=2.0",
+  "tqdm>=4.65",
+]
+
+[project.optional-dependencies]
+# Full SBI stack — installed in Session 2 notebooks, not strictly needed for
+# Session 1.
+sbi = [
+  "sbi>=0.22",
+  "zuko>=1.0",
+]
+# Notebook authoring (jupytext, nbformat) — not needed by students.
+dev = [
+  "jupytext>=1.16",
+  "jupyter>=1.0",
+  "nbformat>=5.9",
+  "pytest>=7.4",
+]
+
+[project.urls]
+Homepage = "https://github.com/cweniger/teaching-2606-ICTP-SAIFR"
+School = "https://www.ictp-saifr.org/samma2026/"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+samma_sbi = ["py.typed"]

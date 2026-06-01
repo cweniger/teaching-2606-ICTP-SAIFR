@@ -1,0 +1,12 @@
+# Pair every .ipynb under notebooks/ with a .py percent-format source.
+# Author the .py; jupytext keeps the .ipynb in sync.
+#
+# Workflow:
+#   jupytext --set-formats ipynb,py:percent notebooks/01_pytorch_crash.ipynb
+#   jupytext --sync notebooks/01_pytorch_crash.py
+#
+# Or once initialised, edits to either file propagate on `jupytext --sync`.
+
+formats = "ipynb,py:percent"
+notebook_metadata_filter = "-all"
+cell_metadata_filter = "tags,-all"
