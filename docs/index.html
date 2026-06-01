@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>ML4PhA 2026 — Machine Learning for Physics & Astronomy</title>
+<title>ML for Astroparticle Physics — ICTP-SAIFR SAMMA 2026</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
@@ -28,8 +28,15 @@
     color: #2c3e50;
     margin-bottom: 0.2em;
   }
+  .tagline {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 1.15em;
+    font-weight: 500;
+    color: #34495e;
+    margin-bottom: 0.6em;
+  }
   .subtitle {
-    font-size: 1.1em;
+    font-size: 1.0em;
     color: #7f8c8d;
     margin-bottom: 2em;
   }
@@ -116,38 +123,15 @@
 </head>
 <body>
 <div class="container">
-  <h1>Machine Learning for<br>Physics & Astronomy</h1>
+  <h1>Machine Learning for<br>Astroparticle Physics</h1>
+  <p class="tagline">A Crash-Course in Simulation-Based Inference</p>
   <p class="subtitle">
-    2026 &mdash; <a href="https://grappa.amsterdam" target="_blank">GRAPPA</a> / University of Amsterdam
-    &mdash; Christoph Weniger
+    <a href="https://www.ictp-saifr.org/samma2026/" target="_blank">ICTP-SAIFR SAMMA 2026 PhD School</a>
+    &mdash; São Paulo, 2026
+    &mdash; Christoph Weniger (<a href="https://grappa.amsterdam" target="_blank">GRAPPA</a> / University of Amsterdam)
   </p>
 
   <ul class="lecture-list">
-    <li>
-      <a class="lecture-card" href="material.html">
-        <div class="number">Resources</div>
-        <div class="title">Course Material from Canvas</div>
-        <div class="description">
-          Additional materials, readings, and resources for the course.
-        </div>
-      </a>
-    </li>
-    <li>
-      <a class="lecture-card" href="lecture0.html">
-        <div class="number">Lecture 0</div>
-        <div class="title">Welcome &amp; Course Overview</div>
-        <div class="description">
-          Course structure, grading, lecture topics, and practicalities.
-        </div>
-        <div class="topics">
-          <span class="tag">Course structure</span>
-          <span class="tag">Grading</span>
-          <span class="tag">Projects</span>
-          <span class="tag">Practicalities</span>
-        </div>
-        <span class="pdf-link" onclick="event.preventDefault(); window.open('lecture0.pdf');">PDF</span>
-      </a>
-    </li>
     <li>
       <a class="lecture-card" href="lecture1.html">
         <div class="number">Lecture 1</div>
@@ -168,27 +152,8 @@
       </a>
     </li>
     <li>
-      <a class="lecture-card" href="lecture2.html">
-        <div class="number">Lecture 2</div>
-        <div class="title">Generative AI: Literacy, Usage &amp; Policy</div>
-        <div class="description">
-          How LLMs work, effective use for learning and coding, UvA &amp; course GenAI policy,
-          tier-based framework, and accountable AI usage.
-        </div>
-        <div class="topics">
-          <span class="tag">LLMs</span>
-          <span class="tag">Prompt engineering</span>
-          <span class="tag">AI for learning</span>
-          <span class="tag">Code generation</span>
-          <span class="tag">GenAI policy</span>
-          <span class="tag">Accountability</span>
-        </div>
-        <span class="pdf-link" onclick="event.preventDefault(); window.open('lecture2.pdf');">PDF</span>
-      </a>
-    </li>
-    <li>
       <a class="lecture-card" href="lecture3.html">
-        <div class="number">Lecture 3</div>
+        <div class="number">Lecture 2</div>
         <div class="title">From Classification to Neural Networks</div>
         <div class="description">
           Binary classification via Bayes&rsquo; rule and the sigmoid. Cross-entropy loss,
@@ -208,7 +173,7 @@
     </li>
     <li>
       <a class="lecture-card" href="lecture4.html">
-        <div class="number">Lecture 4</div>
+        <div class="number">Lecture 3</div>
         <div class="title">Training Deep Networks</div>
         <div class="description">
           Backpropagation in detail, gradient flows, data normalization,
@@ -226,7 +191,7 @@
     </li>
     <li>
       <a class="lecture-card" href="lecture4b.html">
-        <div class="number">Lecture 4b (extra material - not relevant for exam)</div>
+        <div class="number">Lecture 3b (extra material)</div>
         <div class="title">Regularisation &amp; What Networks Learn</div>
         <div class="description">
           Shaping the training trajectory with weight decay, dropout, and batch normalisation.
@@ -244,7 +209,7 @@
     </li>
     <li>
       <a class="lecture-card" href="lecture5.html">
-        <div class="number">Lecture 5</div>
+        <div class="number">Lecture 4</div>
         <div class="title">Convolutional Neural Networks</div>
         <div class="description">
           From colour channels to semantic channels. 2D convolutions step by step,
@@ -265,7 +230,7 @@
     </li>
     <li>
       <a class="lecture-card" href="lecture6.html">
-        <div class="number">Lecture 6</div>
+        <div class="number">Lecture 5</div>
         <div class="title">Simulation-Based Inference and Normalising Flows</div>
         <div class="description">
           Classifiers are Bayesian in the infinite-data limit. Swapping the image
@@ -287,7 +252,7 @@
     </li>
     <li>
       <a class="lecture-card" href="lecture7.html">
-        <div class="number">Lecture 7</div>
+        <div class="number">Lecture 6</div>
         <div class="title">Transformers &amp; Large Language Models</div>
         <div class="description">
           Language modelling as next-token classification. Inside the Transformer block:
@@ -312,7 +277,7 @@
 
   <div class="footer">
     <p>
-      Course materials for ML4PhA 2026.
+      Lecture notes for the <a href="https://www.ictp-saifr.org/samma2026/" target="_blank">ICTP-SAIFR SAMMA 2026 PhD School</a>.
       Built with <a href="https://revealjs.com" target="_blank">reveal.js</a>.
     </p>
   </div>
