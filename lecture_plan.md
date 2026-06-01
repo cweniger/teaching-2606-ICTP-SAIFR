@@ -147,137 +147,86 @@ So Block A is *fast review of the math* but *careful introduction of the framing
 - Pass 3: write the genuinely new slides (3, 9, 21, 26).
 - Pass 4: integration check — does Block A's role-swap slide actually prepare slide 22? Does Block C's MLP demo (19) visually match Block D's Gaussian-head demo (23)?
 
-
 ## Lec 3: Inference heads — flows, flow matching, diffusion (90 min)
 
 ### Narrative arc
 
 Lec 3 is the **inference-head** lecture of the school's organising triptych:
 
-  simulations → compression → inference head
+simulations → compression → inference head
 
-The triptych is introduced in slide 2 and re-appears in Lec 4 (compression)
-and Lec 5 (diagnostics). Lec 3's job is to populate the inference-head slot:
-given a (good) summary of x, what are the choices for putting a density on θ?
+The triptych is introduced in slide 2 and re-appears in Lec 4 (compression) and Lec 5 (diagnostics). Lec 3's job is to populate the inference-head slot: given a (good) summary of x, what are the choices for putting a density on θ?
 
-1. **Ratify NPE.** What we built in Lec 2 (supervised q_φ(θ|x)) becomes NPE
-   the moment the data come from a simulator. The conceptual leap is small;
-   say it explicitly and move on.
-2. **Name the variants briskly.** NRE (classifier angle), NLE (model the
-   forward density). Comparison slide. NPE remains the spine.
-3. **Spend the lecture on the flow head.** Full machinery: change of
-   variables, Jacobians, coupling layers, conditional flows, 2D demo.
-4. **Add flow matching and diffusion as visualised side-companions.** No
-   derivations. Paired via the unified continuous-time picture (FM = ODE,
-   diffusion = SDE).
-5. **Application showcase + handoff to Lec 4.** LISA, DINGO. Embedding
-   teaser signposts "Lec 4 = compression."
+1. **Ratify NPE.** What we built in Lec 2 (supervised q\_φ(θ|x)) becomes NPE the moment the data come from a simulator. The conceptual leap is small; say it explicitly and move on.
+2. **Name the variants briskly.** NRE (classifier angle), NLE (model the forward density). Comparison slide. NPE remains the spine.
+3. **Spend the lecture on the flow head.** Full machinery: change of variables, Jacobians, coupling layers, conditional flows, 2D demo.
+4. **Add flow matching and diffusion as visualised side-companions.** No derivations. Paired via the unified continuous-time picture (FM = ODE, diffusion = SDE).
+5. **Application showcase + handoff to Lec 4.** LISA, DINGO. Embedding teaser signposts "Lec 4 = compression."
 
 ### Anti-overlap discipline
 
 Already done in Lec 1+2 — do *not* re-do:
 
-- The SBI framing (simulator vs likelihood; the inference problem
-  formally) — Lec 1a's last block.
+- The SBI framing (simulator vs likelihood; the inference problem formally) — Lec 1a's last block.
 - The simulator-as-data idea — Lec 1b's spine.
-- "Train q_φ on (θ, x) pairs by NLL" — Lec 2 Block D. The loss is
-  literally the same; only the data source (simulator vs fixed set)
-  changes. One slide ratifies this; do not re-derive.
+- "Train q\_φ on (θ, x) pairs by NLL" — Lec 2 Block D. The loss is literally the same; only the data source (simulator vs fixed set) changes. One slide ratifies this; do not re-derive.
 - Gaussian-head NPE as a worked example — Lec 2 slides 22-23.
 - Why we need flows (multimodal posteriors) — Lec 2 slides 24-25.
 
-These show up in Lec 3 only as one-line callbacks, never as fresh
-content.
+These show up in Lec 3 only as one-line callbacks, never as fresh content.
 
-### Slide-level outline (~24 slides, ~3.75 min each)
+### Slide-level outline (\~24 slides, \~3.75 min each)
 
-**Block A — NPE and the inference-head systematics (~4 slides)**
+**Block A — NPE and the inference-head systematics (\~4 slides)**
 
-1. **Recap of Lec 2 + the leap.** "We trained q_φ(θ|x) on (θ, x) pairs
-   by NLL. If those pairs come from a simulator (θ_i ~ p(θ), x_i ~
-   p(x|θ_i)), we just built NPE." One slide; no re-derivation.
-2. **The SBI triptych: sims → compression → inference head.** *New
-   slide.* Introduces the organising principle for Lec 3 (inference head)
-   and Lec 4 (compression). Visual: pipeline diagram with three boxes.
-3. **NRE — the classifier angle.** Cashes in Lec 2 slide 20 (Bayes-optimal
-   classifier ↔ sigmoid). Train a classifier on (θ, x) vs (θ, x') pairs;
-   the learned logit *is* the log-ratio log p(θ|x)/p(θ). One slide.
-4. **NLE — the dual.** Model p(x|θ) instead; recover the posterior via
-   MCMC at the end. One slide.
-5. **NPE / NRE / NLE comparison.** When each shines; which one DINGO
-   uses; amortisation trade-offs. One slide. (Block A is then 5 slides;
-   accept that.)
+1. **Recap of Lec 2 + the leap.** "We trained q\_φ(θ|x) on (θ, x) pairs by NLL. If those pairs come from a simulator (θ\_i \~ p(θ), x_i \~ p(x|θ\_i)), we just built NPE." One slide; no re-derivation.
+2. **The SBI triptych: sims → compression → inference head.** *New slide.* Introduces the organising principle for Lec 3 (inference head) and Lec 4 (compression). Visual: pipeline diagram with three boxes.
+3. **NRE — the classifier angle.** Cashes in Lec 2 slide 20 (Bayes-optimal classifier ↔ sigmoid). Train a classifier on (θ, x) vs (θ, x') pairs; the learned logit *is* the log-ratio log p(θ|x)/p(θ). One slide.
+4. **NLE — the dual.** Model p(x|θ) instead; recover the posterior via MCMC at the end. One slide.
+5. **NPE / NRE / NLE comparison.** When each shines; which one DINGO uses; amortisation trade-offs. One slide. (Block A is then 5 slides; accept that.)
 
-**Block B — Inference heads in depth (~14-15 slides)**
+**Block B — Inference heads in depth (\~14-15 slides)**
 
-*B1 — Flows (the deep treatment, ~10 slides)*. Source: Lec 6 §21-29.
+*B1 — Flows (the deep treatment, \~10 slides)*. Source: Lec 6 §21-29.
 
-6. **Why we need flows beyond Gaussian-head.** One-line recap of Lec 2
-   slide 24; jump in. (Lec 6 §20, compressed.)
-7. **Change of variables.** (Lec 6 §21.)
-8. **Worked example: warping a Gaussian.** (Lec 6 §22.)
-9. **Normalising flow = stack of invertible maps.** (Lec 6 §23.)
+ 6. **Why we need flows beyond Gaussian-head.** One-line recap of Lec 2 slide 24; jump in. (Lec 6 §20, compressed.)
+ 7. **Change of variables.** (Lec 6 §21.)
+ 8. **Worked example: warping a Gaussian.** (Lec 6 §22.)
+ 9. **Normalising flow = stack of invertible maps.** (Lec 6 §23.)
 10. **Log-density by chain of Jacobians.** (Lec 6 §24.)
 11. **Affine coupling layers.** (Lec 6 §25, possibly compressed.)
 12. **Conditional flows — plugging in the data.** (Lec 6 §26.)
 13. **Flow pushforward — 2D worked example.** (Lec 6 §27.)
 14. **Flow pushforward — live 2D demo.** (Lec 6 §28.)
-15. **NPE-with-flows: the full pipeline.** (Lec 6 §29, reframed to
-    emphasise this is the *inference head* slot of the triptych.)
+15. **NPE-with-flows: the full pipeline.** (Lec 6 §29, reframed to emphasise this is the *inference head* slot of the triptych.)
 
-*B2 — Flow matching and diffusion (the visualised side-companions, ~4 slides)*.
-All new slides; visualisations and one-line ideas, no derivations.
+*B2 — Flow matching and diffusion (the visualised side-companions, \~4 slides)*. All new slides; visualisations and one-line ideas, no derivations.
 
-16. **Continuous-time generative models — unified picture.** One panel
-    with smooth ODE arrows (FM), one with noisy SDE arrows (diffusion).
-    Same trajectory frame; one deterministic, one stochastic.
-17. **Flow matching.** Learn v_φ(θ, t) such that the ODE transports prior
-    → posterior. One-line training objective; one-line sampling
-    procedure. References: Lipman et al. 2023, recent SBI applications.
-18. **Diffusion / score-based generative models.** Learn the score
-    ∇log p_t(θ|x); sample by reverse SDE. References: Sohl-Dickstein,
-    Song & Ermon, Ho et al.; score-based SBI applications (Glaser et al.,
-    posterior-diffusion GW papers).
-19. **When to reach for which.** Flows = exact density, slower sampling;
-    FM/diffusion = fast sampling, no exact density (well, with effort).
-    One pragmatic table.
+16. **Continuous-time generative models — unified picture.** One panel with smooth ODE arrows (FM), one with noisy SDE arrows (diffusion). Same trajectory frame; one deterministic, one stochastic.
+17. **Flow matching.** Learn v\_φ(θ, t) such that the ODE transports prior → posterior. One-line training objective; one-line sampling procedure. References: Lipman et al. 2023, recent SBI applications.
+18. **Diffusion / score-based generative models.** Learn the score ∇log p_t(θ|x); sample by reverse SDE. References: Sohl-Dickstein, Song & Ermon, Ho et al.; score-based SBI applications (Glaser et al., posterior-diffusion GW papers).
+19. **When to reach for which.** Flows = exact density, slower sampling; FM/diffusion = fast sampling, no exact density (well, with effort). One pragmatic table.
 
-**Block C — Application showcase + handoff (~4 slides)**
+**Block C — Application showcase + handoff (\~4 slides)**
 
 20. **LISA stochastic GW background.** (Lec 6 §30.)
-21. **DINGO for binary-merger PE.** *New slide.* Direct evidence that NPE
-    with flows works in production GW analysis. The hook for the room.
-22. **Embedding network teaser.** (Lec 6 §16, retitled.) "We've been
-    assuming a good summary of x — how do we *get* one? That's Lec 4."
+21. **DINGO for binary-merger PE.** *New slide.* Direct evidence that NPE with flows works in production GW analysis. The hook for the room.
+22. **Embedding network teaser.** (Lec 6 §16, retitled.) "We've been assuming a good summary of x — how do we *get* one? That's Lec 4."
 23. **Summary + Lec 4 preview.** (Lec 6 §31, reframed.)
 
 ### Decisions locked in
 
-- **Inference-head framing is the organising principle.** Triptych
-  introduced in slide 2 and re-used in Lecs 4 and 5.
-- **NPE stays the spine; NRE and NLE are background colour.** One slide
-  each, then back to NPE.
-- **Flows get the deep treatment, FM and diffusion are visualised
-  side-companions.** No derivations of FM or diffusion; the
-  continuous-time picture is the visual anchor.
-- **FM and diffusion paired in one unified visual** (ODE vs SDE
-  trajectories), not introduced as two unrelated topics.
-- **DINGO gets its own slide.** The school is APP/GW-flavoured; the
-  loudest production example deserves explicit treatment.
-- **No re-derivation of the NLL loss, the simulator setting, or
-  Gaussian-head NPE.** These are Lec 1+2 work and appear only as
-  one-line callbacks.
+- **Inference-head framing is the organising principle.** Triptych introduced in slide 2 and re-used in Lecs 4 and 5.
+- **NPE stays the spine; NRE and NLE are background colour.** One slide each, then back to NPE.
+- **Flows get the deep treatment, FM and diffusion are visualised side-companions.** No derivations of FM or diffusion; the continuous-time picture is the visual anchor.
+- **FM and diffusion paired in one unified visual** (ODE vs SDE trajectories), not introduced as two unrelated topics.
+- **DINGO gets its own slide.** The school is APP/GW-flavoured; the loudest production example deserves explicit treatment.
+- **No re-derivation of the NLL loss, the simulator setting, or Gaussian-head NPE.** These are Lec 1+2 work and appear only as one-line callbacks.
 
 ### Construction plan
 
-- ~80% of Block B1 (flows) is direct lift from Lec 6 §21-29.
-- New slides to draft: slides 2 (triptych), 3-5 (NRE/NLE/comparison),
-  16-19 (FM + diffusion + when-to-use), 21 (DINGO).
-- Application slide 21 needs a recent DINGO figure (arXiv or published
-  plot) — pull during the figure-collection pass.
-- FM and diffusion slides need one canonical figure each; Lipman et al.
-  and Song et al. both have good open-license figures.
-- Sanity check: the continuous-time unified visual (slide 16) must be
-  drawn carefully — it's doing structural work in the lecture.
-
-## Lec 3: 
+- \~80% of Block B1 (flows) is direct lift from Lec 6 §21-29.
+- New slides to draft: slides 2 (triptych), 3-5 (NRE/NLE/comparison), 16-19 (FM + diffusion + when-to-use), 21 (DINGO).
+- Application slide 21 needs a recent DINGO figure (arXiv or published plot) — pull during the figure-collection pass.
+- FM and diffusion slides need one canonical figure each; Lipman et al. and Song et al. both have good open-license figures.
+- Sanity check: the continuous-time unified visual (slide 16) must be drawn carefully — it's doing structural work in the lecture.
