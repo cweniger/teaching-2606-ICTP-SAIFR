@@ -1,0 +1,2243 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Lecture 6: Simulation-Based Inference and Normalising Flows</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reveal.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/theme/white.css">
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.20.0/dist/tf.min.js"></script>
+<style>
+  .reveal .slides section {
+    background: #ffffff;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+    padding: 30px 40px;
+    box-sizing: border-box;
+    height: 700px !important;
+  }
+  .reveal .slides section.stack {
+    background: none; box-shadow: none; padding: 0; height: auto !important;
+  }
+  .reveal { font-family: 'Inter', sans-serif; font-weight: 400; }
+  .reveal h1, .reveal h2, .reveal h3 { color: #2c3e50; font-family: 'Space Grotesk', sans-serif; font-weight: 700; }
+  .reveal h2 { font-size: 1.2em; margin-bottom: 0.3em; text-align: left; }
+  .reveal .subtitle { font-size: 0.6em; color: #7f8c8d; margin-top: 0.5em; }
+  .reveal section { font-size: 0.66em; }
+  .reveal section.stack { font-size: 1em; }
+  .reveal p { margin: 0.3em 0; }
+  .reveal ul { text-align: left; margin: 0.3em 0; }
+  .reveal li { margin: 0.15em 0; }
+  .reveal .highlight { color: #e74c3c; font-weight: bold; }
+  .reveal .katex { font-size: 0.95em; }
+  .reveal .box {
+    background: #ecf0f1; border-radius: 10px; padding: 12px 16px;
+    margin: 10px 0; text-align: left;
+  }
+  .reveal .box-blue   { background: #ebf5fb; border-left: 4px solid #2980b9; }
+  .reveal .box-orange { background: #fdf6ec; border-left: 4px solid #e67e22; }
+  .reveal .box-green  { background: #eafaf1; border-left: 4px solid #27ae60; }
+  .reveal .box-purple { background: #f4ecf7; border-left: 4px solid #8e44ad; }
+  .sec-btn {
+    flex: 1; padding: 12px; border: 2px solid #ecf0f1; border-radius: 8px;
+    background: #f8f9fa; font-size: 1em; text-align: center;
+  }
+  .reveal img.fig    { max-width: 100%; max-height: 420px; border-radius: 4px; }
+  .reveal img.fig-sm { max-width: 100%; max-height: 300px; border-radius: 4px; }
+  .reveal img.fig-lg { max-width: 100%; max-height: 520px; border-radius: 4px; }
+  .credit { font-size: 0.7em; color: #95a5a6; text-align: center; margin-top: 6px; }
+  .reveal table { font-size: 0.85em; border-collapse: collapse; margin: 0 auto; }
+  .reveal th, .reveal td { padding: 6px 10px; border-bottom: 1px solid #ecf0f1; text-align: left; }
+  .reveal th { background: #f8f9fa; font-weight: 600; }
+  .tag-npe { color: #2980b9; font-weight: 600; }
+  .tag-nle { color: #8e44ad; font-weight: 600; }
+  .tag-nre { color: #e67e22; font-weight: 600; }
+</style>
+</head>
+<body>
+<div class="reveal">
+<div class="slides">
+
+<!-- ============================================================ -->
+<!-- SLIDE 1: Title (lecture4 style) -->
+<!-- ============================================================ -->
+<section>
+  <h1 style="font-size:1.5em;">Machine Learning for<br>Physics &amp; Astronomy 2026</h1>
+  <h3>Lecture 6: Simulation-Based Inference and Normalising Flows</h3>
+  <p class="subtitle">Christoph Weniger &mdash; University of Amsterdam (GRAPPA)</p>
+</section>
+
+<!-- ============================================================ -->
+<!-- SLIDE 2: Roadmap (lecture4 style) -->
+<!-- ============================================================ -->
+<section>
+  <h2>Today's Roadmap</h2>
+  <div style="display:flex; gap:8px; margin-top:20px;">
+    <div class="sec-btn" style="border-color:#2980b9;">
+      <strong style="color:#2980b9;">1</strong><br>
+      Classifiers are Bayesian<br><span style="font-size:0.85em;">Softmax, empirical distributions, Bayes in the infinite-data limit</span>
+    </div>
+    <div style="align-self:center; font-size:1.4em; color:#bdc3c7;">&rarr;</div>
+    <div class="sec-btn" style="border-color:#e67e22;">
+      <strong style="color:#e67e22;">2</strong><br>
+      SBI and NPE<br><span style="font-size:0.85em;">Classifier &rarr; Gaussian head, embedding networks, sufficient summaries</span>
+    </div>
+    <div style="align-self:center; font-size:1.4em; color:#bdc3c7;">&rarr;</div>
+    <div class="sec-btn" style="border-color:#8e44ad;">
+      <strong style="color:#8e44ad;">3</strong><br>
+      Normalising flows<br><span style="font-size:0.85em;">Change of variables, Jacobians, coupling layers</span>
+    </div>
+  </div>
+  <div class="box fragment" style="margin-top:25px; text-align:center; font-size:1.0em;">
+    <strong>The thread:</strong> The CNN classifier from Lecture 5 already does Bayesian inference.<br>
+    Today we <strong style="color:#e74c3c;">generalise it</strong>: swap the image database for a physics simulator, and the softmax for a flexible density.
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<!-- SECTION 1 Divider                                            -->
+<!-- ============================================================ -->
+<section>
+  <div style="display:flex; align-items:center; justify-content:center; height:100%;">
+    <div style="text-align:center;">
+      <div style="width:200px; height:4px; background:linear-gradient(90deg,#2980b9,#e67e22); margin:0 auto 25px;"></div>
+      <h1 style="font-size:2em; margin:0;">Bayesian interpretation<br>of classification networks</h1>
+      <p style="font-size:1.1em; color:#7f8c8d; margin-top:15px;">The softmax output of a trained CNN <em>is</em> a posterior. Nothing more, nothing less.</p>
+      <div style="width:200px; height:4px; background:linear-gradient(90deg,#2980b9,#e67e22); margin:25px auto 0;"></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<!-- SLIDE: CNN classifier — Bayesian interpretation -->
+<!-- ============================================================ -->
+<section data-auto-animate>
+  <h2>What does a CNN classifier actually learn?</h2>
+  <p style="margin-top:8px; color:#555;">Recall Lecture 5: a CNN maps an image to \(K\) class probabilities.</p>
+
+  <div style="display:flex; align-items:center; justify-content:center; gap:14px; margin:40px 0 30px; font-size:0.95em;">
+    <div style="padding:10px 16px; background:#eaf2f8; border-radius:8px; border:2px solid #2980b9; text-align:center;">
+      \(\mathbf{x}\)<br><span style="font-size:0.8em; color:#7f8c8d;">image</span>
+    </div>
+    <span style="font-size:1.3em; color:#bdc3c7;">&rarr;</span>
+    <div style="padding:10px 16px; background:#fef9e7; border-radius:8px; border:2px solid #f39c12; text-align:center;">
+      CNN \(f_\phi\)<br><span style="font-size:0.8em; color:#7f8c8d;">logits \(\in \mathbb{R}^K\)</span>
+    </div>
+    <span style="font-size:1.3em; color:#bdc3c7;">&rarr;</span>
+    <div class="fragment" style="padding:10px 16px; background:#eafaf1; border-radius:8px; border:2px solid #27ae60; text-align:center;">
+      softmax<br><span style="font-size:0.8em; color:#7f8c8d;">\(q_\phi(k\mid\mathbf{x})\)</span>
+    </div>
+    <span class="fragment" style="font-size:1.3em; color:#bdc3c7;">&rarr;</span>
+    <div class="fragment" style="padding:10px 16px; background:#fdedec; border-radius:8px; border:2px solid #e74c3c; text-align:center;">
+      CE loss<br><span style="font-size:0.8em; color:#7f8c8d;">&minus;log&nbsp;\(q_\phi(k^\star\mid\mathbf{x})\)</span>
+    </div>
+  </div>
+
+  <div class="fragment" style="margin-top:30px; font-size:1.0em; text-align:center;">
+    \[ q_\phi(k \mid \mathbf{x}) \;=\; \frac{\exp f_\phi(\mathbf{x})_k}{\sum_{j} \exp f_\phi(\mathbf{x})_j}
+       \qquad\qquad
+       \mathcal{L}(\phi) \;=\; -\frac{1}{N}\sum_{i} \log q_\phi(k^{(i)} \mid \mathbf{x}^{(i)}) \]
+  </div>
+
+  <p class="fragment" style="margin-top:24px; text-align:center; font-size:0.9em; color:#555;">
+    The CE loss is just <strong>maximum likelihood</strong>: maximise \(\prod_i q_\phi(k^{(i)}\mid\mathbf{x}^{(i)})\) &mdash; the probability of <em>all</em> observed labels given their inputs &mdash; which is the same as minimising \(-\!\sum_i \log q_\phi(k^{(i)}\mid\mathbf{x}^{(i)})\).
+  </p>
+
+  <p class="fragment" style="margin-top:18px; text-align:center; font-size:1.1em; color:#2c3e50;">
+    <strong>Claim:</strong> at the minimum of \(\mathcal{L}\), the softmax output <em>is</em> a Bayesian posterior.
+  </p>
+</section>
+
+<!-- ============================================================ -->
+<!-- SLIDE 7: Training data as empirical distribution — stepwise -->
+<!-- ============================================================ -->
+<section>
+  <h2>Training data <em>is</em> a distribution</h2>
+
+  <p style="margin-top:16px;">The training set \(\mathcal{D} = \{(\mathbf{x}^{(i)}, k^{(i)})\}_{i=1}^{N}\) defines an <strong>empirical joint distribution</strong>:</p>
+
+  <p style="text-align:center; margin:20px 0; font-size:1.05em;">
+    \[ \hat p(\mathbf{x}, k) \;=\; \frac{1}{N}\sum_{i=1}^{N}\, \delta(\mathbf{x}-\mathbf{x}^{(i)})\, \mathbb{1}[k = k^{(i)}] \]
+  </p>
+
+  <div class="fragment" style="margin-top:10px;">
+    <p style="color:#555;">Which factorises into class prior and class-conditional:</p>
+    <p style="text-align:center; margin:12px 0; font-size:1.0em;">
+      \[ \hat p(\mathbf{x}, k) \;=\; \hat p(k)\,\hat p(\mathbf{x}\mid k), \qquad
+         \hat p(k) = \frac{N_k}{N}, \qquad
+         \hat p(\mathbf{x}\mid k) \;=\; \frac{1}{N_k}\sum_{i:\, k^{(i)}=k} \delta(\mathbf{x}-\mathbf{x}^{(i)}) \]
+    </p>
+  </div>
+
+  <div class="fragment" style="margin-top:20px; padding-top:12px; border-top:1px solid #ecf0f1; color:#555; font-size:0.85em;">
+    <p style="margin:0 0 6px 0;">The dataset is a <strong>sample from an underlying data-generating process</strong> \(p_\text{true}(\mathbf{x}, k)\). For image classification that process may be:</p>
+    <p style="margin:0 0 0 14px;">
+      (i) decide what to photograph (class frequencies), (ii) pick a scene / lighting / camera / angle, (iii) take and keep the photo, (iv) upload to a platform, (v) dataset creator scrapes and filters, (vi) crowd-workers label. Every step injects correlations and biases into \(p_\text{true}\).
+    </p>
+    <p style="margin:8px 0 0 0; font-style:italic;">In the \(N\to\infty\) idealisation, \(\hat p \to p_\text{true}\) &mdash; the delta-combs smooth into a continuous density. This limit is mathematical / conceptual; in practice we always work with finite samples.</p>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<!-- SLIDE 9: Functional minimisation → Bayes (vertical stack)    -->
+<!-- ============================================================ -->
+<section class="stack">
+
+<!-- ---- Main (short) version ---- -->
+<section>
+  <h2>Infinite-data limit &mdash; minimising CE gives Bayes</h2>
+
+  <p style="margin-top:12px; color:#555; font-size:0.9em;">Take two idealisations: (i) \(N\to\infty\), so \(\hat p \to p_\text{true}\); (ii) the network is <em>infinitely flexible</em>, so \(q(k\mid\mathbf{x})\) is any function with \(\sum_k q(k\mid\mathbf{x}) = 1\).</p>
+
+  <p style="text-align:center; margin:14px 0; font-size:0.95em;">
+    \[ \mathcal{L}[q] \;\longrightarrow\; -\!\int\!\sum_{k} p_\text{true}(\mathbf{x}, k)\, \log q(k\mid\mathbf{x})\, d\mathbf{x} \]
+  </p>
+
+  <div class="fragment" style="margin-top:10px; font-size:0.88em;">
+    <p style="color:#555; margin-bottom:4px;"><strong>Functional derivative</strong> w.r.t. \(q(k\mid\mathbf{x})\), under the constraint \(\sum_j q(j\mid\mathbf{x})=1\):</p>
+    <p style="text-align:center; margin:6px 0; font-size:1.0em;">
+      \[ \left.\frac{\delta \mathcal{L}[q]}{\delta q(k\mid\mathbf{x})}\right|_{\sum_j q(j\mid\mathbf{x})\,=\,1} \;=\; 0 \]
+    </p>
+  </div>
+
+  <div class="fragment" style="margin-top:6px; font-size:0.88em;">
+    <p style="text-align:center; margin:6px 0; font-size:1.1em;">
+      \[ \Longrightarrow\quad q^\star(k\mid\mathbf{x}) \;=\; \frac{p_\text{true}(\mathbf{x}, k)}{\sum_j p_\text{true}(\mathbf{x}, j)} \;=\; p_\text{true}(k\mid\mathbf{x}) \]
+    </p>
+  </div>
+
+  <p class="fragment" style="text-align:center; margin-top:14px; padding:10px; background:#f8f9fa; border-left:4px solid #e74c3c; border-radius:6px; font-size:0.85em;">
+    <strong>The softmax output <em>is</em> the Bayesian posterior under \(p_\text{true}\).</strong> A finite network just interpolates this idealised answer.
+  </p>
+  <p style="text-align:center; margin-top:6px; font-size:0.75em; color:#95a5a6;">
+    &darr; two proofs below (press <kbd>↓</kbd>): Lagrange multiplier &amp; KL divergence.
+  </p>
+</section>
+
+<!-- ---- Backup: two proofs side-by-side ---- -->
+<section>
+  <h2>Infinite-data limit &mdash; two proofs</h2>
+  <p style="margin-top:6px; color:#555; font-size:0.88em;">Starting from \(\mathcal{L}[q] = -\!\int\!\sum_{k} p_\text{true}(\mathbf{x}, k)\, \log q(k\mid\mathbf{x})\, d\mathbf{x}\), we want the minimiser \(q^\star\).</p>
+  <div style="display:flex; gap:12px; margin-top:10px;">
+
+    <!-- Lagrange multiplier proof -->
+    <div class="box box-blue" style="flex:1; font-size:0.78em;">
+      <strong>(a) Lagrange multiplier.</strong> Add \(\int\!\lambda(\mathbf{x})(\sum_j q(j\mid\mathbf{x})-1)\,d\mathbf{x}\) to \(\mathcal{L}\).
+      <p style="text-align:center; margin:6px 0;">
+        \[ -\frac{p_\text{true}(\mathbf{x},k)}{q(k\mid\mathbf{x})} + \lambda(\mathbf{x}) = 0 \]
+      </p>
+      <p style="margin:4px 0;">\(\Rightarrow q^\star(k\mid\mathbf{x}) \propto p_\text{true}(\mathbf{x},k)\). Normalising over \(k\) fixes \(\lambda(\mathbf{x}) = p_\text{true}(\mathbf{x})\) and gives</p>
+      <p style="text-align:center; margin:6px 0;">
+        \[ q^\star(k\mid\mathbf{x}) = p_\text{true}(k\mid\mathbf{x}). \]
+      </p>
+    </div>
+
+    <!-- KL divergence proof -->
+    <div class="box box-green" style="flex:1; font-size:0.78em;">
+      <strong>(b) KL divergence.</strong> Rewrite \(\mathcal{L}\) by conditioning on \(\mathbf{x}\):
+      <p style="text-align:center; margin:6px 0;">
+        \[ \mathcal{L}[q] = \mathbb{E}_{\mathbf{x}}\!\big[\mathrm{KL}\!\left(p_\text{true}(\cdot\mid\mathbf{x})\,\|\,q(\cdot\mid\mathbf{x})\right)\big] + H(k\mid\mathbf{x}) \]
+      </p>
+      <p style="margin:4px 0;">The entropy term does not depend on \(q\). KL \(\ge 0\) with equality iff \(q = p_\text{true}(\cdot\mid\mathbf{x})\), so</p>
+      <p style="text-align:center; margin:6px 0;">
+        \[ q^\star(k\mid\mathbf{x}) = p_\text{true}(k\mid\mathbf{x}). \]
+      </p>
+    </div>
+  </div>
+  <p style="margin-top:10px; font-size:0.82em; color:#7f8c8d; text-align:center;">
+    Same answer, two lenses: (a) is mechanical (stationary point of a constrained functional); (b) is geometric (CE = KL up to a \(q\)-independent constant, so minimising CE = projecting \(p_\text{true}\) onto the model family under KL).
+  </p>
+</section>
+
+</section>
+
+<!-- ============================================================ -->
+<!-- SLIDE: Bridge — from image classification to science -->
+<!-- ============================================================ -->
+<section>
+  <h2>So&hellip; classifiers are doing statistics?</h2>
+
+  <p style="margin-top:18px; font-size:1.0em;">
+    We just showed that a humble image classifier, trained with cross-entropy, converges to
+    \(p_\text{true}(k\mid\mathbf{x})\) &mdash; the <strong>exact Bayesian posterior</strong> for classes given an image.
+  </p>
+
+  <p class="fragment" style="margin-top:22px; font-size:1.0em; color:#2c3e50;">
+    Image classification is a <em>toy</em> statistical problem: classify pixels into "cat" vs "dog".
+    <br>
+    But the machinery &mdash; sample pairs, minimise the NLL \(\bigl(\text{negative log-likelihood, } -\!\sum_i \log q_\phi(k^{(i)}\!\mid\!\mathbf{x}^{(i)})\bigr)\), read off a posterior &mdash; is fully general.
+  </p>
+
+  <div class="fragment" style="margin-top:26px; padding:14px 18px; background:#f8f9fa; border-left:4px solid #e67e22; border-radius:4px;">
+    <p style="margin:0; font-size:1.05em;">
+      <strong>The question for today:</strong> can we use the same machinery for the statistical problems
+      we actually care about in physics &mdash; inferring cosmological parameters from surveys, black-hole
+      masses from gravitational waves, dark-matter substructure from lensing images?
+    </p>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<!-- SECTION 2 Divider                                            -->
+<!-- ============================================================ -->
+<section>
+  <div style="display:flex; align-items:center; justify-content:center; height:100%;">
+    <div style="text-align:center;">
+      <div style="width:200px; height:4px; background:linear-gradient(90deg,#e67e22,#8e44ad); margin:0 auto 25px;"></div>
+      <h1 style="font-size:2em; margin:0;">Simulation-based inference<br>and NPE</h1>
+      <p style="font-size:1.1em; color:#7f8c8d; margin-top:15px;">Training pairs \((\boldsymbol\theta, \mathbf{x}) \sim p(\boldsymbol\theta)\,p(\mathbf{x}\mid\boldsymbol\theta)\) from a simulator &mdash; minimise \(-\!\log q_\phi(\boldsymbol\theta\mid\mathbf{x})\) &mdash; read off the posterior.</p>
+      <div style="width:200px; height:4px; background:linear-gradient(90deg,#e67e22,#8e44ad); margin:25px auto 0;"></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<!-- SLIDE: Forward / inverse picture of SBI -->
+<!-- ============================================================ -->
+<section>
+  <h2>Simulation vs. inference &mdash; two directions</h2>
+
+  <div style="display:flex; align-items:center; justify-content:center; gap:0; margin:40px 0 30px; position:relative;">
+
+    <!-- Left: parameters -->
+    <div style="flex:0 0 200px; text-align:center;">
+      <div style="padding:20px 10px; background:#eaf2f8; border:2px solid #2980b9; border-radius:12px;">
+        <div style="font-size:1.6em; color:#2c3e50;">\(\boldsymbol\theta\)</div>
+        <div style="margin-top:6px; font-size:0.9em; color:#7f8c8d;">parameters<br><em>what we care about</em></div>
+        <div style="margin-top:8px; font-size:0.85em; color:#2980b9;">e.g. \(H_0,\; \Omega_m,\)<br>BH masses, lens profile</div>
+      </div>
+    </div>
+
+    <!-- Middle: simulator + arrows -->
+    <div style="flex:1; position:relative; padding:0 14px;">
+
+      <!-- Forward arrow (top) -->
+      <div style="display:flex; align-items:center; justify-content:center; gap:10px;">
+        <span style="flex:1; height:2px; background:#27ae60;"></span>
+        <div style="padding:8px 14px; background:#eafaf1; border:2px solid #27ae60; border-radius:8px; font-size:0.9em; white-space:nowrap;">
+          <strong style="color:#27ae60;">Simulator</strong> \(p(\mathbf{x}\mid\boldsymbol\theta)\)
+        </div>
+        <span style="flex:1; height:2px; background:#27ae60; position:relative;">
+          <span style="position:absolute; right:-2px; top:-6px; border-left:10px solid #27ae60; border-top:7px solid transparent; border-bottom:7px solid transparent;"></span>
+        </span>
+      </div>
+      <p style="text-align:center; margin:6px 0 0 0; color:#27ae60; font-size:0.9em;"><em>forward &mdash; physics, easy</em></p>
+
+      <!-- Spacer -->
+      <div style="height:36px;"></div>
+
+      <!-- Inverse arrow (bottom) -->
+      <div class="fragment" style="display:flex; align-items:center; justify-content:center; gap:10px;">
+        <span style="flex:1; height:2px; background:#e67e22; position:relative;">
+          <span style="position:absolute; left:-2px; top:-6px; border-right:10px solid #e67e22; border-top:7px solid transparent; border-bottom:7px solid transparent;"></span>
+        </span>
+        <div style="padding:8px 14px; background:#fdf6ec; border:2px solid #e67e22; border-radius:8px; font-size:0.9em; white-space:nowrap;">
+          <strong style="color:#e67e22;">Inference</strong> \(p(\boldsymbol\theta\mid\mathbf{x})\)
+        </div>
+        <span style="flex:1; height:2px; background:#e67e22;"></span>
+      </div>
+      <p class="fragment" style="text-align:center; margin:6px 0 0 0; color:#e67e22; font-size:0.9em;"><em>inverse &mdash; what we want, hard</em></p>
+    </div>
+
+    <!-- Right: data -->
+    <div style="flex:0 0 200px; text-align:center;">
+      <div style="padding:20px 10px; background:#fdedec; border:2px solid #e74c3c; border-radius:12px;">
+        <div style="font-size:1.6em; color:#2c3e50;">\(\mathbf{x}\)</div>
+        <div style="margin-top:6px; font-size:0.9em; color:#7f8c8d;">data<br><em>what we observe</em></div>
+        <div style="margin-top:8px; font-size:0.85em; color:#e74c3c;">images, time-series,<br>power spectra, &hellip;</div>
+      </div>
+    </div>
+  </div>
+
+  <p class="fragment" style="margin-top:30px; padding:12px 16px; background:#f8f9fa; border-left:4px solid #8e44ad; border-radius:4px;">
+    <strong>Simulation-based inference.</strong> We have only the forward direction (a simulator).
+    SBI builds the inverse by drawing \((\boldsymbol\theta, \mathbf{x})\) pairs from the simulator and training a neural network to output the posterior directly &mdash; just like the CNN classifier did for images.
+  </p>
+</section>
+
+<!-- ============================================================ -->
+<!-- SLIDE: The inference problem (formal recap) -->
+<!-- ============================================================ -->
+<section>
+  <h2>The inference problem &mdash; formally</h2>
+  <p style="margin-top:10px; color:#555;">Same story, written with physics notation. Parameters \(\boldsymbol\theta\) take the role of the class or parameters of interest.</p>
+  <div class="box box-blue" style="text-align:center; font-size:1.1em;">
+    \[ p(\boldsymbol\theta \mid \mathbf{x}) \;=\; \frac{p(\mathbf{x}\mid\boldsymbol\theta)\, p(\boldsymbol\theta)}{p(\mathbf{x})} \]
+  </div>
+  <ul style="font-size:1.0em;">
+    <li><strong>Prior</strong> \(p(\boldsymbol\theta)\): what we believed before seeing data.</li>
+    <li><strong>Likelihood</strong> \(p(\mathbf{x}\mid\boldsymbol\theta)\): what the physics model predicts.</li>
+    <li><strong>Posterior</strong> \(p(\boldsymbol\theta\mid\mathbf{x})\): what we want.</li>
+    <li><strong>Evidence / Marginal likelihood</strong> \(p(\mathbf{x}) = \int p(\mathbf{x}\mid\boldsymbol\theta)\, p(\boldsymbol\theta)\, d\boldsymbol\theta\).</li>
+  </ul>
+  <p style="margin-top:22px; padding-top:10px; border-top:1px solid #ecf0f1; color:#7f8c8d; font-size:0.82em;">
+    <em>Note.</em> SBI only requires <strong>samples</strong> from \(p(\mathbf{x}\mid\boldsymbol\theta)\) &mdash; i.e. a running simulator. Likelihood-based methods (MCMC, HMC, VI) need <em>pointwise evaluations</em> of \(p(\mathbf{x}\mid\boldsymbol\theta)\), which are often unavailable when detector effects or systematics must be marginalised (= integrated) out.
+  </p>
+</section>
+
+<!-- ============================================================ -->
+<!-- SLIDE: SBI pipeline — Simulator highlight -->
+<!-- ============================================================ -->
+<section>
+  <h2>The SBI pipeline &mdash; the simulator</h2>
+  <div style="display:flex; gap:30px; align-items:center; margin-top:6px;">
+    <div style="flex:1.3; text-align:center;">
+      <img src="figures/lecture6/fig_sbi_pipeline2.png" class="fig" style="max-height:520px;">
+    </div>
+    <div style="flex:1;">
+      <div class="box box-green" style="font-size:0.9em;">
+        <strong style="color:#27ae60;">Simulator</strong> &mdash; encodes the physics.<br>
+        Maps parameters \(\boldsymbol\theta\) to data realisations \(\mathbf{x} \sim p(\mathbf{x}\mid\boldsymbol\theta)\).
+        <p style="margin:8px 0 4px 0; font-size:0.92em;"><strong>Examples:</strong></p>
+        <ul style="font-size:0.88em; margin:0 0 6px 14px;">
+          <li>Strong-lensing image generators (source + lens model + PSF + noise).</li>
+          <li>Gravitational-wave waveform models (LALSuite, IMRPhenom).</li>
+          <li>Cosmological N-body / hydro (Quijote, CAMELS).</li>
+          <li>Particle-physics event generators (Pythia, MadGraph).</li>
+        </ul>
+        <p style="margin:8px 0 0 0; padding-top:8px; border-top:1px dashed #95a5a6; font-size:0.88em; color:#c0392b;">
+          <strong>⚠ Failure mode:</strong> wrong model &rarr; wrong inference. Misspecification of the simulator propagates into the posterior, often invisibly.
+        </p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<!-- SLIDE: SBI pipeline — Inference loss highlight -->
+<!-- ============================================================ -->
+<section>
+  <h2>The SBI pipeline &mdash; the inference loss</h2>
+  <div style="display:flex; gap:30px; align-items:center; margin-top:6px;">
+    <div style="flex:1.3; text-align:center;">
+      <img src="figures/lecture6/fig_sbi_pipeline2.png" class="fig" style="max-height:520px;">
+    </div>
+    <div style="flex:1;">
+      <div class="box box-blue" style="font-size:0.9em;">
+        <strong style="color:#2980b9;">Inference loss \(\mathcal{L}\)</strong> &mdash; defines the statistical question.<br>
+        The choice of loss is what turns the network into a particular kind of estimator.
+        <p style="margin:8px 0 4px 0; font-size:0.92em;"><strong>The loss decides what we're solving:</strong></p>
+        <ul style="font-size:0.88em; margin:0 0 0 14px;">
+          <li><strong>Classification</strong> &rarr; cross-entropy.</li>
+          <li><strong>Parameter regression</strong> &rarr; (Gaussian) NLL of \(\boldsymbol\theta^\star\).</li>
+          <li><strong>Model discrimination</strong> &rarr; binary cross-entropy on a ratio.</li>
+          <li><strong>Object detection</strong> &rarr; localisation + classification compound loss.</li>
+          <li>&hellip;</li>
+        </ul>
+        <p style="margin:8px 0 0 0; padding-top:8px; border-top:1px dashed #95a5a6; font-size:0.88em; color:#7f8c8d;">
+          Same simulator, same network, different loss &rArr; different statistical task.
+        </p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<!-- SLIDE: Three example inference heads -->
+<!-- ============================================================ -->
+<section>
+  <h2>Three example inference heads</h2>
+  <p style="margin-top:6px; color:#555;">All three minimise \(-\log q_\phi(\boldsymbol\theta^\star\mid\mathbf{x})\) on simulator pairs. Only the density family changes.</p>
+
+  <ul style="font-size:0.96em; line-height:1.7; margin-top:14px;">
+    <li>
+      <strong style="color:#2980b9;">Multi-class classifier.</strong>
+      Discretise \(\boldsymbol\theta\) into \(K\) bins; output a softmax over bins.
+      \(\;q_\phi(k\mid\mathbf{x}) = \mathrm{softmax}(f_\phi(\mathbf{x}))_k\). Loss: cross-entropy.
+    </li>
+    <li>
+      <strong style="color:#e67e22;">Gaussian head.</strong>
+      Output \(\boldsymbol\mu_\phi(\mathbf{x})\) and \(\boldsymbol\Sigma_\phi(\mathbf{x})\).
+      \(\;q_\phi(\boldsymbol\theta\mid\mathbf{x}) = \mathcal{N}(\boldsymbol\theta \mid \boldsymbol\mu_\phi, \boldsymbol\Sigma_\phi)\). Loss: Gaussian NLL.
+    </li>
+    <li>
+      <strong style="color:#8e44ad;">Normalising flow.</strong>
+      Output a sequence of invertible maps conditioned on \(\mathbf{x}\).
+      \(\;q_\phi(\boldsymbol\theta\mid\mathbf{x})\) arbitrary, evaluated via change of variables. Loss: flow NLL (with Jacobians).
+    </li>
+  </ul>
+
+  <p style="margin-top:30px; padding:10px 14px; background:#f8f9fa; border-radius:6px; color:#7f8c8d; font-size:0.88em;">
+    These three are <em>examples</em> of the same principle. Other approaches exist (NLE: learn the likelihood; NRE: learn the likelihood-to-evidence ratio; mixture-density networks; score-based methods; &hellip;) and are not covered here.
+  </p>
+</section>
+
+<!-- ============================================================ -->
+<!-- SLIDE: Standalone — Bayesian classifier algorithm -->
+<!-- ============================================================ -->
+<section>
+  <h2>Example head 1: classification</h2>
+  <p style="margin-top:6px; color:#555;">A trained softmax classifier outputs a posterior over classes given an input.</p>
+
+  <div style="display:flex; gap:18px; margin-top:10px; align-items:flex-start;">
+    <div style="flex:1.05;">
+      <strong>Training loop</strong>
+      <pre style="background:#2c3e50; color:#ecf0f1; padding:14px 16px; border-radius:8px; font-size:0.78em; line-height:1.55;"><code><span style="color:#7f8c8d;">// Inputs: dataset {(x_i, k_i)}, network f_phi</span>
+for step = 1, 2, ... :
+    sample mini-batch B from dataset
+    for (x, k) in B:
+        logits = f_phi(x)              <span style="color:#7f8c8d;">// in R^K</span>
+        q      = softmax(logits)
+        L     += -log q[k]             <span style="color:#7f8c8d;">// CE loss</span>
+    update phi via &nabla;L</code></pre>
+    </div>
+    <div style="flex:1;">
+      <p><strong>Loss.</strong></p>
+      <p style="text-align:center;">\( \mathcal{L}(\phi) = -\frac{1}{N}\sum_{i=1}^{N} \log q_\phi(k^{(i)}\mid\mathbf{x}^{(i)}) \)</p>
+      <p style="margin-top:14px;"><strong>Convergence (infinite data, infinitely flexible network).</strong></p>
+      <p style="text-align:center;">\( q_\phi^\star(k\mid\mathbf{x}) \;=\; p_\text{true}(k\mid\mathbf{x}) \)</p>
+      <p style="margin-top:10px; color:#7f8c8d; font-size:0.88em;">
+        I.e.\ the Bayesian posterior over classes given \(\mathbf{x}\), under the data-generating distribution \(p_\text{true}\).
+      </p>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<!-- SLIDE: Standalone — Gaussian-head NPE algorithm -->
+<!-- ============================================================ -->
+<section>
+  <h2>Example head 2: Gaussian-head NPE</h2>
+  <p style="margin-top:6px; color:#555;">Replace classes by continuous parameters; replace the softmax by a conditional Gaussian.</p>
+
+  <div style="display:flex; gap:18px; margin-top:10px; align-items:flex-start;">
+    <div style="flex:1.05;">
+      <strong>Training loop</strong>
+      <pre style="background:#2c3e50; color:#ecf0f1; padding:14px 16px; border-radius:8px; font-size:0.78em; line-height:1.55;"><code><span style="color:#7f8c8d;">// Inputs: simulator p(theta), p(x|theta), network f_phi</span>
+for step = 1, 2, ... :
+    for i = 1, ..., B:
+        theta_i ~ p(theta)             <span style="color:#7f8c8d;">// draw from prior</span>
+        x_i     ~ p(x | theta_i)       <span style="color:#7f8c8d;">// run simulator</span>
+        mu_i, log_sigma_i = f_phi(x_i)
+        L      += -log N(theta_i | mu_i, sigma_i^2)
+    update phi via &nabla;L</code></pre>
+    </div>
+    <div style="flex:1;">
+      <p><strong>Density family.</strong></p>
+      <p style="text-align:center;">\( q_\phi(\boldsymbol\theta\mid\mathbf{x}) = \mathcal{N}\!\big(\boldsymbol\theta\,\big|\,\boldsymbol\mu_\phi(\mathbf{x}), \boldsymbol\Sigma_\phi(\mathbf{x})\big) \)</p>
+      <p style="margin-top:8px; font-size:0.9em; color:#555;">
+        Both \(\boldsymbol\mu_\phi(\mathbf{x})\) <em>and</em> \(\boldsymbol\Sigma_\phi(\mathbf{x})\) can depend on the data &mdash; the network learns where to be confident and where not to be.
+      </p>
+      <p style="margin-top:14px;"><strong>Loss = Gaussian NLL.</strong></p>
+      <p style="text-align:center; font-size:0.95em;">\( \mathcal{L} = \tfrac{1}{2}(\boldsymbol\theta-\boldsymbol\mu)^\top\boldsymbol\Sigma^{-1}(\boldsymbol\theta-\boldsymbol\mu) + \tfrac{1}{2}\log\det\boldsymbol\Sigma \)</p>
+      <p style="margin-top:6px; color:#7f8c8d; font-size:0.85em;">
+        Constant \(\boldsymbol\Sigma\) reduces to MSE (Lecture 1 callback).
+      </p>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<!-- SLIDE: Live demo — Gaussian-head NPE on a sine fit -->
+<!-- ============================================================ -->
+<section>
+
+<!-- Main demo slide -->
+<section>
+  <h2>Live demo &mdash; Gaussian-head NPE on a sine curve</h2>
+  <div style="display:flex; gap:8px; align-items:center; font-size:0.82em; margin:6px 0; flex-wrap:wrap;">
+    <span style="color:#2c3e50;"><strong>Train</strong> on simulated batches:</span>
+    <button id="gh-train" style="padding:3px 12px; cursor:pointer; font-weight:600;">▶ Train</button>
+    <button id="gh-reset" style="padding:3px 12px; cursor:pointer;">↺ Reset networks</button>
+    <label style="margin-left:6px;">η = <span id="gh-lr-val">3.0e-3</span>
+      <input type="range" id="gh-lr-slider" min="-5" max="-1" step="0.1" value="-2.5" style="width:90px; vertical-align:middle;">
+    </label>
+    <span style="margin-left:14px; color:#2c3e50;"><strong>Test</strong> (no retraining):</span>
+    <button id="gh-resample" style="padding:3px 12px; cursor:pointer;">↻ New target observation</button>
+    <button id="gh-mcmc" style="padding:3px 12px; cursor:pointer;">Run MCMC for comparison</button>
+    <span id="gh-status" style="color:#7f8c8d; margin-left:8px;"></span>
+  </div>
+  <p style="margin:0 0 4px 0; font-size:0.78em; color:#7f8c8d;">
+    Trained once on the simulator, the network is <em>amortised</em> &mdash; producing a posterior for any new observation in a single forward pass. <span style="color:#bdc3c7;">↓ press &darr; for model details</span>
+  </p>
+  <div style="display:flex; gap:10px;">
+    <div id="gh-data-plot" style="flex:1; height:380px;"></div>
+    <div id="gh-post-plot" style="flex:1; height:380px;"></div>
+  </div>
+  <p style="margin-top:4px; font-size:0.76em; color:#7f8c8d;">
+    Left: observation (blue dots), truth (grey dotted), NPE mean fit (orange) for \(y = a + bx + \varepsilon\).
+    Right: \(q_\phi(a, b\mid\mathbf{y})\) with learned correlation (orange ellipses), MCMC ground truth (grey), true \((a^\star, b^\star)\) (green star).
+  </p>
+</section>
+
+<!-- Vertical sub-slide: model details -->
+<section>
+  <h2>Demo &mdash; model details</h2>
+  <ul style="line-height:1.7; font-size:0.70em;">
+    <li><strong>Forward model:</strong> \(y_i = a + b\, x_i + \varepsilon_i\), with \(\varepsilon_i \sim \mathcal{N}(0, 0.3^2)\) and \(x_i\) on a fixed 30-point grid in \([0, 1]\).</li>
+    <li><strong>Priors:</strong> \(a \sim \mathcal{U}[-1, 1]\), \(b \sim \mathcal{U}[-3, 3]\).</li>
+    <li><strong>Network \(f_\phi\):</strong> MLP with layer sizes \([30, 32, 16, 5]\), ReLU activations, linear output. Input is the 30-point observation vector \(\mathbf{y}\); output is \((\mu_a, \mu_b, \log\sigma_a, \log\sigma_b, z)\).</li>
+    <li><strong>Conditional Gaussian with correlation:</strong>
+      \(q_\phi(a, b \mid \mathbf{y}) = \mathcal{N}\!\big((a, b) \,\big|\, \boldsymbol\mu, \boldsymbol\Sigma\big)\) with
+      \[ \boldsymbol\Sigma = \begin{pmatrix} \sigma_a^2 & \rho\,\sigma_a\sigma_b \\ \rho\,\sigma_a\sigma_b & \sigma_b^2 \end{pmatrix},
+         \qquad \rho = \tanh(z) \in (-1, 1). \]
+      The \(\tanh\) ensures \(\rho\) is a valid correlation coefficient, so \(\boldsymbol\Sigma\) stays positive-definite. The posterior is anti-correlated: increasing the slope \(b\) requires lowering the offset \(a\) to fit the same data &mdash; the network discovers this without being told.
+    </li>
+    <li><strong>Loss:</strong> bivariate Gaussian NLL of \((a^\star, b^\star)\) under \(q_\phi\), averaged over a fresh mini-batch of size 64 drawn from the simulator at every step.</li>
+    <li><strong>Optimiser:</strong> Adam (\(\beta_1 = 0.9\), \(\beta_2 = 0.999\)) with learning rate set by the slider.</li>
+    <li><strong>"MCMC" (ground truth):</strong> we know \(p(\mathbf{y}\mid a, b)\) analytically here, so the comparison is importance-sampled (20k prior draws, weight \(\propto\) likelihood, resample 1000). For real problems the simulator's likelihood would be intractable &mdash; that is why we used SBI in the first place.</li>
+  </ul>
+</section>
+
+</section>
+
+<!-- ============================================================ -->
+<!-- SLIDE: SBI pipeline — Embedding network highlight -->
+<!-- ============================================================ -->
+<section>
+  <h2>The SBI pipeline &mdash; the embedding network</h2>
+  <div style="display:flex; gap:30px; align-items:center; margin-top:6px;">
+    <div style="flex:1.3; text-align:center;">
+      <img src="figures/lecture6/fig_sbi_pipeline2.png" class="fig" style="max-height:520px;">
+    </div>
+    <div style="flex:1;">
+      <div class="box box-orange" style="font-size:0.83em;">
+        <strong style="color:#e67e22;">Embedding network \(T_\phi(\mathbf{x})\)</strong> &mdash; data compression.<br>
+        Maps high-dimensional observations to a low-dimensional summary that the inference head can chew on.
+        <p style="margin:8px 0 4px 0; font-size:0.92em;"><strong>Why we need it:</strong></p>
+        <ul style="font-size:0.88em; margin:0 0 6px 14px;">
+          <li>Strong lensing: \(\mathbf{x}\) is a \(256\times 256\) image &mdash; \(\sim\!65{,}000\) pixels.</li>
+          <li>Gravitational waves: \(\sim\!16{,}000\) time-series samples per detector.</li>
+          <li>Cosmology: density fields of \(\sim\!10^9\) voxels.</li>
+        </ul>
+        <p style="margin:8px 0 0 0; padding-top:8px; border-top:1px dashed #95a5a6; font-size:0.88em; color:#7f8c8d;">
+          A raw MLP would have too many parameters and no inductive bias. The CNN from Lecture 5 (or Transformer / GNN) does the compression. Trained jointly with the inference head: \(T_\phi\) learns features informative <em>for inference</em>, not for class labels.
+        </p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<!-- SLIDE: Image demo — setup & architectures -->
+<!-- ============================================================ -->
+<section>
+  <h2>Live demo on images &mdash; setup</h2>
+  <p style="margin:6px 0; color:#555; font-size:0.9em;">
+    Forward model: a Gaussian blob on a \(32 \times 32\) image, centred at \((c_x, c_y)\), with fixed radius \(\sigma = 0.15\) and i.i.d.\ pixel noise \(\varepsilon_{ij} \sim \mathcal{N}(0, 0.45^2)\).
+  </p>
+  <p style="text-align:center; margin:6px 0; font-size:0.95em;">
+    \[ I_{ij} \;=\; \exp\!\left(-\tfrac{(x_j - c_x)^2 + (y_i - c_y)^2}{2\sigma^2}\right) + \varepsilon_{ij},
+       \qquad (c_x, c_y) \sim \mathcal{U}\!\big([-0.7, 0.7]^2\big). \]
+  </p>
+  <div style="display:flex; gap:14px; margin-top:14px; font-size:0.9em;">
+    <div class="box box-orange" style="flex:1;">
+      <strong style="color:#e67e22;">Rich network</strong> (no bottleneck)
+      <p style="margin:4px 0; font-family:monospace; font-size:0.9em;">
+        MLP [1024 &rarr; 256 &rarr; 64 &rarr; 32 &rarr; 2]
+      </p>
+      <p style="margin:4px 0; font-size:0.88em; color:#555;">
+        The flattened image is fed straight to a wide first hidden layer. Enough capacity to learn implicitly the 
+        few linear summaries that locate the blob.
+      </p>
+    </div>
+    <div class="box box-purple" style="flex:1;">
+      <strong style="color:#8e44ad;">Lossy network</strong> (explicit 8-D bottleneck)
+      <p style="margin:4px 0; font-family:monospace; font-size:0.9em;">
+        MLP [1024 &rarr; <strong>8</strong> &rarr; 64 &rarr; 32 &rarr; 2]
+      </p>
+      <p style="margin:4px 0; font-size:0.88em; color:#555;">
+        Same downstream architecture, but the image is crushed through a linear \(1024 \to 8\) projection up front. The inference head only sees an 8-dimensional summary.
+      </p>
+    </div>
+  </div>
+
+  <div class="box" style="margin-top:12px; text-align:center; background:#f8f9fa; border-left:4px solid #e74c3c; font-size:0.9em;">
+    Both networks output <em>means only</em> (the two final outputs are \(\boldsymbol\mu_\phi(I) = (\mu_{c_x}, \mu_{c_y})\)). The posterior \(q_\phi(c_x, c_y \mid I) = \mathcal{N}(\boldsymbol\mu_\phi(I), \boldsymbol\Sigma)\) uses a <strong>homoscedastic</strong> \(\boldsymbol\Sigma\) &mdash; three learnable scalars \((\log\sigma_a, \log\sigma_b, z)\) per network, shared across all images, with \(\rho = \tanh(z)\). 
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<!-- SLIDE: Image demo — live training -->
+<!-- ============================================================ -->
+<section>
+  <h2>Live demo on images &mdash; training</h2>
+  <div style="display:flex; gap:8px; align-items:center; font-size:0.82em; margin:6px 0; flex-wrap:wrap;">
+    <span style="color:#2c3e50;"><strong>Train</strong>:</span>
+    <button id="gh3-train" style="padding:3px 12px; cursor:pointer; font-weight:600;">▶ Train</button>
+    <button id="gh3-reset" style="padding:3px 12px; cursor:pointer;">↺ Reset</button>
+    <label style="margin-left:6px;">η = <span id="gh3-lr-val">3.0e-3</span>
+      <input type="range" id="gh3-lr-slider" min="-5" max="-1" step="0.1" value="-2.5" style="width:90px; vertical-align:middle;">
+    </label>
+    <span style="margin-left:14px; color:#2c3e50;"><strong>Test</strong>:</span>
+    <button id="gh3-resample" style="padding:3px 12px; cursor:pointer;">↻ New image</button>
+    <button id="gh3-mcmc" style="padding:3px 12px; cursor:pointer;">Run MCMC</button>
+    <span id="gh3-status" style="color:#7f8c8d; margin-left:8px;"></span>
+  </div>
+  <p style="margin:0 0 4px 0; font-size:0.78em; color:#7f8c8d;">
+    <span style="color:#e67e22;"><strong>Rich</strong></span> = MLP [1024, 256, 64, 32, 2]. <span style="color:#8e44ad;"><strong>Lossy</strong></span> = MLP [1024, <strong>8</strong>, 64, 32, 2]. Homoscedastic Σ (3 scalars per net). Two nets train on the same mini-batches.
+  </p>
+  <div style="display:flex; gap:10px;">
+    <div id="gh3-img-plot" style="flex:0 0 360px; height:380px;"></div>
+    <div id="gh3-post-plot" style="flex:1; height:380px;"></div>
+  </div>
+  <p style="margin-top:4px; font-size:0.76em; color:#7f8c8d;">
+    Left: observed image with true centre (green star). Right: rich posterior (orange ellipses) and lossy posterior (purple ellipses) vs MCMC (grey). The lossy net's ellipse should remain visibly broader throughout training.
+  </p>
+</section>
+
+<!-- ============================================================ -->
+<!-- SECTION 3 Divider                                            -->
+<!-- ============================================================ -->
+<section>
+  <div style="display:flex; align-items:center; justify-content:center; height:100%;">
+    <div style="text-align:center;">
+      <div style="width:200px; height:4px; background:linear-gradient(90deg,#8e44ad,#e74c3c); margin:0 auto 25px;"></div>
+      <h1 style="font-size:2em; margin:0;">Normalising flows</h1>
+      <p style="font-size:1.1em; color:#7f8c8d; margin-top:15px;">A flexible density from invertible maps &mdash; via the change-of-variables formula.</p>
+      <div style="width:200px; height:4px; background:linear-gradient(90deg,#8e44ad,#e74c3c); margin:25px auto 0;"></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<!-- SLIDE: Why flows + wishlist (merged) -->
+<!-- ============================================================ -->
+<section>
+  <h2>Why we need flows</h2>
+  <div class="box box-orange" style="text-align:center;">
+    Real posteriors in physics are often <strong>multimodal</strong>, <strong>curved</strong>, or <strong>heavy-tailed</strong>. Gaussians can't represent them.
+  </div>
+  <div style="display:flex; gap:14px; margin-top:14px;">
+    <div class="box box-blue" style="flex:1; text-align:center;">
+      <strong>① Evaluate \(\log q_\phi(\boldsymbol\theta\mid\mathbf{x})\)</strong><br><br>
+      Needed for the NPE loss.
+    </div>
+    <div class="box box-orange" style="flex:1; text-align:center;">
+      <strong>② Sample \(\boldsymbol\theta \sim q_\phi\)</strong><br><br>
+      Needed for corner plots, downstream analyses.
+    </div>
+    <div class="box box-green" style="flex:1; text-align:center;">
+      <strong>③ Arbitrary shape</strong><br><br>
+      Multimodal, curved, heavy-tailed.
+    </div>
+  </div>
+  <div class="box" style="margin-top:16px; text-align:center;">
+    MLPs on raw outputs fail ①: nothing forces normalisation.<br>
+    <strong>Normalising flows</strong> satisfy all three by construction, via the change-of-variables formula.
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<!-- SLIDE 22: Change of variables (1D + multivariate, merged) -->
+<!-- ============================================================ -->
+<section>
+  <h2>Change of variables</h2>
+  <div class="box box-blue" style="text-align:center;">
+    <strong>1D.</strong> If \(z \sim p_Z(z)\) and \(\theta = f(z)\) with \(f\) invertible and differentiable,
+    \[ p_\Theta(\theta) \;=\; p_Z(z)\,\left|\frac{dz}{d\theta}\right| \;=\; p_Z(f^{-1}(\theta))\,\left|\frac{df}{dz}\right|^{-1} \]
+  </div>
+  <div class="box box-purple" style="text-align:center;">
+    <strong>Multivariate.</strong> For \(\mathbf{z} \in \mathbb{R}^d\), \(\boldsymbol\theta = f(\mathbf{z})\),
+    \[ p_\Theta(\boldsymbol\theta) \;=\; p_Z(f^{-1}(\boldsymbol\theta))\;\left|\det \frac{\partial f}{\partial \mathbf{z}}\right|^{-1} \]
+    The Jacobian determinant is the <em>volume rescaling</em>. General \(|\det J|\) costs \(\mathcal{O}(d^3)\).
+  </div>
+  <p style="text-align:center; font-size:0.95em; color:#555;">
+    Flow design: pick architectures where \(J\) is triangular, so \(|\det J| = \prod_i J_{ii}\) costs \(\mathcal{O}(d)\).
+  </p>
+</section>
+
+<!-- ============================================================ -->
+<!-- SLIDE 23: 1D worked example -->
+<!-- ============================================================ -->
+<section>
+  <h2>Worked example: warping a Gaussian</h2>
+  <div style="display:flex; gap:10px; justify-content:center; align-items:flex-start; margin-top:6px;">
+    <div style="text-align:center;">
+      <canvas id="cv-map" width="280" height="240" style="border:1px solid #bdc3c7; border-radius:4px; background:#fafafa;"></canvas>
+      <div style="font-size:0.95em; color:#2c3e50;">map &nbsp;\(\theta = z + A\sin z\)</div>
+    </div>
+    <div style="text-align:center;">
+      <canvas id="cv-base" width="280" height="240" style="border:1px solid #bdc3c7; border-radius:4px; background:#fafafa;"></canvas>
+      <div style="font-size:0.95em; color:#2c3e50;">base &nbsp;\(\mathcal{N}(0, 1.5^2)\)</div>
+    </div>
+    <div style="text-align:center;">
+      <canvas id="cv-warp" width="280" height="240" style="border:1px solid #bdc3c7; border-radius:4px; background:#fafafa;"></canvas>
+      <div style="font-size:0.95em; color:#2c3e50;">warped &nbsp;\(p_\Theta(\theta) = p_Z(z)/|1+A\cos z|\)</div>
+    </div>
+  </div>
+  <div style="display:flex; gap:14px; align-items:center; justify-content:center; margin-top:14px;">
+    <label style="font-size:0.95em;">parameter &nbsp;\(A\) =
+      <span id="cv-aval" style="font-family:monospace; color:#e67e22; font-weight:600;">0.80</span>
+    </label>
+    <input id="cv-slider" type="range" min="0" max="0.99" step="0.01" value="0.80" style="width:320px; accent-color:#e67e22;">
+    <span id="cv-mono" style="font-size:0.95em; color:#27ae60; font-weight:600;">monotonic ✓</span>
+  </div>
+  <p style="text-align:center; margin-top:10px; font-size:0.95em; color:#2c3e50;">
+    Base \(\mathcal{N}(0,1.5^2)\) pushed through \(\theta = z + A\sin z\). For \(A < 1\) the map is strictly monotonic &mdash; still invertible &mdash; but as \(A\to 1\) the derivative near \(z=\pm\pi\) collapses, so density mass piles up there: the warped target becomes <strong>bimodal</strong>.
+  </p>
+</section>
+
+<!-- ============================================================ -->
+<!-- SLIDE 24: Stack of invertible maps -->
+<!-- ============================================================ -->
+<section>
+  <h2>Normalising flow = stack of invertible maps</h2>
+  <div class="box box-purple" style="text-align:center; font-size:1.05em;">
+    \[ \boldsymbol\theta \;=\; f_L \circ f_{L-1} \circ \cdots \circ f_1(\mathbf{z}), \qquad \mathbf{z} \sim \mathcal{N}(0, I_d) \]
+    Each \(f_\ell\) is invertible and differentiable, with parameters \(\phi_\ell\) (possibly conditioned on \(\mathbf{x}\)).
+  </div>
+  <ul style="font-size:0.95em;">
+    <li><strong>Sampling</strong> \(\boldsymbol\theta \sim q_\phi\): draw \(\mathbf{z}\), push forward through the stack.</li>
+    <li><strong>Density evaluation</strong> at a given \(\boldsymbol\theta\): invert the stack, evaluate \(p_Z\), correct with Jacobians.</li>
+    <li>Composition of invertible maps is invertible &mdash; deep flows stay a valid density.</li>
+  </ul>
+  <div class="box box-blue" style="text-align:center;">
+    Flexibility grows with depth \(L\), just like MLPs &mdash; but every layer preserves the probability axioms.
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<!-- SLIDE 25: Log-density via Jacobians -->
+<!-- ============================================================ -->
+<section>
+  <h2>Log-density by chain of Jacobians</h2>
+  <div class="box box-blue" style="text-align:center;">
+    Let \(\mathbf{z}_\ell = f_\ell(\mathbf{z}_{\ell-1})\), \(\mathbf{z}_0 = \mathbf{z}\), \(\mathbf{z}_L = \boldsymbol\theta\). Change-of-variables composes:
+    \[ \log q_\phi(\boldsymbol\theta\mid\mathbf{x}) \;=\; \log p_Z(\mathbf{z}_0) \;-\; \sum_{\ell=1}^{L} \log \left| \det \frac{\partial f_\ell}{\partial \mathbf{z}_{\ell-1}} \right| \]
+  </div>
+  <div class="box box-green" style="text-align:center;">
+    <strong>Training is just minibatch SGD:</strong>
+    \[ \mathcal{L}_{\mathrm{NPE}}(\phi) = -\frac{1}{|\mathcal{B}|}\sum_{(\boldsymbol\theta, \mathbf{x})\in\mathcal{B}} \log q_\phi(\boldsymbol\theta\mid\mathbf{x}) \]
+    The whole stack, including any conditioning network, trains end-to-end with backprop.
+  </div>
+  <p style="text-align:center; font-size:0.95em; color:#555;">
+    <strong>Key design constraint:</strong> each \(|\det \partial f_\ell / \partial \mathbf{z}_{\ell-1}|\) must be cheap.
+  </p>
+</section>
+
+<!-- ============================================================ -->
+<!-- SLIDE 26: Coupling layers -->
+<!-- ============================================================ -->
+<section>
+  <h2>Affine coupling layers</h2>
+  <div class="box box-purple">
+    Split \(\mathbf{z} = (\mathbf{z}_A, \mathbf{z}_B)\). Define
+    \[ \mathbf{z}'_A = \mathbf{z}_A, \qquad
+       \mathbf{z}'_B = \mathbf{z}_B \odot \exp\!\big(s_\phi(\mathbf{z}_A)\big) \;+\; t_\phi(\mathbf{z}_A) \]
+    where \(s_\phi, t_\phi\) are arbitrary neural networks (MLPs).
+  </div>
+  <div style="display:flex; gap:14px; margin-top:10px;">
+    <div class="box box-blue" style="flex:1;">
+      <strong>Invertibility</strong><br>
+      \(\mathbf{z}_A\) passes through untouched; \(\mathbf{z}_B\) is scaled-and-shifted given \(\mathbf{z}_A\).
+      Trivially invertible in closed form.
+    </div>
+    <div class="box box-green" style="flex:1;">
+      <strong>Cheap Jacobian</strong><br>
+      \(J\) is triangular &rArr; \(\log|\det J| = \sum_i s_\phi(\mathbf{z}_A)_i\).
+      \(\mathcal{O}(d)\), not \(\mathcal{O}(d^3)\).
+    </div>
+  </div>
+  <p style="text-align:center; font-size:0.95em; color:#555; margin-top:10px;">
+    Alternate which half is "active" across layers (<em>RealNVP</em>). Stack \(L\) of these &rarr; expressive flow.
+  </p>
+</section>
+
+<!-- ============================================================ -->
+<!-- SLIDE 27: Conditional flows -->
+<!-- ============================================================ -->
+<section>
+  <h2>Conditional flows &mdash; plugging in the data</h2>
+  <div class="box box-orange" style="text-align:center;">
+    For SBI we want \(q_\phi(\boldsymbol\theta \mid \mathbf{x})\), not just \(q_\phi(\boldsymbol\theta)\).<br>
+    Let the scale and shift networks depend on the data (or its embedding):
+    \[ s_\phi(\mathbf{z}_A, T_\phi(\mathbf{x})), \qquad t_\phi(\mathbf{z}_A, T_\phi(\mathbf{x})) \]
+  </div>
+  <div class="box box-blue" style="margin-top:10px;">
+    <strong>End-to-end picture.</strong>
+    <ol style="font-size:0.95em;">
+      <li><strong>CNN embedding</strong> \(T_\phi(\mathbf{x})\) compresses the data.</li>
+      <li><strong>Conditional flow</strong> turns \(\mathbf{z}\sim\mathcal{N}(0,I)\) into \(\boldsymbol\theta\), with all coupling-layer parameters depending on \(T_\phi(\mathbf{x})\).</li>
+      <li>Loss: \(-\log q_\phi(\boldsymbol\theta^\star\mid\mathbf{x})\) averaged over simulation pairs.</li>
+    </ol>
+  </div>
+  <div class="box box-green" style="text-align:center;">
+    Every component &mdash; CNN, coupling networks \(s, t\) &mdash; is trained together by backprop.
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<!-- SLIDE 28: 2D worked example -->
+<!-- ============================================================ -->
+<section>
+  <h2>Flow pushforward &mdash; 2D worked example</h2>
+  <div style="text-align:center;">
+    <img src="figures/lecture6/fig_flow_pushforward.png" class="fig">
+  </div>
+  <p class="credit">
+    Base samples \(\mathbf{z}\sim\mathcal{N}(0, I)\) are warped layer-by-layer into the target shape (here: two-moons). Each layer's Jacobian contributes to the log-density, keeping normalisation exact.
+  </p>
+  <div class="box" style="margin-top:6px; text-align:center;">
+    In the conditional version, the target shape <em>depends on \(\mathbf{x}\)</em> &mdash; each observation gets its own warped posterior.
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<!-- SLIDE 28b: LIVE normalising-flow pushforward demo -->
+<!-- ============================================================ -->
+<section>
+  <h2>Flow pushforward &mdash; live 2D demo</h2>
+  <div style="display:flex; gap:14px; align-items:flex-start;">
+    <div style="flex:1; text-align:center;">
+      <div style="font-weight:600; color:#2980b9; margin-bottom:2px;">Base space &nbsp;\(z \sim \mathcal{N}(0, I)\)</div>
+      <canvas id="nf-zcanvas" width="300" height="300" style="border:1px solid #bdc3c7; border-radius:4px; background:#fafafa;"></canvas>
+    </div>
+    <div style="flex:1; text-align:center;">
+      <div style="font-weight:600; color:#e67e22; margin-bottom:2px;">Data space &nbsp;\(x = f_\theta(z)\)</div>
+      <canvas id="nf-xcanvas" width="300" height="300" style="border:1px solid #bdc3c7; border-radius:4px; background:#fafafa;"></canvas>
+    </div>
+    <div style="flex:0.8; text-align:left; font-size:0.85em;">
+      <div class="box box-blue" style="padding:8px 10px; margin:2px 0;">
+        <strong>Flow:</strong> 4 affine coupling layers, MLP(32).<br>
+        <strong>Target:</strong> banana (grey).<br>
+        <strong>Loss:</strong> \(-\mathbb{E}[\log q_\theta(x)]\)
+      </div>
+      <div style="margin-top:6px;">
+        <button id="nf-toggle" class="sec-btn" style="padding:5px 8px; font-size:0.9em; border-color:#27ae60;">▶ Train</button>
+        <button id="nf-reset"  class="sec-btn" style="padding:5px 8px; font-size:0.9em; border-color:#c0392b;">Reset</button>
+      </div>
+      <div style="margin-top:8px; font-family:monospace; font-size:0.95em;">
+        step: <span id="nf-step">0</span><br>
+        loss: <span id="nf-loss">&mdash;</span>
+      </div>
+      <div style="margin-top:6px; font-size:0.8em; color:#7f8c8d;">
+        Colours tag fixed \(z\)-points by angle &mdash; watch them get warped into the moons.
+      </div>
+    </div>
+  </div>
+  <p class="credit" style="margin-top:4px;">Trained live in your browser with TF.js. Each layer: \(x_b = z_b \cdot e^{s(z_a)} + t(z_a)\), swapping \(a\leftrightarrow b\). Exact log-density via \(\log|\det J| = \sum_\ell s_\ell\).</p>
+</section>
+
+<!-- ============================================================ -->
+<!-- SLIDE 29: Full pipeline revisited -->
+<!-- ============================================================ -->
+<section>
+  <h2>The full pipeline, revisited</h2>
+  <div style="display:flex; gap:14px; align-items:center;">
+    <div style="flex:1.2; text-align:center;">
+      <img src="figures/lecture6/fig_sbi_pipeline.png" class="fig" style="max-height:420px;">
+    </div>
+    <div style="flex:1;">
+      <div class="box box-green"><strong>Simulator</strong>: physics model, possibly slow.</div>
+      <div class="box box-orange"><strong>Embedding \(T_\phi\)</strong>: CNN / Transformer / GNN &mdash; matches the data modality.</div>
+      <div class="box box-purple"><strong>Conditional flow</strong>: coupling layers conditioned on \(T_\phi(\mathbf{x})\).</div>
+      <div class="box box-blue"><strong>Inference loss</strong>: \(-\log q_\phi(\boldsymbol\theta^\star\mid\mathbf{x})\).</div>
+    </div>
+  </div>
+  <div class="box" style="margin-top:8px; text-align:center;">
+    <strong>Amortised:</strong> train once, then inference on any new \(\mathbf{x}_{\text{obs}}\) is a single forward pass + sampling.
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<!-- SLIDE 29b: Concrete application — SGWB with LISA (saqqara) -->
+<!-- ============================================================ -->
+<section>
+  <h2>Application &mdash; stochastic GW background with LISA</h2>
+  <div style="display:flex; gap:4px; align-items:flex-start;">
+    <div style="flex:1.35; text-align:center;">
+      <img src="figures/lecture6/fig_saqqara_corner.png" class="fig" style="max-height:470px;">
+      <div style="font-size:0.65em; color:#7f8c8d; margin-top:2px;">
+        Posteriors for stochastic-background amplitude \(\alpha\), tilt \(\gamma\), and two noise parameters \(A\), \(P\). Inset: injected PSD &mdash; noise + SGWB + unresolved transients.
+      </div>
+    </div>
+    <div style="flex:1; font-size:0.60em;">
+      <div class="box box-blue" style="padding:8px 10px;">
+        <strong>Problem.</strong> LISA data = instrument noise + a stochastic GW background + <em>hundreds</em> of unresolved transient sources (SMBH mergers). Goal: infer the background parameters.
+      </div>
+      <div class="box box-orange" style="padding:8px 10px;">
+        <strong>Why SBI?</strong> The likelihood over the transient population is intractable &mdash; traditional MCMC either ignores transients (biased, <span style="color:#e67e22;">orange dashed</span>) or has to sample their full parameter space (prohibitively expensive).
+      </div>
+      <div class="box box-green" style="padding:8px 10px;">
+        <strong>Result.</strong> The SBI posterior (<span style="font-weight:600;">orange solid</span>, TMNRE via <em>saqqara</em>) <em>automatically marginalises</em> over the transients and recovers the true injection &mdash; matching MCMC (<span style="font-weight:600;">black</span>) on the clean case C1.
+      </div>
+      <div class="box box-purple" style="padding:8px 10px;">
+        <strong>Take-away.</strong> SBI turns a nuisance (the transient population) into something implicit in the simulator &mdash; no likelihood engineering needed.
+      </div>
+    </div>
+  </div>
+  <p class="credit" style="margin-top:2px;">Alvey, Bhardwaj, Domcke, Pieroni &amp; Weniger, <a href="https://arxiv.org/abs/2309.07954" style="color:#2980b9;">arXiv:2309.07954</a> &mdash; code: <em>saqqara</em>.</p>
+</section>
+
+<!-- ============================================================ -->
+<!-- SLIDE 30: Summary + outlook -->
+<!-- ============================================================ -->
+<section>
+  <h2>Summary</h2>
+  <div style="display:flex; gap:10px; margin-top:10px;">
+    <div class="sec-btn" style="border-color:#2980b9; flex:1;">
+      <strong style="color:#2980b9;">Classifier head</strong><br><br>
+      Discretise \(\boldsymbol\theta\), softmax + CE.<br>Posterior as a histogram.
+    </div>
+    <div class="sec-btn" style="border-color:#e67e22; flex:1;">
+      <strong style="color:#e67e22;">Gaussian head</strong><br><br>
+      Learn \(\boldsymbol\mu(\mathbf{x}), \boldsymbol\Sigma(\mathbf{x})\).<br>Continuous but unimodal.
+    </div>
+    <div class="sec-btn" style="border-color:#8e44ad; flex:1;">
+      <strong style="color:#8e44ad;">Flow head</strong><br><br>
+      Invertible maps + Jacobians.<br>Flexible, exact density.
+    </div>
+  </div>
+  <div class="box" style="margin-top:14px; border-left:4px solid #e74c3c;">
+    <strong>The red thread.</strong> Every method minimises \(-\log q_\phi(\boldsymbol\theta^\star\mid\mathbf{x})\).
+    In the infinite-data limit, functional minimisation gives Bayes' posterior &mdash; the CNN classifier already does inference,
+    SBI just replaces the image database with a physics simulator.
+  </div>
+  <div class="box box-green" style="margin-top:10px; text-align:center;">
+    <strong>Next week &mdash; Lecture 7:</strong> transformers &amp; attention. We finally open the box we drew in Lecture 2.
+  </div>
+  <p style="text-align:center; font-size:0.85em; color:#888; margin-top:8px;">
+    Further reading: Papamakarios et al. 2021 (flows review); Cranmer, Brehmer &amp; Louppe 2020 (SBI).
+  </p>
+</section>
+
+</div><!-- /.slides -->
+</div><!-- /.reveal -->
+
+<script src="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reveal.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js"></script>
+<script src="lib/plotly.min.js"></script>
+<script>
+Reveal.initialize({
+  hash: true,
+  center: false,
+  slideNumber: true,
+  width: 1214,
+  height: 700,
+  margin: 0.04,
+  minScale: 0.2,
+  maxScale: 2.0,
+  transition: 'fade',
+  transitionSpeed: 'fast'
+}).then(() => {
+  renderMathInElement(document.body, {
+    delimiters: [
+      {left: '\\[', right: '\\]', display: true},
+      {left: '\\(', right: '\\)', display: false}
+    ],
+    throwOnError: false
+  });
+});
+</script>
+
+<!-- ============================================================ -->
+<!-- Live demo: Gaussian-head NPE on a sine fit -->
+<!-- ============================================================ -->
+<script>
+(function(){
+  var N_OBS=30, SIGMA_Y=0.3;
+  // Linear model y = a + b*x + eps. Priors:
+  var A_LO=-1.0, A_HI=1.0, B_LO=-3.0, B_HI=3.0;
+  var XS=[]; for(var i=0;i<N_OBS;i++) XS.push(i/(N_OBS-1));
+
+  function randn(){var u=0,v=0; while(u===0)u=Math.random(); while(v===0)v=Math.random();
+    return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v);}
+  function uniform(lo,hi){return lo+Math.random()*(hi-lo);}
+  function simulate(a,b){var y=new Array(N_OBS);
+    for(var i=0;i<N_OBS;i++) y[i]=a+b*XS[i]+SIGMA_Y*randn();
+    return y;}
+
+  function MLP(sizes){
+    this.sizes=sizes; this.W=[]; this.b=[];
+    for(var l=0;l<sizes.length-1;l++){
+      var ni=sizes[l], no=sizes[l+1];
+      var W=new Array(no), b=new Array(no), s=Math.sqrt(2/ni);
+      for(var j=0;j<no;j++){W[j]=new Array(ni); for(var i=0;i<ni;i++) W[j][i]=s*randn(); b[j]=0;}
+      this.W.push(W); this.b.push(b);
+    }
+    this.mW=[]; this.vW=[]; this.mb=[]; this.vb=[];
+    for(var l=0;l<sizes.length-1;l++){
+      var ni=sizes[l], no=sizes[l+1];
+      var mW=new Array(no), vW=new Array(no), mb=new Array(no).fill(0), vb=new Array(no).fill(0);
+      for(var j=0;j<no;j++){mW[j]=new Array(ni).fill(0); vW[j]=new Array(ni).fill(0);}
+      this.mW.push(mW); this.vW.push(vW); this.mb.push(mb); this.vb.push(vb);
+    }
+    this.t=0;
+  }
+  MLP.prototype.forward=function(x){
+    var act=x, acts=[x], pre=[];
+    for(var l=0;l<this.W.length;l++){
+      var W=this.W[l], b=this.b[l], no=W.length, ni=W[0].length;
+      var z=new Array(no), a=new Array(no);
+      for(var j=0;j<no;j++){
+        var s=b[j]; for(var i=0;i<ni;i++) s+=W[j][i]*act[i];
+        z[j]=s; a[j]=(l<this.W.length-1)?Math.max(0,s):s;
+      }
+      pre.push(z); acts.push(a); act=a;
+    }
+    return {out:act, acts:acts, pre:pre};
+  };
+  MLP.prototype.trainStep=function(batch, lr){
+    var L=this.W.length, gW=[], gb=[];
+    for(var l=0;l<L;l++){
+      var no=this.W[l].length, ni=this.W[l][0].length;
+      var GW=new Array(no), Gb=new Array(no).fill(0);
+      for(var j=0;j<no;j++) GW[j]=new Array(ni).fill(0);
+      gW.push(GW); gb.push(Gb);
+    }
+    var totalLoss=0;
+    for(var bi=0;bi<batch.length;bi++){
+      var x=batch[bi].x, theta=batch[bi].theta, fwd=this.forward(x), out=fwd.out;
+      // Outputs: [mu_a, mu_b, log_sigma_a, log_sigma_b, z]
+      var muA=out[0], muB=out[1];
+      var lsA=Math.max(-3,Math.min(2,out[2])), lsB=Math.max(-3,Math.min(2,out[3]));
+      var z=Math.max(-3, Math.min(3, out[4]));
+      var sA=Math.exp(lsA), sB=Math.exp(lsB);
+      var rho=Math.tanh(z), D=1-rho*rho; // 1 - rho^2
+      var dA=theta[0]-muA, dB=theta[1]-muB;
+      var u=dA/sA, v=dB/sB;
+      var M=u*u - 2*rho*u*v + v*v;
+      // Bivariate Gaussian NLL (constant 2*pi term dropped)
+      var loss = lsA + lsB + 0.5*Math.log(D) + 0.5*M/D;
+      totalLoss+=loss;
+      // Gradients
+      var dOut=new Array(5);
+      // d/d mu_a, mu_b
+      dOut[0] = -(u - rho*v)/(D*sA);
+      dOut[1] = -(v - rho*u)/(D*sB);
+      // d/d log_sigma_a, log_sigma_b
+      dOut[2] = 1 - u*(u - rho*v)/D;
+      dOut[3] = 1 - v*(v - rho*u)/D;
+      // d/dz with rho = tanh(z), drho/dz = 1 - rho^2 = D
+      // dNLL/drho = -rho/D - u*v/D + rho*M/(D*D)
+      // dNLL/dz = (dNLL/drho) * D = -rho - u*v + rho*M/D
+      dOut[4] = -rho - u*v + rho*M/D;
+      var grad=dOut;
+      for(var l=L-1;l>=0;l--){
+        var W=this.W[l], no=W.length, ni=W[0].length, aIn=fwd.acts[l];
+        for(var j=0;j<no;j++){
+          var g=grad[j]; gb[l][j]+=g; var row=gW[l][j];
+          for(var i=0;i<ni;i++) row[i]+=g*aIn[i];
+        }
+        if(l>0){
+          var ng=new Array(ni).fill(0), preIn=fwd.pre[l-1];
+          for(var j2=0;j2<no;j2++){var g2=grad[j2], Wj=W[j2];
+            for(var i2=0;i2<ni;i2++) ng[i2]+=g2*Wj[i2];}
+          for(var i2=0;i2<ni;i2++) if(preIn[i2]<=0) ng[i2]=0;
+          grad=ng;
+        }
+      }
+    }
+    this.t++;
+    var b1=0.9, b2=0.999, eps=1e-8, bc1=1-Math.pow(b1,this.t), bc2=1-Math.pow(b2,this.t);
+    for(var l=0;l<L;l++){
+      var W=this.W[l], no=W.length, ni=W[0].length;
+      for(var j=0;j<no;j++){
+        var gbj=gb[l][j]/batch.length;
+        this.mb[l][j]=b1*this.mb[l][j]+(1-b1)*gbj;
+        this.vb[l][j]=b2*this.vb[l][j]+(1-b2)*gbj*gbj;
+        this.b[l][j]-=lr*(this.mb[l][j]/bc1)/(Math.sqrt(this.vb[l][j]/bc2)+eps);
+        for(var i=0;i<ni;i++){
+          var gw=gW[l][j][i]/batch.length;
+          this.mW[l][j][i]=b1*this.mW[l][j][i]+(1-b1)*gw;
+          this.vW[l][j][i]=b2*this.vW[l][j][i]+(1-b2)*gw*gw;
+          this.W[l][j][i]-=lr*(this.mW[l][j][i]/bc1)/(Math.sqrt(this.vW[l][j][i]/bc2)+eps);
+        }
+      }
+    }
+    return totalLoss/batch.length;
+  };
+
+  var net, animId=null, step=0;
+  var dataY=null, dataA=null, dataB=null, mcmcSamples=null, initialized=false;
+
+  function newData(){dataA=uniform(A_LO,A_HI); dataB=uniform(B_LO,B_HI);
+    dataY=simulate(dataA,dataB); mcmcSamples=null;}
+  function setStatus(s){var el=document.getElementById('gh-status'); if(el) el.textContent=s;}
+  function reset(){if(animId){clearTimeout(animId); animId=null;}
+    net=new MLP([N_OBS,32,16,5]); step=0; setStatus('reset'); render();}
+
+  function importanceSample(nWanted){
+    var nDraw=20000, thetas=new Array(nDraw), logw=new Array(nDraw), maxLW=-Infinity;
+    for(var k=0;k<nDraw;k++){
+      var a=uniform(A_LO,A_HI), b=uniform(B_LO,B_HI), lw=0;
+      for(var i=0;i<N_OBS;i++){
+        var pred=a+b*XS[i]; var r=(dataY[i]-pred)/SIGMA_Y; lw+=-0.5*r*r;
+      }
+      thetas[k]=[a,b]; logw[k]=lw; if(lw>maxLW) maxLW=lw;
+    }
+    var w=new Array(nDraw), tot=0;
+    for(var k=0;k<nDraw;k++){w[k]=Math.exp(logw[k]-maxLW); tot+=w[k];}
+    var out=[];
+    for(var s=0;s<nWanted;s++){
+      var u=Math.random()*tot, c=0;
+      for(var k=0;k<nDraw;k++){c+=w[k]; if(c>=u){out.push(thetas[k]); break;}}
+    }
+    return out;
+  }
+
+  function predict(){
+    if(!net||!dataY) return null;
+    var out=net.forward(dataY).out;
+    var lsA=Math.max(-3,Math.min(2,out[2])), lsB=Math.max(-3,Math.min(2,out[3]));
+    var z=Math.max(-3,Math.min(3,out[4]));
+    return {muA:out[0], muB:out[1], sA:Math.exp(lsA), sB:Math.exp(lsB), rho:Math.tanh(z)};
+  }
+  // Bivariate Gaussian ellipse with correlation rho (Cholesky parameterisation)
+  function ellipsePts(mx,my,sx,sy,rho,nSig){
+    var n=80, xs=[], ys=[], sr=Math.sqrt(Math.max(0,1-rho*rho));
+    for(var i=0;i<=n;i++){
+      var t=2*Math.PI*i/n, ct=Math.cos(t), st=Math.sin(t);
+      xs.push(mx + nSig*sx*ct);
+      ys.push(my + nSig*sy*(rho*ct + sr*st));
+    }
+    return {x:xs,y:ys};
+  }
+  function render(){
+    if(!dataY) return;
+    var pred=predict();
+    var fitX=[], fitY=[], trueX=[], trueY=[];
+    for(var i=0;i<=200;i++){var x=i/200;
+      trueX.push(x); trueY.push(dataA + dataB*x);
+      if(pred){fitX.push(x); fitY.push(pred.muA + pred.muB*x);}}
+    Plotly.react('gh-data-plot',[
+      {x:trueX,y:trueY,mode:'lines',name:'truth',line:{color:'#95a5a6',width:1,dash:'dot'}},
+      {x:XS,y:dataY,mode:'markers',name:'observation',marker:{color:'#2980b9',size:6}},
+      pred?{x:fitX,y:fitY,mode:'lines',name:'NPE mean fit',line:{color:'#e67e22',width:2}}:{x:[],y:[]}
+    ],{title:{text:'Observation y vs x',font:{size:13}},
+       xaxis:{title:'x',range:[-0.02,1.02]}, yaxis:{title:'y',range:[-4,4]},
+       margin:{t:30,r:10,b:38,l:42}, showlegend:true, legend:{orientation:'h',y:-0.18}
+      },{displayModeBar:false});
+
+    var traces=[{x:[dataA],y:[dataB],mode:'markers',name:'truth',
+      marker:{color:'#27ae60',size:12,symbol:'star'}}];
+    if(mcmcSamples){
+      traces.push({x:mcmcSamples.map(s=>s[0]), y:mcmcSamples.map(s=>s[1]),
+        mode:'markers',name:'MCMC',marker:{color:'#7f8c8d',size:3,opacity:0.45}});
+    }
+    if(pred){
+      var e1=ellipsePts(pred.muA,pred.muB,pred.sA,pred.sB,pred.rho,1);
+      var e2=ellipsePts(pred.muA,pred.muB,pred.sA,pred.sB,pred.rho,2);
+      traces.push({x:e2.x,y:e2.y,mode:'lines',name:'NPE 2σ',line:{color:'#e67e22',width:1,dash:'dot'}});
+      traces.push({x:e1.x,y:e1.y,mode:'lines',name:'NPE 1σ',line:{color:'#e67e22',width:2}});
+      traces.push({x:[pred.muA],y:[pred.muB],mode:'markers',name:'NPE mean',
+        marker:{color:'#e67e22',size:8,symbol:'x'}});
+    }
+    var titleTxt='Posterior over (a, b)';
+    if(pred) titleTxt += '   ρ = '+pred.rho.toFixed(2);
+    Plotly.react('gh-post-plot',traces,{title:{text:titleTxt,font:{size:13}},
+       xaxis:{title:'a (offset)',range:[A_LO-0.2,A_HI+0.2]},
+       yaxis:{title:'b (slope)', range:[B_LO-0.4,B_HI+0.4]},
+       margin:{t:30,r:10,b:38,l:42}, showlegend:true, legend:{orientation:'h',y:-0.18}
+      },{displayModeBar:false});
+  }
+
+  function currentLR(){
+    var sl=document.getElementById('gh-lr-slider');
+    if(!sl) return 3e-3;
+    var lr=Math.pow(10, parseFloat(sl.value));
+    var lab=document.getElementById('gh-lr-val');
+    if(lab) lab.textContent=lr.toExponential(1);
+    return lr;
+  }
+  function trainOneStep(){
+    var BSZ=64, batch=new Array(BSZ);
+    for(var i=0;i<BSZ;i++){var a=uniform(A_LO,A_HI), b=uniform(B_LO,B_HI);
+      batch[i]={theta:[a,b], x:simulate(a,b)};}
+    net.trainStep(batch, currentLR()); step++;
+  }
+  function trainLoop(){
+    for(var k=0;k<5;k++) trainOneStep();
+    setStatus('step '+step); render();
+    animId=setTimeout(trainLoop,30);
+  }
+
+  function ensureInit(){
+    if(initialized) return; initialized=true;
+    net=new MLP([N_OBS,32,16,5]); newData(); render(); setStatus('untrained');
+  }
+  function onResample(){ensureInit(); newData(); render(); setStatus('new data');}
+  function onTrain(){ensureInit();
+    if(animId){clearTimeout(animId); animId=null; setStatus('paused @ step '+step); return;}
+    trainLoop();}
+  function onMCMC(){ensureInit(); setStatus('running MCMC...');
+    setTimeout(function(){mcmcSamples=importanceSample(1000); render(); setStatus('MCMC done');},20);}
+  function onReset(){ensureInit(); reset();}
+
+  document.addEventListener('DOMContentLoaded', function(){
+    var t=document.getElementById('gh-train');
+    var r=document.getElementById('gh-resample');
+    var m=document.getElementById('gh-mcmc');
+    var x=document.getElementById('gh-reset');
+    if(t) t.addEventListener('click', onTrain);
+    if(r) r.addEventListener('click', onResample);
+    if(m) m.addEventListener('click', onMCMC);
+    if(x) x.addEventListener('click', onReset);
+    var sl=document.getElementById('gh-lr-slider');
+    if(sl){ sl.addEventListener('input', currentLR); currentLR(); }
+  });
+  if(window.Reveal){
+    Reveal.on('slidechanged', function(e){
+      if(e.currentSlide && e.currentSlide.querySelector('#gh-data-plot')) ensureInit();
+    });
+  }
+})();
+</script>
+
+<!-- ============================================================ -->
+<!-- Live demo #2: rich vs lossy summary networks -->
+<!-- ============================================================ -->
+<script>
+(function(){
+  var N_OBS=30, SIGMA_Y=0.3;
+  var A_LO=-1.0, A_HI=1.0, B_LO=-3.0, B_HI=3.0;
+  var XS=[]; for(var i=0;i<N_OBS;i++) XS.push(i/(N_OBS-1));
+  function randn(){var u=0,v=0; while(u===0)u=Math.random(); while(v===0)v=Math.random();
+    return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v);}
+  function uniform(lo,hi){return lo+Math.random()*(hi-lo);}
+  function simulate(a,b){var y=new Array(N_OBS);
+    for(var i=0;i<N_OBS;i++) y[i]=a+b*XS[i]+SIGMA_Y*randn(); return y;}
+
+  function MLP(sizes){
+    this.sizes=sizes; this.W=[]; this.b=[];
+    for(var l=0;l<sizes.length-1;l++){
+      var ni=sizes[l], no=sizes[l+1], s=Math.sqrt(2/ni), W=new Array(no), b=new Array(no);
+      for(var j=0;j<no;j++){W[j]=new Array(ni); for(var i=0;i<ni;i++) W[j][i]=s*randn(); b[j]=0;}
+      this.W.push(W); this.b.push(b);
+    }
+    this.mW=[]; this.vW=[]; this.mb=[]; this.vb=[];
+    for(var l=0;l<sizes.length-1;l++){
+      var ni=sizes[l], no=sizes[l+1], mW=new Array(no), vW=new Array(no), mb=new Array(no).fill(0), vb=new Array(no).fill(0);
+      for(var j=0;j<no;j++){mW[j]=new Array(ni).fill(0); vW[j]=new Array(ni).fill(0);}
+      this.mW.push(mW); this.vW.push(vW); this.mb.push(mb); this.vb.push(vb);
+    }
+    this.t=0;
+  }
+  MLP.prototype.forward=function(x){
+    var act=x, acts=[x], pre=[];
+    for(var l=0;l<this.W.length;l++){
+      var W=this.W[l], b=this.b[l], no=W.length, ni=W[0].length, z=new Array(no), a=new Array(no);
+      for(var j=0;j<no;j++){var s=b[j]; for(var i=0;i<ni;i++) s+=W[j][i]*act[i];
+        z[j]=s; a[j]=(l<this.W.length-1)?Math.max(0,s):s;}
+      pre.push(z); acts.push(a); act=a;
+    }
+    return {out:act, acts:acts, pre:pre};
+  };
+  MLP.prototype.trainStep=function(batch, lr){
+    var L=this.W.length, gW=[], gb=[];
+    for(var l=0;l<L;l++){var no=this.W[l].length, ni=this.W[l][0].length;
+      var GW=new Array(no), Gb=new Array(no).fill(0);
+      for(var j=0;j<no;j++) GW[j]=new Array(ni).fill(0); gW.push(GW); gb.push(Gb);}
+    for(var bi=0;bi<batch.length;bi++){
+      var x=batch[bi].x, theta=batch[bi].theta, fwd=this.forward(x), out=fwd.out;
+      var muA=out[0], muB=out[1];
+      var lsA=Math.max(-3,Math.min(2,out[2])), lsB=Math.max(-3,Math.min(2,out[3]));
+      var z=Math.max(-3,Math.min(3,out[4]));
+      var sA=Math.exp(lsA), sB=Math.exp(lsB), rho=Math.tanh(z), D=1-rho*rho;
+      var dA=theta[0]-muA, dB=theta[1]-muB, u=dA/sA, v=dB/sB;
+      var M=u*u - 2*rho*u*v + v*v;
+      var dOut=[
+        -(u-rho*v)/(D*sA),
+        -(v-rho*u)/(D*sB),
+        1 - u*(u-rho*v)/D,
+        1 - v*(v-rho*u)/D,
+        -rho - u*v + rho*M/D
+      ];
+      var grad=dOut;
+      for(var l=L-1;l>=0;l--){
+        var W=this.W[l], no=W.length, ni=W[0].length, aIn=fwd.acts[l];
+        for(var j=0;j<no;j++){var g=grad[j]; gb[l][j]+=g; var row=gW[l][j];
+          for(var i=0;i<ni;i++) row[i]+=g*aIn[i];}
+        if(l>0){var ng=new Array(ni).fill(0), preIn=fwd.pre[l-1];
+          for(var j2=0;j2<no;j2++){var g2=grad[j2], Wj=W[j2]; for(var i2=0;i2<ni;i2++) ng[i2]+=g2*Wj[i2];}
+          for(var i2=0;i2<ni;i2++) if(preIn[i2]<=0) ng[i2]=0; grad=ng;}
+      }
+    }
+    this.t++;
+    var b1=0.9, b2=0.999, eps=1e-8, bc1=1-Math.pow(b1,this.t), bc2=1-Math.pow(b2,this.t);
+    for(var l=0;l<L;l++){var W=this.W[l], no=W.length, ni=W[0].length;
+      for(var j=0;j<no;j++){
+        var gbj=gb[l][j]/batch.length;
+        this.mb[l][j]=b1*this.mb[l][j]+(1-b1)*gbj;
+        this.vb[l][j]=b2*this.vb[l][j]+(1-b2)*gbj*gbj;
+        this.b[l][j]-=lr*(this.mb[l][j]/bc1)/(Math.sqrt(this.vb[l][j]/bc2)+eps);
+        for(var i=0;i<ni;i++){var gw=gW[l][j][i]/batch.length;
+          this.mW[l][j][i]=b1*this.mW[l][j][i]+(1-b1)*gw;
+          this.vW[l][j][i]=b2*this.vW[l][j][i]+(1-b2)*gw*gw;
+          this.W[l][j][i]-=lr*(this.mW[l][j][i]/bc1)/(Math.sqrt(this.vW[l][j][i]/bc2)+eps);}
+      }
+    }
+  };
+
+  var netRich, netLossy, animId=null, step=0;
+  var dataY=null, dataA=null, dataB=null, mcmcSamples=null, initialized=false;
+
+  function newData(){dataA=uniform(A_LO,A_HI); dataB=uniform(B_LO,B_HI);
+    dataY=simulate(dataA,dataB); mcmcSamples=null;}
+  function setStatus(s){var el=document.getElementById('gh2-status'); if(el) el.textContent=s;}
+  function reset(){if(animId){clearTimeout(animId); animId=null;}
+    netRich =new MLP([N_OBS, 4, 16, 5]);
+    netLossy=new MLP([N_OBS, 1, 16, 5]);
+    step=0; setStatus('reset'); render();}
+
+  function importanceSample(nWanted){
+    var nDraw=20000, thetas=new Array(nDraw), logw=new Array(nDraw), maxLW=-Infinity;
+    for(var k=0;k<nDraw;k++){
+      var a=uniform(A_LO,A_HI), b=uniform(B_LO,B_HI), lw=0;
+      for(var i=0;i<N_OBS;i++){var pred=a+b*XS[i]; var r=(dataY[i]-pred)/SIGMA_Y; lw+=-0.5*r*r;}
+      thetas[k]=[a,b]; logw[k]=lw; if(lw>maxLW) maxLW=lw;
+    }
+    var w=new Array(nDraw), tot=0;
+    for(var k=0;k<nDraw;k++){w[k]=Math.exp(logw[k]-maxLW); tot+=w[k];}
+    var out=[];
+    for(var s=0;s<nWanted;s++){var u=Math.random()*tot, c=0;
+      for(var k=0;k<nDraw;k++){c+=w[k]; if(c>=u){out.push(thetas[k]); break;}}}
+    return out;
+  }
+
+  function predictFrom(n){
+    if(!n||!dataY) return null;
+    var out=n.forward(dataY).out;
+    var lsA=Math.max(-3,Math.min(2,out[2])), lsB=Math.max(-3,Math.min(2,out[3]));
+    var z=Math.max(-3,Math.min(3,out[4]));
+    return {muA:out[0], muB:out[1], sA:Math.exp(lsA), sB:Math.exp(lsB), rho:Math.tanh(z)};
+  }
+  function ellipsePts(mx,my,sx,sy,rho,nSig){
+    var n=80, xs=[], ys=[], sr=Math.sqrt(Math.max(0,1-rho*rho));
+    for(var i=0;i<=n;i++){var t=2*Math.PI*i/n, ct=Math.cos(t), st=Math.sin(t);
+      xs.push(mx + nSig*sx*ct); ys.push(my + nSig*sy*(rho*ct + sr*st));}
+    return {x:xs,y:ys};
+  }
+  function render(){
+    if(!dataY) return;
+    var pR=predictFrom(netRich), pL=predictFrom(netLossy);
+    var trueX=[], trueY=[], fRX=[], fRY=[], fLX=[], fLY=[];
+    for(var i=0;i<=200;i++){var x=i/200;
+      trueX.push(x); trueY.push(dataA+dataB*x);
+      if(pR){fRX.push(x); fRY.push(pR.muA + pR.muB*x);}
+      if(pL){fLX.push(x); fLY.push(pL.muA + pL.muB*x);}}
+    Plotly.react('gh2-data-plot',[
+      {x:trueX,y:trueY,mode:'lines',name:'truth',line:{color:'#95a5a6',width:1,dash:'dot'}},
+      {x:XS,y:dataY,mode:'markers',name:'observation',marker:{color:'#2980b9',size:6}},
+      pR?{x:fRX,y:fRY,mode:'lines',name:'rich (k=4)',line:{color:'#e67e22',width:2}}:{x:[],y:[]},
+      pL?{x:fLX,y:fLY,mode:'lines',name:'lossy (k=1)',line:{color:'#8e44ad',width:2}}:{x:[],y:[]}
+    ],{title:{text:'Observation y vs x',font:{size:13}},
+       xaxis:{title:'x',range:[-0.02,1.02]}, yaxis:{title:'y',range:[-4,4]},
+       margin:{t:30,r:10,b:38,l:42}, showlegend:true, legend:{orientation:'h',y:-0.18}
+      },{displayModeBar:false});
+
+    var traces=[{x:[dataA],y:[dataB],mode:'markers',name:'truth',
+      marker:{color:'#27ae60',size:12,symbol:'star'}}];
+    if(mcmcSamples){
+      traces.push({x:mcmcSamples.map(s=>s[0]), y:mcmcSamples.map(s=>s[1]),
+        mode:'markers',name:'MCMC',marker:{color:'#7f8c8d',size:3,opacity:0.45}});
+    }
+    function addEll(p,col,label){
+      if(!p) return;
+      var e1=ellipsePts(p.muA,p.muB,p.sA,p.sB,p.rho,1), e2=ellipsePts(p.muA,p.muB,p.sA,p.sB,p.rho,2);
+      traces.push({x:e2.x,y:e2.y,mode:'lines',name:label+' 2σ',line:{color:col,width:1,dash:'dot'},showlegend:false});
+      traces.push({x:e1.x,y:e1.y,mode:'lines',name:label,line:{color:col,width:2}});
+      traces.push({x:[p.muA],y:[p.muB],mode:'markers',name:label+' mean',
+        marker:{color:col,size:8,symbol:'x'},showlegend:false});
+    }
+    addEll(pR,'#e67e22','rich (k=4)');
+    addEll(pL,'#8e44ad','lossy (k=1)');
+    Plotly.react('gh2-post-plot',traces,{title:{text:'Posterior over (a, b)',font:{size:13}},
+       xaxis:{title:'a (offset)',range:[A_LO-0.2,A_HI+0.2]},
+       yaxis:{title:'b (slope)', range:[B_LO-0.4,B_HI+0.4]},
+       margin:{t:30,r:10,b:38,l:42}, showlegend:true, legend:{orientation:'h',y:-0.18}
+      },{displayModeBar:false});
+  }
+
+  function currentLR(){
+    var sl=document.getElementById('gh2-lr-slider'); if(!sl) return 3e-3;
+    var lr=Math.pow(10, parseFloat(sl.value));
+    var lab=document.getElementById('gh2-lr-val'); if(lab) lab.textContent=lr.toExponential(1);
+    return lr;
+  }
+  function trainOneStep(){
+    var BSZ=64, batch=new Array(BSZ);
+    for(var i=0;i<BSZ;i++){var a=uniform(A_LO,A_HI), b=uniform(B_LO,B_HI);
+      batch[i]={theta:[a,b], x:simulate(a,b)};}
+    var lr=currentLR();
+    netRich.trainStep(batch, lr);
+    netLossy.trainStep(batch, lr);
+    step++;
+  }
+  function trainLoop(){
+    for(var k=0;k<5;k++) trainOneStep();
+    setStatus('step '+step); render();
+    animId=setTimeout(trainLoop,30);
+  }
+
+  function ensureInit(){
+    if(initialized) return; initialized=true;
+    netRich =new MLP([N_OBS, 4, 16, 5]);
+    netLossy=new MLP([N_OBS, 1, 16, 5]);
+    newData(); render(); setStatus('untrained');
+  }
+  function onResample(){ensureInit(); newData(); render(); setStatus('new data');}
+  function onTrain(){ensureInit();
+    if(animId){clearTimeout(animId); animId=null; setStatus('paused @ step '+step); return;}
+    trainLoop();}
+  function onMCMC(){ensureInit(); setStatus('running MCMC...');
+    setTimeout(function(){mcmcSamples=importanceSample(1000); render(); setStatus('MCMC done');},20);}
+  function onReset(){ensureInit(); reset();}
+
+  document.addEventListener('DOMContentLoaded', function(){
+    var t=document.getElementById('gh2-train');
+    var r=document.getElementById('gh2-resample');
+    var m=document.getElementById('gh2-mcmc');
+    var x=document.getElementById('gh2-reset');
+    if(t) t.addEventListener('click', onTrain);
+    if(r) r.addEventListener('click', onResample);
+    if(m) m.addEventListener('click', onMCMC);
+    if(x) x.addEventListener('click', onReset);
+    var sl=document.getElementById('gh2-lr-slider');
+    if(sl){ sl.addEventListener('input', currentLR); currentLR(); }
+  });
+  if(window.Reveal){
+    Reveal.on('slidechanged', function(e){
+      if(e.currentSlide && e.currentSlide.querySelector('#gh2-data-plot')) ensureInit();
+    });
+  }
+})();
+</script>
+
+<!-- ============================================================ -->
+<!-- Live demo #3: rich vs lossy on a 32x32 Gaussian-blob image -->
+<!-- ============================================================ -->
+<script>
+(function(){
+  var GRID=32, NPIX=GRID*GRID;
+  var SIGMA_BLOB=0.15, SIGMA_PIX=0.45;
+  var C_LO=-0.7, C_HI=0.7;
+  // Grid coordinates in [-1, 1]
+  var GX=new Float32Array(GRID), GY=new Float32Array(GRID);
+  for(var i=0;i<GRID;i++){var t=-1+2*i/(GRID-1); GX[i]=t; GY[i]=t;}
+
+  function randn(){var u=0,v=0; while(u===0)u=Math.random(); while(v===0)v=Math.random();
+    return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v);}
+  function uniform(lo,hi){return lo+Math.random()*(hi-lo);}
+  function renderBlob(cx,cy,addNoise){
+    var img=new Float32Array(NPIX), s2=SIGMA_BLOB*SIGMA_BLOB;
+    for(var i=0;i<GRID;i++){
+      var dy=GY[i]-cy;
+      for(var j=0;j<GRID;j++){
+        var dx=GX[j]-cx;
+        var v=Math.exp(-0.5*(dx*dx+dy*dy)/s2);
+        if(addNoise) v += SIGMA_PIX*randn();
+        img[i*GRID+j]=v;
+      }
+    }
+    return img;
+  }
+
+  // Flat typed-array MLP. Weights stored row-major as Float32Array.
+  // Homoscedastic head: network outputs 2 means; (log sA, log sB, z) are
+  // per-network scalars, learned but not conditioned on the image.
+  function MLP(sizes){
+    this.sizes=sizes; this.W=[]; this.b=[];
+    this.mW=[]; this.vW=[]; this.mb=[]; this.vb=[];
+    this.t=0;
+    for(var l=0;l<sizes.length-1;l++){
+      var ni=sizes[l], no=sizes[l+1], s=Math.sqrt(2/ni);
+      var W=new Float32Array(no*ni);
+      for(var k=0;k<W.length;k++) W[k]=s*randn();
+      this.W.push(W); this.b.push(new Float32Array(no));
+      this.mW.push(new Float32Array(no*ni)); this.vW.push(new Float32Array(no*ni));
+      this.mb.push(new Float32Array(no));    this.vb.push(new Float32Array(no));
+    }
+    // Homoscedastic (data-independent) parameters
+    this.lsA=0; this.lsB=0; this.zg=0;
+    this.m_lsA=0; this.v_lsA=0; this.m_lsB=0; this.v_lsB=0; this.m_zg=0; this.v_zg=0;
+  }
+  MLP.prototype.forward=function(x){
+    var acts=[x], pre=[], act=x;
+    for(var l=0;l<this.W.length;l++){
+      var W=this.W[l], b=this.b[l], no=this.sizes[l+1], ni=this.sizes[l];
+      var z=new Float32Array(no), a=new Float32Array(no);
+      var isLast=(l===this.W.length-1);
+      for(var j=0;j<no;j++){
+        var s=b[j], off=j*ni;
+        for(var i=0;i<ni;i++) s += W[off+i]*act[i];
+        z[j]=s; a[j]=isLast?s:(s>0?s:0);
+      }
+      pre.push(z); acts.push(a); act=a;
+    }
+    return {out:act, acts:acts, pre:pre};
+  };
+  MLP.prototype.trainStep=function(batch, lr){
+    var L=this.W.length, gW=[], gb=[];
+    for(var l=0;l<L;l++){ gW.push(new Float32Array(this.W[l].length));
+      gb.push(new Float32Array(this.b[l].length)); }
+    // Homoscedastic sigma/rho values for this step (clamped)
+    var lsA=Math.max(-3,Math.min(2,this.lsA)), lsB=Math.max(-3,Math.min(2,this.lsB));
+    var z=Math.max(-3,Math.min(3,this.zg));
+    var sA=Math.exp(lsA), sB=Math.exp(lsB), rho=Math.tanh(z), D=1-rho*rho;
+    // Gradient accumulators for the scalars
+    var gLsA=0, gLsB=0, gZ=0;
+    for(var bi=0;bi<batch.length;bi++){
+      var ex=batch[bi], fwd=this.forward(ex.x), out=fwd.out, theta=ex.theta;
+      var muA=out[0], muB=out[1];
+      var dA=theta[0]-muA, dB=theta[1]-muB, u=dA/sA, v=dB/sB;
+      var M=u*u - 2*rho*u*v + v*v;
+      // Gradients on the 2-dim network output (means only)
+      var dOut=new Float32Array(2);
+      dOut[0]=-(u-rho*v)/(D*sA);
+      dOut[1]=-(v-rho*u)/(D*sB);
+      // Gradients on the homoscedastic scalars
+      gLsA += 1 - u*(u-rho*v)/D;
+      gLsB += 1 - v*(v-rho*u)/D;
+      gZ   += -rho - u*v + rho*M/D;
+      // Backprop means through the MLP
+      var grad=dOut;
+      for(var l=L-1;l>=0;l--){
+        var W=this.W[l], no=this.sizes[l+1], ni=this.sizes[l];
+        var aIn=fwd.acts[l], GW=gW[l], Gb=gb[l];
+        for(var j=0;j<no;j++){
+          var g=grad[j]; Gb[j]+=g; var off=j*ni;
+          for(var i=0;i<ni;i++) GW[off+i]+=g*aIn[i];
+        }
+        if(l>0){
+          var ng=new Float32Array(ni), preIn=fwd.pre[l-1];
+          for(var j2=0;j2<no;j2++){var g2=grad[j2], off2=j2*ni;
+            for(var i2=0;i2<ni;i2++) ng[i2]+=g2*W[off2+i2];}
+          for(var i2=0;i2<ni;i2++) if(preIn[i2]<=0) ng[i2]=0;
+          grad=ng;
+        }
+      }
+    }
+    this.t++;
+    var b1=0.9, b2=0.999, eps=1e-8, bc1=1-Math.pow(b1,this.t), bc2=1-Math.pow(b2,this.t);
+    // MLP weights/biases
+    for(var l=0;l<L;l++){
+      var W=this.W[l], B=this.b[l], mW=this.mW[l], vW=this.vW[l], mb=this.mb[l], vb=this.vb[l];
+      var no=this.sizes[l+1], ni=this.sizes[l];
+      for(var j=0;j<no;j++){
+        var gbj=gb[l][j]/batch.length;
+        mb[j]=b1*mb[j]+(1-b1)*gbj; vb[j]=b2*vb[j]+(1-b2)*gbj*gbj;
+        B[j]-=lr*(mb[j]/bc1)/(Math.sqrt(vb[j]/bc2)+eps);
+        var off=j*ni;
+        for(var i=0;i<ni;i++){
+          var gw=gW[l][off+i]/batch.length;
+          mW[off+i]=b1*mW[off+i]+(1-b1)*gw;
+          vW[off+i]=b2*vW[off+i]+(1-b2)*gw*gw;
+          W[off+i]-=lr*(mW[off+i]/bc1)/(Math.sqrt(vW[off+i]/bc2)+eps);
+        }
+      }
+    }
+    // Homoscedastic scalars (per-net)
+    var Nb=batch.length;
+    gLsA/=Nb; gLsB/=Nb; gZ/=Nb;
+    this.m_lsA=b1*this.m_lsA+(1-b1)*gLsA; this.v_lsA=b2*this.v_lsA+(1-b2)*gLsA*gLsA;
+    this.lsA-=lr*(this.m_lsA/bc1)/(Math.sqrt(this.v_lsA/bc2)+eps);
+    this.m_lsB=b1*this.m_lsB+(1-b1)*gLsB; this.v_lsB=b2*this.v_lsB+(1-b2)*gLsB*gLsB;
+    this.lsB-=lr*(this.m_lsB/bc1)/(Math.sqrt(this.v_lsB/bc2)+eps);
+    this.m_zg =b1*this.m_zg +(1-b1)*gZ;   this.v_zg =b2*this.v_zg +(1-b2)*gZ*gZ;
+    this.zg  -=lr*(this.m_zg /bc1)/(Math.sqrt(this.v_zg /bc2)+eps);
+  };
+
+  var netRich, netLossy, animId=null, step=0, dataImg=null, dataCX=null, dataCY=null;
+  var mcmcSamples=null, initialized=false;
+
+  function newData(){dataCX=uniform(C_LO,C_HI); dataCY=uniform(C_LO,C_HI);
+    dataImg=renderBlob(dataCX,dataCY,true); mcmcSamples=null;}
+  function setStatus(s){var el=document.getElementById('gh3-status'); if(el) el.textContent=s;}
+  function reset(){if(animId){clearTimeout(animId); animId=null;}
+    netRich =new MLP([NPIX, 256, 64, 32, 2]);
+    netLossy=new MLP([NPIX,   8, 64, 32, 2]);
+    step=0; setStatus('reset'); render();}
+  function currentLR(){var sl=document.getElementById('gh3-lr-slider'); if(!sl) return 3e-3;
+    var lr=Math.pow(10, parseFloat(sl.value));
+    var lab=document.getElementById('gh3-lr-val'); if(lab) lab.textContent=lr.toExponential(1);
+    return lr;}
+
+  // Importance-sampled ground-truth posterior
+  function importanceSample(nWanted){
+    var nDraw=6000; // prior draws; likelihood eval over 1024 pixels
+    var thetas=[], logw=[], maxLW=-Infinity;
+    for(var k=0;k<nDraw;k++){
+      var cx=uniform(C_LO,C_HI), cy=uniform(C_LO,C_HI);
+      var clean=renderBlob(cx,cy,false), lw=0;
+      for(var i=0;i<NPIX;i++){var r=(dataImg[i]-clean[i])/SIGMA_PIX; lw-=0.5*r*r;}
+      thetas.push([cx,cy]); logw.push(lw); if(lw>maxLW) maxLW=lw;
+    }
+    var w=new Array(nDraw), tot=0;
+    for(var k=0;k<nDraw;k++){w[k]=Math.exp(logw[k]-maxLW); tot+=w[k];}
+    var out=[];
+    for(var s=0;s<nWanted;s++){var u=Math.random()*tot, c=0;
+      for(var k=0;k<nDraw;k++){c+=w[k]; if(c>=u){out.push(thetas[k]); break;}}}
+    return out;
+  }
+
+  function predictFrom(n){
+    if(!n||!dataImg) return null;
+    var out=n.forward(dataImg).out;
+    var lsA=Math.max(-3,Math.min(2,n.lsA)), lsB=Math.max(-3,Math.min(2,n.lsB));
+    var z  =Math.max(-3,Math.min(3,n.zg));
+    return {muA:out[0], muB:out[1], sA:Math.exp(lsA), sB:Math.exp(lsB), rho:Math.tanh(z)};
+  }
+  function ellipsePts(mx,my,sx,sy,rho,nSig){
+    var n=80, xs=[], ys=[], sr=Math.sqrt(Math.max(0,1-rho*rho));
+    for(var i=0;i<=n;i++){var t=2*Math.PI*i/n, ct=Math.cos(t), st=Math.sin(t);
+      xs.push(mx + nSig*sx*ct); ys.push(my + nSig*sy*(rho*ct + sr*st));}
+    return {x:xs,y:ys};
+  }
+  function render(){
+    if(!dataImg) return;
+    // Image as 2D array for Plotly heatmap
+    var Z=[]; for(var i=0;i<GRID;i++){var row=new Array(GRID);
+      for(var j=0;j<GRID;j++) row[j]=dataImg[i*GRID+j]; Z.push(row);}
+    Plotly.react('gh3-img-plot',[
+      {z:Z, x:Array.from(GX), y:Array.from(GY), type:'heatmap',
+       colorscale:'Greys', reversescale:true, showscale:false, zmin:-0.3, zmax:1.2},
+      {x:[dataCX], y:[dataCY], mode:'markers', name:'truth',
+       marker:{color:'#27ae60', size:12, symbol:'star'}}
+    ],{title:{text:'Observed image',font:{size:13}},
+       xaxis:{range:[-1,1], constrain:'domain'},
+       yaxis:{range:[-1,1], scaleanchor:'x', scaleratio:1},
+       margin:{t:30,r:10,b:38,l:42}, showlegend:false
+      },{displayModeBar:false});
+
+    var pR=predictFrom(netRich), pL=predictFrom(netLossy);
+    var traces=[{x:[dataCX],y:[dataCY],mode:'markers',name:'truth',
+      marker:{color:'#27ae60',size:12,symbol:'star'}}];
+    if(mcmcSamples){
+      traces.push({x:mcmcSamples.map(s=>s[0]), y:mcmcSamples.map(s=>s[1]),
+        mode:'markers',name:'MCMC',marker:{color:'#7f8c8d',size:3,opacity:0.45}});
+    }
+    function addEll(p,col,label){
+      if(!p) return;
+      var e1=ellipsePts(p.muA,p.muB,p.sA,p.sB,p.rho,1);
+      var e2=ellipsePts(p.muA,p.muB,p.sA,p.sB,p.rho,2);
+      traces.push({x:e2.x,y:e2.y,mode:'lines',name:label+' 2σ',line:{color:col,width:1,dash:'dot'},showlegend:false});
+      traces.push({x:e1.x,y:e1.y,mode:'lines',name:label,line:{color:col,width:2}});
+      traces.push({x:[p.muA],y:[p.muB],mode:'markers',name:label+' mean',
+        marker:{color:col,size:8,symbol:'x'},showlegend:false});
+    }
+    addEll(pR,'#e67e22','rich');
+    addEll(pL,'#8e44ad','lossy');
+    Plotly.react('gh3-post-plot',traces,{title:{text:'Posterior over (cx, cy)',font:{size:13}},
+       xaxis:{title:'c_x',range:[-1,1]}, yaxis:{title:'c_y',range:[-1,1], scaleanchor:'x', scaleratio:1},
+       margin:{t:30,r:10,b:38,l:42}, showlegend:true, legend:{orientation:'h',y:-0.18}
+      },{displayModeBar:false});
+  }
+  function trainOneStep(){
+    var BSZ=32, batch=new Array(BSZ);
+    for(var i=0;i<BSZ;i++){var cx=uniform(C_LO,C_HI), cy=uniform(C_LO,C_HI);
+      batch[i]={theta:[cx,cy], x:renderBlob(cx,cy,true)};}
+    var lr=currentLR();
+    netRich.trainStep(batch, lr);
+    netLossy.trainStep(batch, lr);
+    step++;
+  }
+  function trainLoop(){
+    for(var k=0;k<2;k++) trainOneStep(); // 2 steps per frame
+    setStatus('step '+step); render();
+    animId=setTimeout(trainLoop,40);
+  }
+
+  function ensureInit(){
+    if(initialized) return; initialized=true;
+    netRich =new MLP([NPIX, 256, 64, 32, 2]);
+    netLossy=new MLP([NPIX,   8, 64, 32, 2]);
+    newData(); render(); setStatus('untrained');
+  }
+  function onResample(){ensureInit(); newData(); render(); setStatus('new image');}
+  function onTrain(){ensureInit();
+    if(animId){clearTimeout(animId); animId=null; setStatus('paused @ step '+step); return;}
+    trainLoop();}
+  function onMCMC(){ensureInit(); setStatus('running MCMC...');
+    setTimeout(function(){mcmcSamples=importanceSample(1500); render(); setStatus('MCMC done');},20);}
+  function onReset(){ensureInit(); reset();}
+
+  document.addEventListener('DOMContentLoaded', function(){
+    var t=document.getElementById('gh3-train');
+    var r=document.getElementById('gh3-resample');
+    var m=document.getElementById('gh3-mcmc');
+    var x=document.getElementById('gh3-reset');
+    if(t) t.addEventListener('click', onTrain);
+    if(r) r.addEventListener('click', onResample);
+    if(m) m.addEventListener('click', onMCMC);
+    if(x) x.addEventListener('click', onReset);
+    var sl=document.getElementById('gh3-lr-slider');
+    if(sl){ sl.addEventListener('input', currentLR); currentLR(); }
+  });
+  if(window.Reveal){
+    Reveal.on('slidechanged', function(e){
+      if(e.currentSlide && e.currentSlide.querySelector('#gh3-img-plot')) ensureInit();
+    });
+  }
+})();
+</script>
+
+<!-- ============================================================ -->
+<!-- Interactive change-of-variables (1D worked example)          -->
+<!-- ============================================================ -->
+<script>
+(function(){
+  var SIGMA = 1.5;
+  var ZMIN = -6, ZMAX = 6;
+  var TMIN = -7, TMAX = 7;
+  var PMAX = 0.32;   // vertical scale for density plots
+
+  function pZ(z){
+    return (1/(SIGMA*Math.sqrt(2*Math.PI))) * Math.exp(-z*z/(2*SIGMA*SIGMA));
+  }
+  // plot rectangle inside canvas, leaving room for axis labels
+  var MARGIN = { left: 38, right: 10, top: 10, bottom: 34 };
+  function rect(cv){
+    return { x: MARGIN.left, y: MARGIN.top,
+             w: cv.width  - MARGIN.left - MARGIN.right,
+             h: cv.height - MARGIN.top  - MARGIN.bottom };
+  }
+  function mapXY(r, xmin, xmax, ymin, ymax){
+    return function(x, y){
+      return [ r.x + (x - xmin) / (xmax - xmin) * r.w,
+               r.y + r.h - (y - ymin) / (ymax - ymin) * r.h ];
+    };
+  }
+  function drawAxes(ctx, r, xmin, xmax, ymin, ymax, xticks, yticks, xlab, ylab){
+    var M = mapXY(r, xmin, xmax, ymin, ymax);
+    // frame
+    ctx.strokeStyle = '#7f8c8d'; ctx.lineWidth = 1;
+    ctx.strokeRect(r.x, r.y, r.w, r.h);
+    // origin cross (if in range)
+    ctx.strokeStyle = '#e1e4e7';
+    if(xmin < 0 && xmax > 0){
+      var p = M(0, ymin); var q = M(0, ymax);
+      ctx.beginPath(); ctx.moveTo(p[0],p[1]); ctx.lineTo(q[0],q[1]); ctx.stroke();
+    }
+    if(ymin < 0 && ymax > 0){
+      var p = M(xmin, 0); var q = M(xmax, 0);
+      ctx.beginPath(); ctx.moveTo(p[0],p[1]); ctx.lineTo(q[0],q[1]); ctx.stroke();
+    }
+    // ticks + labels
+    ctx.fillStyle = '#2c3e50';
+    ctx.font = '10px Inter, sans-serif';
+    ctx.strokeStyle = '#7f8c8d';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+    for(var i=0;i<xticks.length;i++){
+      var xv = xticks[i];
+      var p = M(xv, ymin);
+      ctx.beginPath(); ctx.moveTo(p[0], r.y + r.h); ctx.lineTo(p[0], r.y + r.h + 4); ctx.stroke();
+      ctx.fillText(String(xv), p[0], r.y + r.h + 6);
+    }
+    ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
+    for(var i=0;i<yticks.length;i++){
+      var yv = yticks[i];
+      var p = M(xmin, yv);
+      ctx.beginPath(); ctx.moveTo(r.x, p[1]); ctx.lineTo(r.x - 4, p[1]); ctx.stroke();
+      ctx.fillText(String(yv), r.x - 6, p[1]);
+    }
+    // axis names
+    ctx.fillStyle = '#2c3e50';
+    ctx.font = 'italic 12px Inter, sans-serif';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
+    ctx.fillText(xlab, r.x + r.w / 2, r.y + r.h + MARGIN.bottom - 2);
+    ctx.save();
+    ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+    ctx.translate(4, r.y + r.h / 2);
+    ctx.rotate(-Math.PI / 2);
+    ctx.fillText(ylab, 0, 0);
+    ctx.restore();
+  }
+  function plotCurve(ctx, r, xmin, xmax, ymin, ymax, xs, ys, color, lw, fillRgba){
+    var M = mapXY(r, xmin, xmax, ymin, ymax);
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(r.x, r.y, r.w, r.h); ctx.clip();   // clip to plot area
+    if(fillRgba){
+      ctx.beginPath();
+      var y0p = M(xmin, Math.max(0, ymin));
+      ctx.moveTo(y0p[0], y0p[1]);
+      for(var i=0;i<xs.length;i++){
+        var p = M(xs[i], ys[i]); ctx.lineTo(p[0], p[1]);
+      }
+      var y1p = M(xmax, Math.max(0, ymin));
+      ctx.lineTo(y1p[0], y1p[1]); ctx.closePath();
+      ctx.fillStyle = fillRgba; ctx.fill();
+    }
+    ctx.beginPath();
+    for(var i=0;i<xs.length;i++){
+      var p = M(xs[i], ys[i]);
+      if(i===0) ctx.moveTo(p[0],p[1]); else ctx.lineTo(p[0],p[1]);
+    }
+    ctx.lineWidth = lw || 2; ctx.strokeStyle = color; ctx.stroke();
+    ctx.restore();
+  }
+  function vLine(ctx, r, xmin, xmax, ymin, ymax, xv, color){
+    var M = mapXY(r, xmin, xmax, ymin, ymax);
+    var p = M(xv, ymin), q = M(xv, ymax);
+    ctx.save();
+    ctx.beginPath(); ctx.rect(r.x, r.y, r.w, r.h); ctx.clip();
+    ctx.setLineDash([4,3]); ctx.strokeStyle = color; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(p[0],p[1]); ctx.lineTo(q[0],q[1]); ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.restore();
+  }
+  function hLine(ctx, r, xmin, xmax, ymin, ymax, yv, color){
+    var M = mapXY(r, xmin, xmax, ymin, ymax);
+    var p = M(xmin, yv), q = M(xmax, yv);
+    ctx.save();
+    ctx.beginPath(); ctx.rect(r.x, r.y, r.w, r.h); ctx.clip();
+    ctx.setLineDash([4,3]); ctx.strokeStyle = color; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(p[0],p[1]); ctx.lineTo(q[0],q[1]); ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.restore();
+  }
+  function render(A){
+    var N = 800;
+    var zs = new Float64Array(N), pz = new Float64Array(N),
+        th = new Float64Array(N), pt = new Float64Array(N);
+    for(var i=0;i<N;i++){
+      var z = ZMIN + (ZMAX-ZMIN)*i/(N-1);
+      zs[i] = z;
+      pz[i] = pZ(z);
+      th[i] = z + A*Math.sin(z);
+      var deriv = 1 + A*Math.cos(z);
+      pt[i] = pz[i] / Math.max(Math.abs(deriv), 1e-6);
+    }
+
+    var xticksZ = [-6,-3,0,3,6], xticksT = [-6,-3,0,3,6];
+    var yticksT = [-6,-3,0,3,6], yticksP = [0, 0.1, 0.2, 0.3];
+
+    // --- map panel ---
+    var cm = document.getElementById('cv-map');
+    if(cm){
+      var ctx = cm.getContext('2d'); ctx.clearRect(0,0,cm.width,cm.height);
+      var r = rect(cm);
+      drawAxes(ctx, r, ZMIN, ZMAX, TMIN, TMAX, xticksZ, yticksT, 'z', 'θ');
+      [-Math.PI, Math.PI].forEach(function(zc){
+        vLine(ctx, r, ZMIN, ZMAX, TMIN, TMAX, zc, '#e67e22');
+        hLine(ctx, r, ZMIN, ZMAX, TMIN, TMAX, zc + A*Math.sin(zc), '#e67e22');
+      });
+      plotCurve(ctx, r, ZMIN, ZMAX, TMIN, TMAX, zs, th, '#8e44ad', 2);
+    }
+
+    // --- base density panel ---
+    var cb = document.getElementById('cv-base');
+    if(cb){
+      var ctx = cb.getContext('2d'); ctx.clearRect(0,0,cb.width,cb.height);
+      var r = rect(cb);
+      drawAxes(ctx, r, ZMIN, ZMAX, 0, PMAX, xticksZ, yticksP, 'z', 'p_Z(z)');
+      plotCurve(ctx, r, ZMIN, ZMAX, 0, PMAX, zs, pz, '#2980b9', 2, 'rgba(41,128,185,0.25)');
+    }
+
+    // --- warped density panel ---
+    var cw = document.getElementById('cv-warp');
+    if(cw){
+      var ctx = cw.getContext('2d'); ctx.clearRect(0,0,cw.width,cw.height);
+      var r = rect(cw);
+      drawAxes(ctx, r, TMIN, TMAX, 0, PMAX, xticksT, yticksP, 'θ', 'p_Θ(θ)');
+      [-Math.PI, Math.PI].forEach(function(tc){
+        vLine(ctx, r, TMIN, TMAX, 0, PMAX, tc, '#95a5a6');
+      });
+      plotCurve(ctx, r, TMIN, TMAX, 0, PMAX, th, pt, '#e67e22', 2, 'rgba(230,126,34,0.30)');
+    }
+  }
+  function update(){
+    var sl = document.getElementById('cv-slider'); if(!sl) return;
+    var A = parseFloat(sl.value);
+    var lbl = document.getElementById('cv-aval');
+    if(lbl) lbl.textContent = A.toFixed(2);
+    var mono = document.getElementById('cv-mono');
+    if(mono){
+      if(A < 1){ mono.textContent = 'monotonic ✓'; mono.style.color = '#27ae60'; }
+      else     { mono.textContent = 'not invertible ✗'; mono.style.color = '#c0392b'; }
+    }
+    render(A);
+  }
+  function init(){
+    var sl = document.getElementById('cv-slider'); if(!sl) return;
+    sl.addEventListener('input', update);
+    update();
+  }
+  document.addEventListener('DOMContentLoaded', init);
+  if(window.Reveal){
+    Reveal.on('slidechanged', function(e){
+      if(e.currentSlide && e.currentSlide.querySelector('#cv-slider')) update();
+    });
+  }
+})();
+</script>
+
+<!-- ============================================================ -->
+<!-- Live normalising-flow demo (slide 28b)                       -->
+<!-- ============================================================ -->
+<script>
+(function(){
+  var NF = { inited:false, running:false, step:0, layers:[], opt:null,
+             zFixed:null, zColors:null, targetPts:null, rafId:null };
+
+  // ----- target: banana (Rosenbrock-style) -----
+  function randn(){
+    var u=Math.random(), v=Math.random();
+    return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v);
+  }
+  function sampleBanana(n){
+    var pts = new Float32Array(n*2);
+    for(var i=0;i<n;i++){
+      var x = randn();               // std 1
+      var y = 0.5 * x * x + 0.4 * randn() - 1.0;  // curved + noise + shift
+      pts[2*i] = x; pts[2*i+1] = y;
+    }
+    return pts;
+  }
+
+  // ----- tiny MLP (inDim -> hidden -> outDim) -----
+  function makeMlp(hidden){
+    return {
+      W1: tf.variable(tf.randomNormal([1, hidden], 0, 0.3)),
+      b1: tf.variable(tf.zeros([hidden])),
+      W2: tf.variable(tf.randomNormal([hidden, 2], 0, 0.01)),
+      b2: tf.variable(tf.zeros([2]))
+    };
+  }
+  function mlp(m, x){
+    return tf.tidy(function(){
+      var h = tf.relu(tf.add(tf.matMul(x, m.W1), m.b1));
+      return tf.add(tf.matMul(h, m.W2), m.b2);
+    });
+  }
+
+  // ----- flow: 4 coupling layers, alternating masks -----
+  function buildLayers(){
+    NF.layers = [];
+    for(var i=0;i<4;i++){
+      NF.layers.push({ mask: i%2, net: makeMlp(32) });
+    }
+  }
+
+  // forward: z -> x  (returns {x, logDet})
+  function fwd(z){
+    return tf.tidy(function(){
+      var cur = z;
+      var B = z.shape[0];
+      var logDet = tf.zeros([B]);
+      for(var i=0;i<NF.layers.length;i++){
+        var L = NF.layers[i];
+        var a, b;
+        if(L.mask === 0){
+          a = cur.slice([0,0],[-1,1]); b = cur.slice([0,1],[-1,1]);
+        } else {
+          a = cur.slice([0,1],[-1,1]); b = cur.slice([0,0],[-1,1]);
+        }
+        var st = mlp(L.net, a);
+        var s = tf.tanh(st.slice([0,0],[-1,1]));   // bound for stability
+        var t = st.slice([0,1],[-1,1]);
+        var bNew = tf.add(tf.mul(b, tf.exp(s)), t);
+        logDet = tf.add(logDet, s.squeeze([1]));
+        cur = (L.mask === 0) ? tf.concat([a, bNew], 1) : tf.concat([bNew, a], 1);
+      }
+      return { x: cur, logDet: logDet };
+    });
+  }
+
+  // inverse: x -> z  (returns {z, logDetInv}); logDetInv = -sum s
+  function inv(x){
+    return tf.tidy(function(){
+      var cur = x;
+      var B = x.shape[0];
+      var logDetInv = tf.zeros([B]);
+      for(var i=NF.layers.length-1; i>=0; i--){
+        var L = NF.layers[i];
+        var a, b;
+        if(L.mask === 0){
+          a = cur.slice([0,0],[-1,1]); b = cur.slice([0,1],[-1,1]);
+        } else {
+          a = cur.slice([0,1],[-1,1]); b = cur.slice([0,0],[-1,1]);
+        }
+        var st = mlp(L.net, a);
+        var s = tf.tanh(st.slice([0,0],[-1,1]));
+        var t = st.slice([0,1],[-1,1]);
+        var bOrig = tf.mul(tf.sub(b, t), tf.exp(tf.neg(s)));
+        logDetInv = tf.sub(logDetInv, s.squeeze([1]));
+        cur = (L.mask === 0) ? tf.concat([a, bOrig], 1) : tf.concat([bOrig, a], 1);
+      }
+      return { z: cur, logDetInv: logDetInv };
+    });
+  }
+
+  // log p_X(x) = log p_Z(z) + log|det df^-1/dx|
+  function nll(xTensor){
+    return tf.tidy(function(){
+      var inverseOut = inv(xTensor);
+      var z = inverseOut.z;
+      var logDetInv = inverseOut.logDetInv;
+      var LOG2PI = Math.log(2 * Math.PI);
+      // log p_Z(z) for N(0, I), 2D: -0.5*(z1^2+z2^2) - log(2*pi)
+      var logPz = tf.sub(tf.mul(-0.5, tf.sum(tf.square(z), 1)), LOG2PI);
+      var logPx = tf.add(logPz, logDetInv);
+      return tf.neg(tf.mean(logPx));
+    });
+  }
+
+  // ----- drawing -----
+  function makeMapper(xmin, xmax, ymin, ymax, W, H){
+    return function(x, y){
+      var px = (x - xmin) / (xmax - xmin) * W;
+      var py = H - (y - ymin) / (ymax - ymin) * H;
+      return [px, py];
+    };
+  }
+  var XR = [-2.6, 2.6], YR = [-2.2, 2.2];
+
+  function drawZCanvas(){
+    var c = document.getElementById('nf-zcanvas');
+    if(!c) return;
+    var ctx = c.getContext('2d');
+    ctx.clearRect(0,0,c.width,c.height);
+    var M = makeMapper(-3,3,-3,3,c.width,c.height);
+    // axes
+    ctx.strokeStyle = '#e1e4e7'; ctx.lineWidth = 1;
+    var o = M(0,0);
+    ctx.beginPath(); ctx.moveTo(o[0],0); ctx.lineTo(o[0],c.height); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(0,o[1]); ctx.lineTo(c.width,o[1]); ctx.stroke();
+    // fixed z points, colored by angle
+    var z = NF.zFixed;
+    for(var i=0;i<z.length/2;i++){
+      var p = M(z[2*i], z[2*i+1]);
+      ctx.fillStyle = NF.zColors[i];
+      ctx.beginPath(); ctx.arc(p[0], p[1], 2, 0, 6.2832); ctx.fill();
+    }
+  }
+
+  function drawXCanvas(pushforward){
+    var c = document.getElementById('nf-xcanvas');
+    if(!c) return;
+    var ctx = c.getContext('2d');
+    ctx.clearRect(0,0,c.width,c.height);
+    var M = makeMapper(XR[0],XR[1],YR[0],YR[1],c.width,c.height);
+    // axes
+    ctx.strokeStyle = '#e1e4e7'; ctx.lineWidth = 1;
+    var o = M(0,0);
+    ctx.beginPath(); ctx.moveTo(o[0],0); ctx.lineTo(o[0],c.height); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(0,o[1]); ctx.lineTo(c.width,o[1]); ctx.stroke();
+    // target (grey)
+    ctx.fillStyle = 'rgba(150,150,150,0.35)';
+    var tp = NF.targetPts;
+    for(var i=0;i<tp.length/2;i++){
+      var p = M(tp[2*i], tp[2*i+1]);
+      ctx.beginPath(); ctx.arc(p[0], p[1], 1.6, 0, 6.2832); ctx.fill();
+    }
+    // pushforward of fixed z (colored)
+    if(pushforward){
+      for(var i=0;i<pushforward.length/2;i++){
+        var p = M(pushforward[2*i], pushforward[2*i+1]);
+        ctx.fillStyle = NF.zColors[i];
+        ctx.beginPath(); ctx.arc(p[0], p[1], 2, 0, 6.2832); ctx.fill();
+      }
+    }
+  }
+
+  function pushforwardFixed(){
+    return tf.tidy(function(){
+      var zT = tf.tensor2d(NF.zFixed, [NF.zFixed.length/2, 2]);
+      var out = fwd(zT);
+      return out.x.dataSync();
+    });
+  }
+
+  // ----- init / reset -----
+  function initFixedViz(){
+    var N = 300;
+    NF.zFixed = new Float32Array(N*2);
+    NF.zColors = new Array(N);
+    for(var i=0;i<N;i++){
+      var z1 = randn(), z2 = randn();
+      NF.zFixed[2*i] = z1; NF.zFixed[2*i+1] = z2;
+      var ang = Math.atan2(z2, z1); // -pi..pi
+      var hue = Math.floor(((ang + Math.PI) / (2*Math.PI)) * 360);
+      NF.zColors[i] = 'hsl(' + hue + ',70%,45%)';
+    }
+    NF.targetPts = sampleBanana(800);
+  }
+
+  function reset(){
+    // dispose existing variables
+    if(NF.layers && NF.layers.length){
+      NF.layers.forEach(function(L){
+        ['W1','b1','W2','b2'].forEach(function(k){ if(L.net[k]) L.net[k].dispose(); });
+      });
+    }
+    buildLayers();
+    NF.opt = tf.train.adam(1e-3);
+    NF.step = 0;
+    var se = document.getElementById('nf-step'); if(se) se.textContent = '0';
+    var le = document.getElementById('nf-loss'); if(le) le.textContent = '—';
+    drawZCanvas();
+    var pf = pushforwardFixed();
+    drawXCanvas(pf);
+  }
+
+  function ensureInit(){
+    if(NF.inited) return;
+    if(typeof tf === 'undefined') return;
+    initFixedViz();
+    buildLayers();
+    NF.opt = tf.train.adam(1e-3);
+    NF.inited = true;
+    drawZCanvas();
+    var pf = pushforwardFixed();
+    drawXCanvas(pf);
+  }
+
+  function trainStep(){
+    var BATCH = 256;
+    var batch = sampleBanana(BATCH);
+    var xT = tf.tensor2d(batch, [BATCH, 2]);
+    var lossScalar = NF.opt.minimize(function(){ return nll(xT); }, true);
+    var lossVal = lossScalar.dataSync()[0];
+    lossScalar.dispose();
+    xT.dispose();
+    NF.step += 1;
+    return lossVal;
+  }
+
+  function loop(){
+    if(!NF.running) return;
+    // a few steps per frame
+    var loss = 0;
+    for(var k=0;k<3;k++){ loss = trainStep(); }
+    var se = document.getElementById('nf-step'); if(se) se.textContent = NF.step;
+    var le = document.getElementById('nf-loss'); if(le) le.textContent = loss.toFixed(3);
+    var pf = pushforwardFixed();
+    drawXCanvas(pf);
+    NF.rafId = requestAnimationFrame(loop);
+  }
+
+  function toggleTrain(){
+    ensureInit();
+    NF.running = !NF.running;
+    var btn = document.getElementById('nf-toggle');
+    if(NF.running){
+      if(btn) btn.innerHTML = '❚❚ Pause';
+      loop();
+    } else {
+      if(btn) btn.innerHTML = '▶ Train';
+      if(NF.rafId){ cancelAnimationFrame(NF.rafId); NF.rafId = null; }
+    }
+  }
+  function onReset(){
+    NF.running = false;
+    if(NF.rafId){ cancelAnimationFrame(NF.rafId); NF.rafId = null; }
+    var btn = document.getElementById('nf-toggle'); if(btn) btn.innerHTML = '▶ Train';
+    ensureInit();
+    reset();
+  }
+
+  document.addEventListener('DOMContentLoaded', function(){
+    var t = document.getElementById('nf-toggle');
+    var r = document.getElementById('nf-reset');
+    if(t) t.addEventListener('click', toggleTrain);
+    if(r) r.addEventListener('click', onReset);
+  });
+  if(window.Reveal){
+    Reveal.on('slidechanged', function(e){
+      if(e.currentSlide && e.currentSlide.querySelector('#nf-xcanvas')) ensureInit();
+      else if(NF.running){ NF.running=false;
+        if(NF.rafId){ cancelAnimationFrame(NF.rafId); NF.rafId=null; }
+        var btn = document.getElementById('nf-toggle'); if(btn) btn.innerHTML = '▶ Train';
+      }
+    });
+  }
+})();
+</script>
+</body>
+</html>

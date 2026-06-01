@@ -1,0 +1,2407 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Lecture 4: Making Deep Learning Work in Practice</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reveal.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/theme/white.css">
+<style>
+  #bg-canvas { display: none; }
+  .reveal .slides section {
+    background: #ffffff;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+    padding: 30px 40px;
+    box-sizing: border-box;
+    height: 700px !important;
+  }
+  .reveal .slides section.stack {
+    background: none;
+    box-shadow: none;
+    padding: 0;
+    height: auto !important;
+  }
+  .reveal { font-family: 'Inter', sans-serif; font-weight: 400; }
+  .reveal h1, .reveal h2, .reveal h3 { color: #2c3e50; font-family: 'Space Grotesk', sans-serif; font-weight: 700; }
+  .reveal h2 { font-size: 1.2em; margin-bottom: 0.3em; text-align: left; }
+  .reveal .subtitle { font-size: 0.6em; color: #7f8c8d; margin-top: 0.5em; }
+  .reveal section { font-size: 0.66em; }
+  .reveal section.stack { font-size: 1em; }
+  .reveal p { margin: 0.3em 0; }
+  .reveal ul { text-align: left; margin: 0.3em 0; }
+  .reveal li { margin: 0.15em 0; }
+  .reveal .highlight { color: #e74c3c; font-weight: bold; }
+  .reveal .MathJax { font-size: 0.95em; }
+  .reveal .box {
+    background: #ecf0f1; border-radius: 10px; padding: 12px 16px;
+    margin: 10px 0; text-align: left;
+  }
+  .slide-footer {
+    position: absolute;
+    bottom: 8px;
+    left: 40px;
+    right: 40px;
+    font-size: 10px;
+    color: #bdc3c7;
+    display: flex;
+    justify-content: space-between;
+    pointer-events: none;
+  }
+  .sec-btn {
+    flex: 1; padding: 12px; border: 2px solid #ecf0f1; border-radius: 8px;
+    background: #f8f9fa; cursor: default; font-size: 1em; text-align: center;
+  }
+</style>
+</head>
+<body>
+<canvas id="bg-canvas"></canvas>
+<div class="reveal">
+<div class="slides">
+
+<!-- ============================================================ -->
+<!-- SLIDE 1: Title -->
+<!-- ============================================================ -->
+<section>
+  <h1 style="font-size:1.5em;">Machine Learning for<br>Physics &amp; Astronomy 2026</h1>
+  <h3>Lecture 4: Making Deep Learning Work in Practice</h3>
+  <p class="subtitle">Christoph Weniger &mdash; University of Amsterdam (GRAPPA)</p>
+</section>
+
+<!-- ============================================================ -->
+<!-- SLIDE 2: Roadmap -->
+<!-- ============================================================ -->
+<section>
+  <h2>Today's Roadmap</h2>
+  <div style="display:flex; gap:8px; margin-top:20px;">
+    <div class="sec-btn" style="border-color:#2980b9;">
+      <strong style="color:#2980b9;">1</strong><br>
+      Making gradients flow<br><span style="font-size:0.85em;">Backprop, activations, init, normalization</span>
+    </div>
+    <div style="align-self:center; font-size:1.4em; color:#bdc3c7;">&rarr;</div>
+    <div class="sec-btn" style="border-color:#e67e22;">
+      <strong style="color:#e67e22;">2</strong><br>
+      Making training work<br><span style="font-size:0.85em;">Momentum, Adam, learning rates</span>
+    </div>
+    <div style="align-self:center; font-size:1.4em; color:#bdc3c7;">&rarr;</div>
+    <div class="sec-btn" style="border-color:#27ae60;">
+      <strong style="color:#27ae60;">3</strong><br>
+      Why deep learning works<br><span style="font-size:0.85em;">Double descent, spectral bias, regularization</span>
+    </div>
+  </div>
+  <div class="box fragment" style="margin-top:25px; text-align:center; font-size:1.0em;">
+    <strong>The thread:</strong> Lecture 3 built the MLP.<br>
+    Today we learn to <strong style="color:#e74c3c;">train it reliably</strong>. Each technique solves a specific failure mode.
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<!-- SECTION 1: BACKPROPAGATION                                   -->
+<!-- ============================================================ -->
+
+<!-- Section Divider: Backpropagation -->
+<section>
+  <div style="display:flex; align-items:center; justify-content:center; height:100%;">
+    <div style="text-align:center;">
+      <div style="width:200px; height:4px; background:linear-gradient(90deg,#2980b9,#e74c3c); margin:0 auto 25px;"></div>
+      <h1 style="font-size:2em; margin:0;">Backpropagation</h1>
+      <p style="font-size:1.1em; color:#7f8c8d; margin-top:15px;">Computing gradients efficiently through the computation graph.</p>
+      <div style="width:200px; height:4px; background:linear-gradient(90deg,#2980b9,#e74c3c); margin:25px auto 0;"></div>
+    </div>
+  </div>
+</section>
+
+<!-- SLIDE 3: Backpropagation & Computation Graph (merged) -->
+<section>
+<section>
+  <h2>Backpropagation: The Computation Graph</h2>
+  <p>SGD needs \(\partial E / \partial W^{(\ell)}\) for every layer. <strong>Backpropagation</strong> computes all gradients efficiently by traversing the computation graph:</p>
+  <div style="display:flex; align-items:center; justify-content:center; gap:6px; margin:12px 0 4px; font-size:0.95em;">
+    <div style="padding:8px 12px; background:#eaf2f8; border-radius:6px; border:2px solid #2980b9; text-align:center;">
+      \(\mathbf{x}\)<br><span style="font-size:0.8em; color:#7f8c8d;">input</span>
+    </div>
+    <span style="font-size:1.2em;">&rarr;</span>
+    <div style="padding:8px 12px; background:#fef9e7; border-radius:6px; border:2px solid #f39c12;">
+      \(\mathbf{z}^{(1)} = W^{(1)}\mathbf{x}+\mathbf{b}^{(1)}\)
+    </div>
+    <span style="font-size:1.2em;">&rarr;</span>
+    <div style="padding:8px 12px; background:#eaf2f8; border-radius:6px; border:2px solid #2980b9;">
+      \(\mathbf{h} = g(\mathbf{z}^{(1)})\)
+    </div>
+  </div>
+  <div style="display:flex; align-items:center; justify-content:center; gap:6px; margin:4px 0 12px; font-size:0.95em;">
+    <span style="font-size:1.2em;">&rarr;</span>
+    <div style="padding:8px 12px; background:#fef9e7; border-radius:6px; border:2px solid #f39c12;">
+      \(a = \mathbf{w}^{(2)T}\mathbf{h}+b^{(2)}\)
+    </div>
+    <span style="font-size:1.2em;">&rarr;</span>
+    <div style="padding:8px 12px; background:#eaf2f8; border-radius:6px; border:2px solid #2980b9;">
+      \(\hat{y} = \sigma(a)\)
+    </div>
+    <span style="font-size:1.2em;">&rarr;</span>
+    <div style="padding:8px 12px; background:#fdedec; border-radius:6px; border:2px solid #e74c3c;">
+      \(E\)
+    </div>
+  </div>
+  <div style="display:flex; gap:15px; margin-top:12px;">
+    <div class="box fragment" style="flex:1; text-align:center;">
+      <strong style="color:#2980b9;">Forward pass:</strong> compute values <strong>left &rarr; right</strong>
+    </div>
+    <div class="box fragment" style="flex:1; text-align:center;">
+      <strong style="color:#e74c3c;">Backward pass:</strong> compute gradients <strong>right &rarr; left</strong><br>
+      using the <strong>chain rule</strong>
+    </div>
+  </div>
+</section>
+<section>
+  <h2>Computation Graph &mdash; Details</h2>
+  <ul style="font-size:0.92em; line-height:1.7;">
+    <li>The model shown above is a simple <strong>2-layer binary classification network</strong> &mdash; one hidden layer followed by a single output.</li>
+    <li>This can be seen from the <strong>sigmoid \(\sigma\)</strong> at the end, which squashes the output into \([0,1]\) to produce a probability.</li>
+    <li>The activation function \(g\) in the hidden layer is typically <strong>ReLU</strong>: \(g(z) = \max(0, z)\).  </li>
+    <li>The loss \(E(\hat{y})\) is the <strong>binary cross-entropy</strong> averaged over training data:
+      \[ E = -\frac{1}{N}\sum_{n=1}^{N}\Big[t_n \ln \hat{y}_n + (1 - t_n)\ln(1-\hat{y}_n)\Big] \]
+      where \(t_n \in \{0,1\}\) are the class labels and \(\hat{y}_n = \sigma\big(\mathbf{w}^{(2)T} g(W^{(1)}\mathbf{x}_n + \mathbf{b}^{(1)}) + b^{(2)}\big)\).
+    </li>
+    <li><strong>Dimensionalities:</strong>
+      \(\mathbf{x} \in \mathbb{R}^{D}\),
+      \(W^{(1)} \in \mathbb{R}^{H \times D}\),
+      \(\mathbf{b}^{(1)} \in \mathbb{R}^{H}\),
+      \(\mathbf{z}^{(1)}, \mathbf{h} \in \mathbb{R}^{H}\),
+      \(\mathbf{w}^{(2)} \in \mathbb{R}^{H}\),
+      \(b^{(2)}, a, \hat{y} \in \mathbb{R}\).
+    </li>
+  </ul>
+</section>
+</section>
+
+<!-- SLIDE 5: Chain Rule -->
+<section>
+<section>
+  <h2>Backpropagation: The Chain Rule</h2>
+  <div class="box" style="text-align:center; font-size:1.0em; padding:8px; margin-top:4px;">
+    The chain rule factors the gradient into <strong>local derivatives</strong>: &ensp;
+    \(\displaystyle\frac{\partial E}{\partial w} = \frac{\partial E}{\partial \hat{y}} \frac{\partial \hat{y}}{\partial a} \frac{\partial a}{\partial w}\)
+  </div>
+  <p style="margin-top:8px;"><strong>Concrete 2-layer example</strong> (binary classification, cross-entropy loss \(E = -[t\ln\hat{y} + (1-t)\ln(1-\hat{y})]\)):</p>
+  <div style="display:flex; gap:10px; font-size:0.92em;">
+    <div class="box" style="flex:1;">
+      <strong style="color:#2980b9;">Forward</strong><br>
+      <span class="fragment" data-fragment-index="1">\(\mathbf{z} = W^{(1)}\mathbf{x}+\mathbf{b}^{(1)}\)</span><br>
+      <span class="fragment" data-fragment-index="1">\(\mathbf{h} = g(\mathbf{z})\)</span><br>
+      <span class="fragment" data-fragment-index="1">\(a = \mathbf{w}^{(2)T}\mathbf{h}+b^{(2)}\)</span><br>
+      <span class="fragment" data-fragment-index="1">\(\hat{y} = \sigma(a)\)</span>
+    </div>
+    <div class="box" style="flex:1;">
+      <strong style="color:#e74c3c;">Backward</strong><br>
+      <span class="fragment" data-fragment-index="2">\(\nabla_{\mathbf{w}^{(2)}} E = (\hat{y}-t)\,\mathbf{h}\)</span><br>
+      <span class="fragment" data-fragment-index="2">\(\nabla_{b^{(2)}} E = \hat{y}-t\)</span><br>
+      <span class="fragment" data-fragment-index="3">\(\nabla_{W^{(1)}} E = (\hat{y}-t)\,(\mathbf{w}^{(2)} \odot g'(\mathbf{z}))\,\mathbf{x}^T\)</span><br>
+      <span class="fragment" data-fragment-index="3">\(\nabla_{\mathbf{b}^{(1)}} E = (\hat{y}-t)\,(\mathbf{w}^{(2)} \odot g'(\mathbf{z}))\)</span>
+    </div>
+  </div>
+  <div class="box fragment" style="text-align:center; margin-top:8px; padding:8px;">
+    Each layer needs only <strong>the gradient from above</strong> and its own <strong>local derivatives</strong>.<br>
+    Total cost &asymp; <strong>2&times;</strong> the forward pass.
+  </div>
+  <p style="margin-top:8px; color:#95a5a6; font-size:0.85em; text-align:center;">
+    Notation: \(\odot\) denotes the <strong>element-wise (Hadamard) product</strong>: \((\mathbf{a} \odot \mathbf{b})_i = a_i \, b_i\).
+    Here \(g'(\mathbf{z})\) is the vector \(\big(g'(z_1), \ldots, g'(z_H)\big)\).
+  </p>
+</section>
+<section style="font-size:0.58em;">
+  <h2>Chain Rule &mdash; Deriving \(\nabla_{\mathbf{w}^{(2)}} E\)</h2>
+  <p>Work through the gradient of \(E\) w.r.t. the second-layer weights \(\mathbf{w}^{(2)}\) step by step.</p>
+  <div class="box" style="margin-top:8px; padding:10px;">
+    <p><strong>Step 1:</strong> Apply the chain rule through the computation graph:</p>
+    \[ \frac{\partial E}{\partial w^{(2)}_j} = \frac{\partial E}{\partial \hat{y}} \frac{\partial \hat{y}}{\partial a} \frac{\partial a}{\partial w^{(2)}_j} \]
+  </div>
+  <div class="box" style="margin-top:6px; padding:10px;">
+    <p><strong>Step 2:</strong> Compute each factor:</p>
+    <ul style="margin-top:4px; line-height:1.7;">
+      <li>\(\displaystyle\frac{\partial E}{\partial \hat{y}} = -\frac{t}{\hat{y}} + \frac{1-t}{1-\hat{y}} = \frac{\hat{y}-t}{\hat{y}(1-\hat{y})}\)</li>
+      <li>\(\displaystyle\frac{\partial \hat{y}}{\partial a} = \sigma'(a) = \sigma(a)(1-\sigma(a)) = \hat{y}(1-\hat{y})\)</li>
+      <li>\(\displaystyle\frac{\partial a}{\partial w^{(2)}_j} = h_j\) &ensp; (since \(a = \sum_j w^{(2)}_j h_j + b^{(2)}\))</li>
+    </ul>
+  </div>
+</section>
+<section style="font-size:0.58em;">
+  <h2>Chain Rule &mdash; Deriving \(\nabla_{\mathbf{w}^{(2)}} E\) (cont.)</h2>
+  <div class="box" style="margin-top:14px; padding:12px;">
+    <p><strong>Step 3:</strong> Multiply &mdash; the \(\hat{y}(1-\hat{y})\) cancels:</p>
+    \[ \frac{\partial E}{\partial w^{(2)}_j} = \frac{\hat{y}-t}{\hat{y}(1-\hat{y})} \;\hat{y}(1-\hat{y}) \; h_j = (\hat{y}-t)\,h_j \]
+    <p style="margin-top:8px;">In vector form: \(\nabla_{\mathbf{w}^{(2)}} E = (\hat{y}-t)\,\mathbf{h}\). This clean cancellation is specific to sigmoid + cross-entropy.</p>
+  </div>
+</section>
+</section>
+
+<!-- SLIDE 5b: Backprop with Regularization — animated computational graph -->
+<section>
+  <h2>Backprop in Detail: Regularized Loss</h2>
+  <div style="text-align:center; font-size:0.95em; margin:2px 0;">
+    \[L = \underbrace{(\hat y - y)^2}_{L_\text{data}} + \underbrace{\lambda\,w^2}_{L_\text{reg}}, \qquad \hat y = w\,x\]
+  </div>
+  <div style="display:flex; gap:8px; align-items:center; font-size:0.78em;">
+    <button id="bp2-next" style="padding:4px 16px; cursor:pointer; font-weight:600; border-radius:4px; border:2px solid #2980b9; background:#ebf5fb;">Next &#9654;</button>
+    <button id="bp2-reset" style="padding:4px 12px; cursor:pointer; border-radius:4px; border:2px solid #e74c3c; background:#fdedec;">&#8634; Reset</button>
+    <span id="bp2-step-label" style="color:#7f8c8d;"></span>
+  </div>
+  <div style="display:flex; gap:6px; margin-top:4px; font-size:0.72em;">
+    <!-- LEFT: Computational graph (left-to-right DAG) -->
+    <div style="flex:0 0 300px; position:relative; height:320px;">
+      <svg id="bp2-svg" width="300" height="320" style="position:absolute; top:0; left:0;">
+        <!-- edges drawn by JS -->
+      </svg>
+      <!-- Col 0: inputs, Col 1: intermediates, Col 2: sub-losses, Col 3: total loss -->
+      <div id="bp2-n-x" class="bp2-node nontensor" style="left:4px;   top:30px;">x</div>
+      <div id="bp2-n-w" class="bp2-node" style="left:4px;   top:140px;">w</div>
+      <div id="bp2-n-y" class="bp2-node nontensor" style="left:4px;   top:250px;">y</div>
+      <div id="bp2-n-z" class="bp2-node" style="left:90px;  top:70px;">z</div>
+      <div id="bp2-n-ld" class="bp2-node" style="left:180px; top:140px;">L<sub>d</sub></div>
+      <div id="bp2-n-lr" class="bp2-node" style="left:90px;  top:250px;">L<sub>r</sub></div>
+      <div id="bp2-n-loss" class="bp2-node" style="left:245px; top:210px;">L</div>
+    </div>
+    <!-- CENTER: PyTorch code -->
+    <div style="flex:0 0 480px;">
+      <div style="font-weight:600; margin-bottom:2px; font-size:1.05em;">PyTorch code</div>
+      <pre id="bp2-code" style="margin:0; padding:6px; background:#f8f9fa; border-radius:4px; line-height:1.6; font-size:1.05em;"><span id="bp2-c0">x, y = 2.0, 3.0</span>
+<span id="bp2-c1">w = tensor(1., requires_grad=True)</span>
+<span id="bp2-c2">lam = 0.1</span>
+<span id="bp2-c3">z = w * x</span>
+<span id="bp2-c4">L_d = (z - y)**2</span>
+<span id="bp2-c5">L_r = lam * w**2</span>
+<span id="bp2-c6">L = L_d + L_r</span>
+<span id="bp2-c7">L.backward()</span></pre>
+    </div>
+    <!-- RIGHT: Variable table -->
+    <div style="flex:1; overflow-x:auto;">
+      <div style="font-weight:600; margin-bottom:2px; font-size:1.05em;">Variables</div>
+      <table id="bp2-table" style="width:100%; border-collapse:collapse; font-size:1.0em;">
+        <thead><tr style="border-bottom:2px solid #2c3e50;">
+          <th style="text-align:left; padding:2px 3px;">Var</th>
+          <th style="text-align:right; padding:2px 3px;">.data</th>
+          <th style="text-align:right; padding:2px 3px;">.grad_fn</th>
+          <th style="text-align:right; padding:2px 3px;">&part;L/&part;&middot;</th>
+        </tr></thead>
+        <tbody>
+          <tr><td style="padding:2px 3px;">x</td><td id="bp2-v-x" style="text-align:right; padding:2px 3px;"></td><td style="text-align:right; padding:2px 3px; color:#bdc3c7;">&mdash;</td><td style="text-align:right; padding:2px 3px; color:#bdc3c7;">&mdash;</td></tr>
+          <tr><td style="padding:2px 3px;">y</td><td id="bp2-v-y" style="text-align:right; padding:2px 3px;"></td><td style="text-align:right; padding:2px 3px; color:#bdc3c7;">&mdash;</td><td style="text-align:right; padding:2px 3px; color:#bdc3c7;">&mdash;</td></tr>
+          <tr><td style="padding:2px 3px;"><strong>w</strong></td><td id="bp2-v-w" style="text-align:right; padding:2px 3px;"></td><td id="bp2-f-w" style="text-align:right; padding:2px 3px; color:#7f8c8d; font-size:0.9em;"></td><td id="bp2-g-w" style="text-align:right; padding:2px 3px;"></td></tr>
+          <tr><td style="padding:2px 3px;">z</td><td id="bp2-v-z" style="text-align:right; padding:2px 3px;"></td><td id="bp2-f-z" style="text-align:right; padding:2px 3px; color:#7f8c8d; font-size:0.9em;"></td><td id="bp2-g-z" style="text-align:right; padding:2px 3px;"></td></tr>
+          <tr><td style="padding:2px 3px;">L<sub>d</sub></td><td id="bp2-v-ld" style="text-align:right; padding:2px 3px;"></td><td id="bp2-f-ld" style="text-align:right; padding:2px 3px; color:#7f8c8d; font-size:0.9em;"></td><td id="bp2-g-ld" style="text-align:right; padding:2px 3px;"></td></tr>
+          <tr><td style="padding:2px 3px;">L<sub>r</sub></td><td id="bp2-v-lr" style="text-align:right; padding:2px 3px;"></td><td id="bp2-f-lr" style="text-align:right; padding:2px 3px; color:#7f8c8d; font-size:0.9em;"></td><td id="bp2-g-lr" style="text-align:right; padding:2px 3px;"></td></tr>
+          <tr><td style="padding:2px 3px;">L</td><td id="bp2-v-loss" style="text-align:right; padding:2px 3px;"></td><td id="bp2-f-loss" style="text-align:right; padding:2px 3px; color:#7f8c8d; font-size:0.9em;"></td><td id="bp2-g-loss" style="text-align:right; padding:2px 3px;"></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+  <div id="bp2-narration" style="font-size:0.82em; color:#2c3e50; font-weight:500; margin-top:6px; min-height:1.4em;">
+    <span style="color:#7f8c8d;">Click <strong>Next &#9654;</strong> to step through forward &amp; backward pass.</span>
+  </div>
+  <p style="margin-top:4px; color:#95a5a6; font-size:0.78em;">
+    In practice, you wrap this in a <code style="color:#95a5a6;">torch.nn.Module</code>. Its <code style="color:#95a5a6;">.parameters()</code> method returns all learnable tensors, which are then passed to an optimizer (e.g. <code style="color:#95a5a6;">torch.optim.Adam(model.parameters())</code>).
+  </p>
+</section>
+<style>
+  .bp2-node {
+    position:absolute; width:44px; height:28px; border-radius:6px;
+    border:2px solid #7f8c8d; background:white; display:flex;
+    align-items:center; justify-content:center; font-weight:600;
+    font-size:0.85em; z-index:2; transition: background 0.3s, border-color 0.3s;
+  }
+  .bp2-node.nontensor { border-style:dashed; }
+  .bp2-node.fwd { background:#d4efdf; border-color:#27ae60; }
+  .bp2-node.bwd { background:#fadbd8; border-color:#e74c3c; }
+  .bp2-node.nontensor.fwd { border-style:dashed; }
+  .bp2-node.nontensor.bwd { border-style:dashed; }
+  .bp2-hl { background:#fff3cd !important; }
+</style>
+
+<!-- Section Divider: Gradient Flows -->
+<section>
+  <div style="display:flex; align-items:center; justify-content:center; height:100%;">
+    <div style="text-align:center;">
+      <div style="width:200px; height:4px; background:linear-gradient(90deg,#e74c3c,#f39c12); margin:0 auto 25px;"></div>
+      <h1 style="font-size:2em; margin:0;">Making Gradients Flow</h1>
+      <p style="font-size:1.1em; color:#7f8c8d; margin-top:15px;">Activations, initialization, and normalization.</p>
+      <div style="width:200px; height:4px; background:linear-gradient(90deg,#e74c3c,#f39c12); margin:25px auto 0;"></div>
+    </div>
+  </div>
+</section>
+
+<!-- SLIDE 7: Vanishing Gradient -->
+<section>
+  <h2>The Vanishing &amp; Exploding Gradient Problem</h2>
+  <p>Backprop multiplies local derivatives through layers. If each factor is &lt;&thinsp;1, the product <strong>vanishes</strong>; if &gt;&thinsp;1, it <strong>explodes</strong>.</p>
+  <div style="display:flex; gap:12px; margin-top:10px;">
+    <div class="box" style="flex:1; border-left:4px solid #e74c3c;">
+      <strong style="color:#e74c3c;">Vanishing gradients</strong>
+      <ul style="font-size:0.9em; margin-top:4px;">
+        <li>Sigmoid: \(\sigma'(z) \leq 0.25\)</li>
+        <li>Through \(L\) layers: \(0.25^L\) &rarr; \(10^{-6}\) for \(L{=}10\)</li>
+        <li>Early layers stop learning</li>
+      </ul>
+    </div>
+    <div class="box" style="flex:1; border-left:4px solid #e67e22;">
+      <strong style="color:#e67e22;">Exploding gradients</strong>
+      <ul style="font-size:0.9em; margin-top:4px;">
+        <li>Large weights &rarr; derivatives &gt; 1</li>
+        <li>Product grows exponentially</li>
+        <li>Loss becomes NaN</li>
+      </ul>
+    </div>
+  </div>
+  <div class="box" style="text-align:center; margin-top:10px; padding:10px;">
+    Both problems stem from <strong>multiplicative gradient flow</strong> through layers.
+  </div>
+  <div class="fragment" style="margin-top:6px; color:#95a5a6; font-size:0.9em; text-align:center;">
+    Good practices (next slides):
+    <ul style="list-style:none; margin:4px 0 0; padding:0; display:inline-flex; gap:16px; justify-content:center;">
+      <li>&bull; ReLU activation variants</li>
+      <li>&bull; He initialization</li>
+      <li>&bull; Input normalization</li>
+    </ul>
+  </div>
+</section>
+
+<!-- SLIDE 8: Dying ReLU and Variants -->
+<section>
+  <h2>Dying ReLU and Its Variants</h2>
+  <p>ReLU solves vanishing gradients (\(g'(z)=1\) for \(z{>}0\)), but introduces the <strong>dying ReLU</strong> problem: if \(z{<}0\), the gradient is <strong>exactly zero</strong> forever.</p>
+  <div style="display:flex; gap:10px; margin-top:12px;">
+    <div class="box" style="flex:1; text-align:center;">
+      <strong style="color:#2980b9;">LeakyReLU</strong><br>
+      \(\max(0.1z,\; z)\)<br>
+      <span style="font-size:0.85em; color:#7f8c8d;">Small slope for \(z{<}0\).<br>Never fully dead.</span>
+    </div>
+    <div class="box" style="flex:1; text-align:center;">
+      <strong style="color:#27ae60;">ELU</strong><br>
+      \(e^z - 1\) for \(z{<}0\)<br>
+      <span style="font-size:0.85em; color:#7f8c8d;">Smooth, pushes mean<br>activations toward zero.</span>
+    </div>
+    <div class="box" style="flex:1; text-align:center;">
+      <strong style="color:#8e44ad;">GELU</strong><br>
+      \(z \, \Phi(z)\)<br>
+      <span style="font-size:0.85em; color:#7f8c8d;">Smooth approximation.<br>Default in transformers.</span>
+    </div>
+  </div>
+  <p style="text-align:center; margin-top:8px; font-size:0.85em; color:#95a5a6;">
+    \(\Phi(z) = P(Z \leq z)\) is the CDF of the standard normal distribution.
+  </p>
+  <p style="text-align:center; margin-top:4px; font-size:0.9em; color:#7f8c8d;">
+    In practice, ReLU works for most tasks. GELU is the default for modern transformers.
+  </p>
+</section>
+
+<!-- SLIDE 9: DEMO Activation Functions + Gradients -->
+<section>
+  <h2>Demo: Activations and Their Gradients</h2>
+  <div style="display:flex; gap:6px; margin-top:4px; margin-bottom:6px; align-items:center;">
+    <span style="font-size:0.85em;">Activation:</span>
+    <button class="act-btn" data-act="relu" style="padding:4px 10px; border-radius:4px; border:2px solid #e74c3c; background:#fdedec; cursor:pointer; font-size:0.85em;">ReLU</button>
+    <button class="act-btn" data-act="leaky" style="padding:4px 10px; border-radius:4px; border:2px solid #2980b9; background:#eaf2f8; cursor:pointer; font-size:0.85em;">LeakyReLU</button>
+    <button class="act-btn" data-act="elu" style="padding:4px 10px; border-radius:4px; border:2px solid #27ae60; background:#eafaf1; cursor:pointer; font-size:0.85em;">ELU</button>
+    <button class="act-btn" data-act="gelu" style="padding:4px 10px; border-radius:4px; border:2px solid #8e44ad; background:#f4ecf7; cursor:pointer; font-size:0.85em;">GELU</button>
+    <button class="act-btn" data-act="sigmoid" style="padding:4px 10px; border-radius:4px; border:2px solid #e67e22; background:#fef5e7; cursor:pointer; font-size:0.85em;">Sigmoid</button>
+    <button class="act-btn" data-act="tanh" style="padding:4px 10px; border-radius:4px; border:2px solid #1abc9c; background:#e8f8f5; cursor:pointer; font-size:0.85em;">Tanh</button>
+  </div>
+  <div style="display:flex; gap:10px;">
+    <div id="act-fn-plot" style="flex:1; height:390px;"></div>
+    <div id="act-grad-plot" style="flex:1; height:390px;"></div>
+  </div>
+  <div id="act-info" class="box" style="text-align:center; margin-top:2px; padding:5px; font-size:0.88em;"></div>
+</section>
+
+<!-- SLIDE 10: Weight Initialization -->
+<section>
+<section>
+  <h2>Weight Initialization: Xavier and He</h2>
+  <p>Even with ReLU, bad initialization kills training. If weights are too large, activations explode. Too small, signal vanishes.</p>
+  <div class="box" style="text-align:center; padding:10px; margin-top:8px;">
+    <strong>Goal:</strong> keep the variance of activations and gradients <strong>roughly constant</strong> across layers.
+  </div>
+  <div style="display:flex; gap:12px; margin-top:12px;">
+    <div class="box" style="flex:1; border-left:4px solid #2980b9;">
+      <strong style="color:#2980b9;">Xavier / Glorot</strong><br>
+      \[\text{Var}(W_{ij}^{(\ell)}) = \frac{2}{n_{\text{in}} + n_{\text{out}}}\]
+      <span style="font-size:0.85em;">Designed for sigmoid &amp; tanh.<br>Balances forward and backward variance.</span>
+    </div>
+    <div class="box" style="flex:1; border-left:4px solid #e74c3c;">
+      <strong style="color:#e74c3c;">He / Kaiming</strong><br>
+      \[\text{Var}(W_{ij}^{(\ell)}) = \frac{2}{n_{\text{in}}}\]
+      <span style="font-size:0.85em;">Designed for ReLU.<br>Accounts for half the neurons being zeroed.</span>
+    </div>
+  </div>
+  <p style="margin-top:8px; color:#95a5a6; font-size:0.82em;">
+    Each \(W_{ij}^{(\ell)}\) is drawn independently from a zero-mean distribution (e.g. \(\mathcal{N}(0, \text{Var})\)).
+    Here \(n_{\text{in}}\) is the number of columns of \(W^{(\ell)}\) (i.e. the layer input dimension), \(n_{\text{out}}\) the number of rows (output dimension).
+    Biases \(\mathbf{b}^{(\ell)}\) are initialized to <strong>zero</strong> &mdash; symmetry is broken by the random weights.
+  </p>
+</section>
+<section style="font-size:0.58em;">
+  <h2>Weight Initialization &mdash; Practical Notes</h2>
+  <ul style="line-height:1.8;">
+    <li><strong>PyTorch's <a href="https://docs.pytorch.org/docs/stable/generated/torch.nn.Linear.html" style="color:#2980b9;">nn.Linear</a> default</strong>: uses <code>kaiming_uniform_(a=sqrt(5))</code>, which reduces to \(W_{ij} \sim \mathcal{U}(-1/\sqrt{n_{\text{in}}},\; 1/\sqrt{n_{\text{in}}})\). This is a historical convention inherited from Lua Torch &mdash; not a principled choice.</li>
+    <li><strong>He init is theoretically correct for ReLU/GELU</strong>: it accounts for the fact that ReLU zeroes out roughly half the neurons, so the variance needs to be doubled. The same argument applies to GELU and other ReLU-like activations.</li>
+    <li><strong>Xavier is designed for sigmoid/tanh</strong>: it balances forward and backward variance by averaging over \(n_{\text{in}}\) and \(n_{\text{out}}\). Appropriate when the activation doesn't zero out half the signal.</li>
+    <li><strong>In practice, most people don't override the default</strong>: modern architectures use <strong>BatchNorm</strong> or <strong>LayerNorm</strong> after each layer, which rescales activations and largely compensates for suboptimal init. Combined with <strong>Adam</strong> (which adapts per-parameter learning rates), the exact init matters less.</li>
+  </ul>
+</section>
+</section>
+
+<!-- SLIDE: DEMO He Initialization Explorer -->
+<section>
+<section>
+  <h2>Demo: He Initialization Explorer</h2>
+  <div style="display:flex; gap:8px; align-items:center; font-size:0.8em; flex-wrap:wrap; margin-top:2px;">
+    <span>Scale: <input id="he-scale" type="range" min="-1" max="1" step="0.01" value="0" style="width:100px; vertical-align:middle;"> <span id="he-scale-val">1.00×</span></span>
+    <span>Input μ: <input id="he-mu" type="range" min="-3" max="3" step="0.1" value="0" style="width:80px; vertical-align:middle;"> <span id="he-mu-val">0.0</span></span>
+    <span>Input σ: <input id="he-sigma" type="range" min="-1" max="1" step="0.01" value="0" style="width:80px; vertical-align:middle;"> <span id="he-sigma-val">1.0</span></span>
+    <button id="he-resample" style="padding:3px 12px; cursor:pointer; border-radius:4px; border:2px solid #27ae60; background:#eafaf1;">Resample</button>
+    <label style="cursor:pointer;"><input type="checkbox" id="he-layernorm" style="vertical-align:middle;"> LayerNorm</label>
+  </div>
+  <div style="display:flex; gap:6px; margin-top:4px;">
+    <div id="he-net-viz" style="display:none;"></div>
+    <div id="he-label-panel" style="flex:0 0 100px; height:460px; display:flex; flex-direction:column; gap:2px; justify-content:space-around; padding-top:8px;">
+      <div style="text-align:right; font-size:0.85em; color:#7f8c8d; font-weight:600;">Input \(\mathbf{x}\)</div>
+      <div style="text-align:right; font-size:0.85em; color:#3498db; font-weight:600;">\(\mathbf{h}^{(1)}\)</div>
+      <div style="text-align:right; font-size:0.85em; color:#e67e22; font-weight:600;">\(\mathbf{h}^{(2)}\)</div>
+      <div style="text-align:right; font-size:0.85em; color:#e74c3c; font-weight:600;">\(\mathbf{h}^{(3)}\)</div>
+      <div style="text-align:right; font-size:0.85em; color:#9b59b6; font-weight:600;">\(\mathbf{h}^{(4)}\)</div>
+      <div style="text-align:right; font-size:0.85em; color:#27ae60; font-weight:600;">\(\mathbf{y}\)</div>
+    </div>
+    <div id="he-hist-panel" style="flex:1; height:460px; display:flex; flex-direction:column; gap:2px;"></div>
+  </div>
+  <p style="text-align:center; font-size:0.78em; color:#7f8c8d; margin-top:2px;">
+    Scale = 1.0× is exact He init &nbsp;|&nbsp; 4 hidden layers (ReLU) + linear output, 128 neurons each
+  </p>
+</section>
+<section style="font-size:0.50em;">
+  <h2>He Init Demo &mdash; Setup Details</h2>
+  <ul style="line-height:1.8;">
+    <li><strong>Architecture:</strong> a fully connected network with layer sizes \([128,\; 128,\; 128,\; 128,\; 128,\; 128]\) &mdash; an input of dimension 128, 4 hidden layers with ReLU activation (each 128 neurons), and a linear output layer (128 neurons, no activation).</li>
+    <li><strong>Weight matrices:</strong> 5 matrices, each \(W^{(\ell)} \in \mathbb{R}^{128 \times 128}\) (16,384 parameters per layer). With He init: \(W_{ij}^{(\ell)} \sim \mathcal{N}(0,\; 2/128) = \mathcal{N}(0,\; 0.0156)\).</li>
+    <li><strong>Biases:</strong> each \(\mathbf{b}^{(\ell)} \in \mathbb{R}^{128}\), initialized to zero.</li>
+    <li><strong>Input:</strong> a single random vector \(\mathbf{x} \in \mathbb{R}^{128}\), sampled from \(\mathcal{N}(\mu,\; \sigma^2)\) where \(\mu\) and \(\sigma\) are controlled by the sliders. Default: \(\mathcal{N}(0, 1)\).</li>
+    <li><strong>Scale slider:</strong> multiplies the He standard deviation by the shown factor. At 1.0&times; the init is exact He; smaller values shrink weights (activations vanish), larger values grow them (activations explode).</li>
+    <li><strong>Histograms:</strong> show the distribution of activations \(\mathbf{h}^{(\ell)} = \text{ReLU}(W^{(\ell)} \mathbf{h}^{(\ell-1)} + \mathbf{b}^{(\ell)})\) at each layer after a single forward pass. With correct He init, the histograms should have similar spread across all layers.</li>
+    <li><strong>What to observe:</strong> try scaling down (activations collapse to zero in later layers) or scaling up (activations grow exponentially). Also try shifting the input mean away from zero to see how unnormalized inputs interact with initialization.</li>
+  </ul>
+</section>
+<section style="font-size:0.50em;">
+  <h2>LayerNorm in This Demo</h2>
+  <ul style="line-height:1.8;">
+    <li><strong>What it does:</strong> after each layer, the activation vector \(\mathbf{h} \in \mathbb{R}^{128}\) is normalized to zero mean and unit variance:
+      \[\hat{h}_i = \frac{h_i - \mu}{\sqrt{\sigma^2 + \epsilon}}, \qquad \mu = \frac{1}{D}\sum_i h_i, \quad \sigma^2 = \frac{1}{D}\sum_i (h_i - \mu)^2\]
+    </li>
+    <li><strong>Why LayerNorm and not BatchNorm?</strong> BatchNorm normalizes across a <em>batch</em> of samples (computing mean/variance over index \(n\) for each neuron \(i\)). With a single sample (\(N{=}1\)), those statistics are meaningless. LayerNorm normalizes across the <em>feature dimension</em> (the 128 neurons), which works for any batch size.</li>
+    <li><strong>Effect in the demo:</strong> toggle LayerNorm on, then try extreme scale values. The histograms stay well-behaved regardless of initialization &mdash; LayerNorm rescales everything back to \(\sigma \approx 1\) at every layer.</li>
+    <li><strong>In practice:</strong> BatchNorm (normalizing across the batch for each neuron) is standard in CNNs. LayerNorm (normalizing across features for each sample) is standard in transformers. Both achieve the same goal: preventing activation drift across layers.</li>
+    <li><strong>Full LayerNorm</strong> also includes learnable scale \(\gamma\) and shift \(\beta\) parameters: \(y_i = \gamma \hat{h}_i + \beta\). These are omitted in this demo for simplicity.</li>
+  </ul>
+</section>
+</section>
+
+<!-- SLIDE: DEMO Gradient Flow Explorer -->
+<section>
+<section>
+  <h2>Demo: Gradient Flow Explorer</h2>
+  <div style="display:flex; gap:8px; align-items:center; font-size:0.8em; flex-wrap:wrap; margin-top:2px;">
+    <span>Scale: <input id="gf-scale" type="range" min="-1" max="1" step="0.01" value="0" style="width:100px; vertical-align:middle;"> <span id="gf-scale-val">1.00×</span></span>
+    <span>Activation:</span>
+    <button id="gf-act-relu" class="gf-act-btn" data-act="relu" style="padding:2px 10px; cursor:pointer; border-radius:4px; border:2px solid #e74c3c; background:#fdedec; font-size:0.95em;">ReLU</button>
+    <button id="gf-act-sigmoid" class="gf-act-btn" data-act="sigmoid" style="padding:2px 10px; cursor:pointer; border-radius:4px; border:2px solid #95a5a6; background:#f8f9fa; font-size:0.95em;">Sigmoid</button>
+    <button id="gf-act-tanh" class="gf-act-btn" data-act="tanh" style="padding:2px 10px; cursor:pointer; border-radius:4px; border:2px solid #95a5a6; background:#f8f9fa; font-size:0.95em;">Tanh</button>
+    <button id="gf-resample" style="padding:2px 12px; cursor:pointer; border-radius:4px; border:2px solid #27ae60; background:#eafaf1;">Resample</button>
+    <input type="checkbox" id="gf-layernorm" style="display:none;">
+  </div>
+  <div style="display:flex; gap:6px; margin-top:4px;">
+    <div id="gf-label-panel" style="flex:0 0 100px; height:460px; display:flex; flex-direction:column; gap:2px; justify-content:space-around; padding-top:8px;">
+      <div style="text-align:right; font-size:0.82em; color:#7f8c8d; font-weight:600;">\(\partial E / \partial \mathbf{x}\)</div>
+      <div style="text-align:right; font-size:0.82em; color:#3498db; font-weight:600;">\(\partial E / \partial \mathbf{h}^{(1)}\)</div>
+      <div style="text-align:right; font-size:0.82em; color:#e67e22; font-weight:600;">\(\partial E / \partial \mathbf{h}^{(2)}\)</div>
+      <div style="text-align:right; font-size:0.82em; color:#e74c3c; font-weight:600;">\(\partial E / \partial \mathbf{h}^{(3)}\)</div>
+      <div style="text-align:right; font-size:0.82em; color:#9b59b6; font-weight:600;">\(\partial E / \partial \mathbf{h}^{(4)}\)</div>
+      <div style="text-align:right; font-size:0.82em; color:#27ae60; font-weight:600;">\(\partial E / \partial \mathbf{y}\)</div>
+    </div>
+    <div id="gf-grad-panel" style="flex:1; height:460px; display:flex; flex-direction:column; gap:2px;"></div>
+    <div id="gf-summary" style="flex:0 0 280px; height:460px;"></div>
+  </div>
+  <p style="text-align:center; font-size:0.78em; color:#7f8c8d; margin-top:2px;">
+    Random unit gradient injected at output &nbsp;|&nbsp; Gradient histograms per layer &nbsp;|&nbsp; 4 hidden layers + linear output, dim 128
+  </p>
+</section>
+<section style="font-size:0.50em;">
+  <h2>Gradient Flow Demo &mdash; Details</h2>
+  <ul style="line-height:1.8;">
+    <li><strong>Same architecture as the He init demo</strong>: layer sizes \([128,\; 128,\; 128,\; 128,\; 128,\; 128]\) &mdash; 4 hidden layers with the selected activation function, plus a linear output layer.</li>
+    <li><strong>Forward pass:</strong> a single random input \(\mathbf{x} \sim \mathcal{N}(0,1)\) is propagated through the network. Weights are initialized with He init (scaled by the slider).</li>
+    <li><strong>Gradient injection:</strong> a random unit vector \(\hat{\mathbf{g}} \in \mathbb{R}^{D}\) (\(\|\hat{\mathbf{g}}\| = 1\)) is injected at the output as \(\partial E / \partial \mathbf{y}\). This is independent of the forward pass, so the He analysis holds exactly. It measures the network's <em>gradient attenuation</em> without conflating it with a specific loss.</li>
+    <li><strong>Histograms:</strong> show the distribution of \(\partial E / \partial \mathbf{h}^{(\ell)}\) at each layer. With healthy gradient flow, the distributions should have similar scale across layers.</li>
+    <li><strong>Summary bar chart:</strong> shows the standard deviation of the gradient at each layer. A flat bar chart means gradients flow evenly; a decaying one means vanishing gradients.</li>
+    <li><strong>What to observe:</strong> switch to Sigmoid or Tanh and notice how gradient scale shrinks exponentially toward the input (vanishing gradients). ReLU maintains scale because its derivative is exactly 1 for active neurons.</li>
+  </ul>
+</section>
+</section>
+
+<!-- SLIDE: Data Normalization -->
+<section>
+  <h2>Input Normalization</h2>
+  <div class="box" style="text-align:center; font-size:1.0em; padding:8px; margin-top:4px;">
+    He/Xavier assume inputs have ~zero mean, ~unit variance. &ensp; Normalize: &ensp;
+    \(\displaystyle\hat{x}_j = \frac{x_j - \mu_j}{\sigma_j}\) &ensp; for each feature \(j\)
+  </div>
+  <div style="display:flex; gap:12px; margin-top:8px;">
+    <div class="box" style="flex:1; border-left:4px solid #e74c3c;">
+      <strong style="color:#e74c3c;">Without normalization</strong>
+      <ul style="font-size:0.9em; margin-top:4px;">
+        <li>Feature scales differ by orders of magnitude (e.g. mass in eV vs distance in Mpc)</li>
+        <li>Variance propagation analysis breaks &rarr; initialization is wrong</li>
+        <li>Gradients dominated by large-scale features</li>
+      </ul>
+    </div>
+    <div class="box" style="flex:1; border-left:4px solid #27ae60;">
+      <strong style="color:#27ae60;">With normalization</strong>
+      <ul style="font-size:0.9em; margin-top:4px;">
+        <li>All features contribute equally at initialization</li>
+        <li>He/Xavier variance analysis holds</li>
+        <li>Faster, more stable convergence</li>
+      </ul>
+    </div>
+  </div>
+  <p class="fragment" style="text-align:center; margin-top:10px; font-size:0.9em; color:#7f8c8d;">
+    Always normalize inputs. Compute \(\mu, \sigma\) on the <strong>training set</strong> and apply the same transform to test data.
+  </p>
+</section>
+
+<!-- SLIDE: Demo — Why Normalization Matters -->
+<section>
+<section>
+  <h2>Demo: Why Normalization Matters</h2>
+  <p style="font-size:0.82em; margin:2px 0;">MLP [1,64,64,64,64,1] trained on \(y = \sin(2\pi x)\). Shift the data and watch training break.</p>
+  <div style="display:flex; gap:8px; align-items:center; font-size:0.78em; flex-wrap:wrap; margin-top:4px;">
+    <label>x-offset=<span id="norm-xoff-val" style="display:inline-block; width:2.5em; text-align:right;">0</span>
+      <input type="range" id="norm-xoff" min="-2" max="2" step="0.1" value="0" style="width:100px;">
+    </label>
+    <label>y-offset=<span id="norm-yoff-val" style="display:inline-block; width:2.5em; text-align:right;">0</span>
+      <input type="range" id="norm-yoff" min="-2" max="2" step="0.1" value="0" style="width:100px;">
+    </label>
+    <button id="norm-train-btn" style="padding:4px 14px; cursor:pointer; border-radius:4px; border:2px solid #27ae60; background:#eafaf1; font-weight:600;">&#9654; Train</button>
+    <button id="norm-reset-btn" style="padding:4px 14px; cursor:pointer; border-radius:4px; border:2px solid #e74c3c; background:#fdedec;">&#8634; Reset</button>
+    <span id="norm-epoch-label" style="color:#7f8c8d;"></span>
+  </div>
+  <div style="display:flex; gap:10px; margin-top:6px;">
+    <div id="norm-fit-plot" style="flex:1; height:300px;"></div>
+    <div id="norm-loss-plot" style="flex:0 0 300px; height:300px;"></div>
+  </div>
+  <div style="display:flex; align-items:center; gap:8px; margin-top:4px;">
+    <button id="norm-narr-btn" style="padding:3px 12px; cursor:pointer; border-radius:4px; border:2px solid #2980b9; background:#eaf2f8; font-size:0.8em;">Next &rarr;</button>
+    <span id="norm-narr-text" class="box" style="flex:1; padding:5px 10px; font-size:0.82em;"></span>
+  </div>
+</section>
+<section style="font-size:0.50em;">
+  <h2>Normalization Demo &mdash; Details</h2>
+  <ul style="line-height:1.8;">
+    <li><strong>Task:</strong> fit a 1D regression \(y = \sin(2\pi x)\) with 60 noisy training points (\(\sigma = 0.45\)) on \(x \in [-1, 1]\).</li>
+    <li><strong>Network:</strong> MLP with layer sizes \([1,\; 64,\; 64,\; 64,\; 64,\; 1]\), GELU activations, trained with SGD (no momentum).</li>
+    <li><strong>x-offset slider:</strong> shifts all inputs by a constant: \(x \to x + \Delta x\). This moves the data away from zero, breaking the assumption that inputs are centered. With large offsets, the first-layer pre-activations \(W^{(1)} x + b^{(1)}\) are dominated by the bias-like term \(W^{(1)} \Delta x\), and learning becomes difficult.</li>
+    <li><strong>y-offset slider:</strong> shifts all targets by a constant: \(y \to y + \Delta y\). The network must now represent a non-zero mean output, which requires the biases to compensate. 
+      </li>
+    <li><strong>What to observe:</strong> with zero offsets, training converges smoothly. Shift x or y by &plusmn;2 and training either fails or converges much more slowly. This is why input normalization (\(\hat{x} = (x - \mu)/\sigma\)) and target normalization are standard practice.</li>
+    <li><strong>Connection to He init:</strong> the He variance analysis assumes \(\text{Var}(x) \approx 1\) and \(\mathbb{E}[x] \approx 0\). When inputs are shifted or scaled, the variance of activations at each layer no longer matches the design assumptions, leading to poor gradient flow from the very first step.</li>
+  </ul>
+</section>
+</section>
+
+<!-- ============================================================ -->
+<!-- SECTION: BEYOND SGD                                          -->
+<!-- ============================================================ -->
+
+<!-- SLIDE 11: Section Divider -->
+<section>
+  <div style="display:flex; align-items:center; justify-content:center; height:100%;">
+    <div style="text-align:center;">
+      <div style="width:200px; height:4px; background:linear-gradient(90deg,#e67e22,#27ae60); margin:0 auto 25px;"></div>
+      <h1 style="font-size:2em; margin:0;">Making Training Work</h1>
+      <p style="font-size:1.1em; color:#7f8c8d; margin-top:15px;">Momentum, Adam, learning rates, and when to stop.</p>
+      <div style="width:200px; height:4px; background:linear-gradient(90deg,#e67e22,#27ae60); margin:25px auto 0;"></div>
+    </div>
+  </div>
+</section>
+
+<!-- SLIDE 12: Momentum -->
+<section>
+  <h2>SGD with Momentum</h2>
+  <p>SGD is noisy due to mini-batch sampling. Idea: smooth the gradients using an <strong>exponential moving average</strong> (EMA, defined next).</p>
+  <div class="box" style="text-align:center; font-size:1.05em; padding:12px; margin-top:8px;">
+    \[\mathbf{m} \leftarrow \beta\,\mathbf{m} + (1-\beta)\,\nabla E \qquad \mathbf{w} \leftarrow \mathbf{w} - \eta\,\mathbf{m}\]
+    <span style="font-size:0.85em; color:#7f8c8d;">\(\beta\): smoothing factor (typical 0.9) &nbsp;|&nbsp; \(\eta\): learning rate &nbsp;|&nbsp; \(\mathbf{m}\): EMA of gradients</span>
+  </div>
+  <div style="display:flex; gap:12px; margin-top:15px;">
+    <div class="box" style="flex:1; text-align:center; border-left:4px solid #e74c3c;">
+      <strong style="color:#e74c3c;">SGD without momentum</strong><br>
+      <span style="font-size:0.9em;">Zig-zags across the valley.<br>Slow convergence along the long axis.</span>
+    </div>
+    <div class="box" style="flex:1; text-align:center; border-left:4px solid #27ae60;">
+      <strong style="color:#27ae60;">SGD with momentum</strong><br>
+      <span style="font-size:0.9em;">Velocity accumulates along consistent direction.<br>Noise gets damped.</span>
+    </div>
+  </div>
+</section>
+
+<!-- SLIDE 12b: EMA intuition -->
+<section>
+<section>
+  <h2>Exponential Moving Average (EMA)</h2>
+  <p style="font-size:0.9em;">Both SGD with momentum and Adam (see next slides) use EMAs. Core idea: <strong>smooth a noisy signal</strong> by blending each new value with the running average.</p>
+  <div class="box" style="text-align:center; font-size:1.05em; padding:10px; margin:6px 0;">
+    \[m_0 = 0, \qquad m_t = \beta\,m_{t-1} + (1-\beta)\,g_t\]
+    <span style="font-size:0.75em; color:#7f8c8d;">\(t\): step counter. &nbsp; Higher \(\beta\) &rarr; more smoothing, but more lag. &nbsp; Effective window &asymp; \(1/(1-\beta)\) steps.</span>
+  </div>
+  <div style="display:flex; gap:8px; align-items:center; font-size:0.82em; margin-top:4px;">
+    <label>β = <span id="ema-beta-val">0.90</span>
+      <input type="range" id="ema-beta" min="0" max="0.99" step="0.01" value="0.9" style="width:120px;">
+    </label>
+    <span style="color:#7f8c8d;" id="ema-window-label">Window &asymp; 10 steps</span>
+    <label style="margin-left:16px;"><input type="checkbox" id="ema-bias-corr"> Bias correction: \(\hat{m}_t = m_t / (1-\beta^t)\)</label>
+  </div>
+  <div id="ema-plot" style="height:300px; margin-top:4px;"></div>
+</section>
+<section style="font-size:0.50em;">
+  <h2>EMA &mdash; Details</h2>
+  <ul style="line-height:1.8;">
+    <li><strong>What it does:</strong> the EMA replaces each noisy gradient \(g_t\) with a smoothed estimate \(m_t = \beta\,m_{t-1} + (1-\beta)\,g_t\). This is a weighted average of all past gradients, where recent gradients carry more weight. The effective averaging window is \(\approx 1/(1-\beta)\) steps.</li>
+<li><strong>Bias correction:</strong> since \(m_0 = 0\), early values of \(m_t\) are biased towards zero (the EMA hasn't "warmed up" yet). Dividing by \((1-\beta^t)\) corrects this: \(\hat{m}_t = m_t/(1-\beta^t)\). The correction is large for small \(t\) and vanishes as \(t \to \infty\).</li>
+    <li><strong>Where EMA appears:</strong>
+      <ul>
+        <li><em>SGD with momentum:</em> EMA of gradients \(\to\) smoother update direction.</li>
+        <li><em>Adam, first moment:</em> EMA of gradients (with bias correction) \(\to\) adaptive mean.</li>
+        <li><em>Adam, second moment:</em> EMA of squared gradients \(\to\) per-parameter step-size scaling.</li>
+      </ul>
+    </li>
+  </ul>
+</section>
+</section>
+
+<!-- SLIDE 13: Adam Optimizer -->
+<section>
+<section>
+  <h2>Adam Optimizer</h2>
+  <p>SGD with momentum smooths gradients. <strong>Adam</strong> additionally adapts the step size per parameter.</p>
+  <div class="box" style="font-size:0.95em; padding:12px; margin-top:8px;">
+    <table style="width:100%; border-collapse:collapse;">
+      <tr><td style="padding:4px 0;">First moment (momentum):</td><td>\(\mathbf{m} \leftarrow \beta_1\,\mathbf{m} + (1-\beta_1)\,\nabla E\)</td></tr>
+      <tr><td style="padding:4px 0;">Second moment (curvature):</td><td>\(\mathbf{v} \leftarrow \beta_2\,\mathbf{v} + (1-\beta_2)\,(\nabla E)^2\)</td></tr>
+      <tr><td style="padding:4px 0;">Bias correction:</td><td>\(\hat{\mathbf{m}} = \mathbf{m}/(1-\beta_1^t), \quad \hat{\mathbf{v}} = \mathbf{v}/(1-\beta_2^t)\)</td></tr>
+      <tr><td style="padding:4px 0;"><strong>Update:</strong></td><td>\(\mathbf{w} \leftarrow \mathbf{w} - \eta\,\hat{\mathbf{m}}\,/\,(\sqrt{\hat{\mathbf{v}}}+\epsilon)\)</td></tr>
+    </table>
+    <span style="font-size:0.72em; color:#7f8c8d;">All operations (square, division, sqrt) are element-wise, i.e.&nbsp;per parameter.</span>
+  </div>
+  <ul style="font-size:0.85em; margin-top:10px;">
+    <li><strong>\(\hat{\mathbf{m}}\)</strong>: EMA of gradients &mdash; smooths noise, gives a reliable update direction.</li>
+    <li><strong>\(\hat{\mathbf{v}}\)</strong>: EMA of squared gradients &mdash; rescales each parameter so that steep directions get smaller steps and flat directions get larger ones.</li>
+  </ul>
+  <div style="display:flex; gap:12px; margin-top:10px;">
+    <div class="box fragment" style="flex:1; text-align:center; padding:8px;">
+      <strong>Defaults:</strong> \(\beta_1{=}0.9,\; \beta_2{=}0.999,\; \epsilon{=}10^{-8}\)
+    </div>
+    <div class="box fragment" style="flex:1; text-align:center; padding:8px;">
+      Adam is the <strong style="color:#e74c3c;">default optimizer</strong><br>in modern deep learning.
+    </div>
+  </div>
+</section>
+<section style="font-size:0.50em;">
+  <h2>Adam &mdash; Details</h2>
+  <ul style="line-height:1.8;">
+    <li><strong>First moment \(\hat{\mathbf{m}}\):</strong> EMA of gradients with bias correction. Identical to SGD with momentum &mdash; smooths out mini-batch noise to give a more stable update direction.</li>
+    <li><strong>Second moment \(\hat{\mathbf{v}}\):</strong> EMA of squared gradients. Tracks \(\mathbb{E}[g^2]\) per parameter. Near a minimum where \(\mathbb{E}[g] \approx 0\), we have \(\mathbb{E}[g^2] \approx \text{Var}(g)\), which relates to curvature: steep directions produce large gradients, flat directions produce small ones. Dividing by \(\sqrt{\hat{\mathbf{v}}}\) means parameters move relatively faster in flat directions (small \(g^2\)) and slower in steep directions (large \(g^2\)), leading to a more balanced evolution across all parameters.</li>
+    <li><strong>Caveat:</strong> away from the minimum, \(\mathbb{E}[g^2]\) mixes curvature with the signal (squared mean gradient), so the curvature interpretation is less clean. The per-parameter rescaling still helps empirically.</li>
+    <li><strong>The update \(\hat{\mathbf{m}}/\sqrt{\hat{\mathbf{v}}}\):</strong> can be seen as a diagonal approximation to natural gradient descent &mdash; each parameter gets its own effective learning rate \(\eta / (\sqrt{\hat{v}_i} + \epsilon)\).</li>
+  </ul>
+</section>
+</section>
+
+<!-- SLIDE 14: DEMO Adam Optimizer with real mini-batch regression -->
+<section>
+<section>
+  <h2>Demo: Adam Optimizer</h2>
+  <p style="font-size:0.82em; margin:2px 0;">Polynomial regression on noisy sine data. Model: \(\hat y = w_1\,x + w_2\,x^3\). Mini-batch gradient descent.</p>
+  <div style="display:flex; gap:6px; align-items:center; margin-top:4px; font-size:0.78em; flex-wrap:wrap;">
+    <label>η=<span id="adam-lr-val">0.050</span>
+      <input type="range" id="adam-lr" min="-3" max="0" step="0.1" value="-1.3" style="width:70px;">
+    </label>
+    <label>β₁=<span id="adam-b1-val">0.90</span>
+      <input type="range" id="adam-b1" min="0" max="0.99" step="0.01" value="0.9" style="width:60px;">
+    </label>
+    <label>β₂=<span id="adam-b2-val">0.999</span>
+      <input type="range" id="adam-b2" min="0" max="0.999" step="0.001" value="0.999" style="width:60px;">
+    </label>
+    <label>B=<span id="adam-B-val">64</span>
+      <input type="range" id="adam-B" min="0" max="8" step="1" value="6" style="width:60px;">
+    </label>
+    <button id="adam-run-btn" style="padding:4px 14px; cursor:pointer; border-radius:4px; border:2px solid #27ae60; background:#eafaf1;">&#9654; Run</button>
+    <button id="adam-reset-btn" style="padding:4px 14px; cursor:pointer; border-radius:4px; border:2px solid #e74c3c; background:#fdedec;">&#8634; Reset</button>
+    <span id="adam-step-label" style="color:#7f8c8d;"></span>
+  </div>
+  <div style="display:flex; gap:10px; margin-top:2px;">
+    <div id="adam-contour-plot" style="flex:1; height:295px;"></div>
+    <div id="adam-loss-plot" style="flex:0 0 320px; height:295px;"></div>
+  </div>
+  <div style="display:flex; align-items:center; gap:8px; margin-top:4px;">
+    <button id="adam-next-btn" style="padding:3px 12px; cursor:pointer; border-radius:4px; border:2px solid #2980b9; background:#ebf5fb; font-size:0.8em;">Next &rarr;</button>
+    <span id="adam-narr-text" class="box" style="flex:1; padding:5px 10px; font-size:0.82em;"></span>
+  </div>
+</section>
+<section style="font-size:0.50em;">
+  <h2>Adam Demo &mdash; Details</h2>
+  <ul style="line-height:1.8;">
+    <li><strong>Task:</strong> polynomial regression \(\hat{y} = w_1\,x + w_2\,x^3\) on 500 noisy samples from \(y = \sin(\pi x)\) with \(\sigma = 0.2\), \(x \in [-1,1]\).</li>
+    <li><strong>Loss surface:</strong> the contour plot shows \(\sqrt{\text{MSE}(w_1, w_2)}\). Because the model is linear in \(w_1, w_2\), the true loss is a quadratic bowl. The green star marks the analytic optimum. Contour levels are at \(\sqrt{L} = 1, 2, \ldots, 10\).</li>
+    <li><strong>Left panel:</strong> optimizer trajectory in \((w_1, w_2)\) space, starting from the origin. The red dot is the current position.</li>
+    <li><strong>Right panel:</strong> mini-batch loss (evaluated on the sampled batch at each step) vs.&nbsp;step number.</li>
+    <li><strong>Sliders:</strong> \(\eta\) is the learning rate (log scale), \(\beta_1\) controls the first moment (momentum), \(\beta_2\) controls the second moment (adaptive scaling), and \(B\) is the mini-batch size (powers of 2).</li>
+    <li><strong>Presets (Next button):</strong> cycles through four configurations &mdash; (1) vanilla SGD (\(\beta_1{=}\beta_2{=}0\)), (2) SGD + momentum (\(\beta_1{=}0.9\)), (3) RMSprop-like (\(\beta_2{=}0.999\)), (4) full Adam (\(\beta_1{=}0.9, \beta_2{=}0.999\)).</li>
+    <li><strong>What to observe:</strong> vanilla SGD is noisy and slow. Momentum smooths the trajectory. The second moment adapts step sizes to the loss geometry. Full Adam combines both for fast, stable convergence.</li>
+  </ul>
+</section>
+</section>
+
+<!-- SLIDE 15: Learning Rate Schedules -->
+<section>
+  <h2>Learning Rate Schedules</h2>
+  <p>Even Adam needs a good learning rate. And the best rate <strong>changes during training</strong>.</p>
+  <div style="display:flex; gap:10px; margin-top:10px;">
+    <div class="box" style="flex:1; text-align:center;">
+      <strong style="color:#2980b9;">Step decay</strong><br>
+      <div id="lr-step-plot" style="height:160px;"></div>
+      <span style="font-size:0.85em;">Drop by factor every \(N\) epochs</span>
+    </div>
+    <div class="box" style="flex:1; text-align:center;">
+      <strong style="color:#e67e22;">Cosine annealing</strong><br>
+      <div id="lr-cosine-plot" style="height:160px;"></div>
+      <span style="font-size:0.85em;">Smooth decrease following cosine</span>
+    </div>
+    <div class="box" style="flex:1; text-align:center;">
+      <strong style="color:#27ae60;">Warmup + decay</strong><br>
+      <div id="lr-warmup-plot" style="height:160px;"></div>
+      <span style="font-size:0.85em;">Ramp up, then decrease</span>
+    </div>
+  </div>
+  <p class="fragment" style="text-align:center; margin-top:8px; font-size:0.9em;">
+    <strong>Warmup</strong> prevents early instability; <strong>decay</strong> allows fine-grained convergence.
+  </p>
+  <p style="font-size:0.75em; color:#7f8c8d; text-align:center; margin-top:6px;">
+    Learning rate scheduling is good practice but fine-tuning &mdash; it helps achieve convergent, low-noise results in the final stages of training.
+  </p>
+</section>
+
+<!-- SLIDE 16: Early Stopping -->
+<section>
+  <h2>Early Stopping</h2>
+  <p>Monitor <strong>validation loss</strong> during training. Stop when it starts to rise.</p>
+  <div id="overfit-plot" style="width:100%; height:310px; margin-top:8px;"></div>
+  <div class="box fragment" style="text-align:center; padding:10px; margin-top:4px;">
+    The simplest and most effective regularization technique.<br>
+    Save the model at the best validation loss &mdash; everything after that is <strong style="color:#e74c3c;">memorizing noise</strong>.
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<!-- SECTION 3: WHY DEEP LEARNING WORKS                           -->
+<!-- ============================================================ -->
+
+<!-- SLIDE 21: Section Divider -->
+<section>
+  <div style="display:flex; align-items:center; justify-content:center; height:100%;">
+    <div style="text-align:center;">
+      <div style="width:200px; height:4px; background:linear-gradient(90deg,#27ae60,#8e44ad); margin:0 auto 25px;"></div>
+      <h1 style="font-size:2em; margin:0;">Why Deep Learning Works</h1>
+      <p style="font-size:1.1em; color:#7f8c8d; margin-top:15px;">Double descent, spectral bias, regularization, and the training trajectory.</p>
+      <div style="width:200px; height:4px; background:linear-gradient(90deg,#27ae60,#8e44ad); margin:25px auto 0;"></div>
+    </div>
+  </div>
+</section>
+
+<!-- SLIDE: Double Descent -->
+<section>
+<section>
+  <h2>Double Descent</h2>
+  <p>Classical story: more parameters = more overfitting (U-shaped test error).</p>
+  <p>The <strong>surprise</strong>: test error decreases again when the model grows <strong>far beyond</strong> the interpolation threshold.</p>
+  <div id="dd-plot" style="width:100%; height:310px; margin-top:8px;"></div>
+  <div class="box fragment" style="text-align:center; margin-top:4px; padding:8px; font-size:0.7em;">
+    At the interpolation threshold, the model barely fits training data &mdash; it memorizes noise.<br>
+    Beyond it, many solutions exist, and SGD finds <strong>smooth</strong> ones. This challenges the classical bias-variance tradeoff.
+  </div>
+  <p style="font-size:0.65em; color:#7f8c8d; margin-top:6px;">
+    <a href="https://doi.org/10.1073/pnas.1903070116" style="color:#7f8c8d;">Belkin et al., <em>Reconciling modern machine-learning practice and the classical bias-variance trade-off</em>, PNAS 2019</a> &nbsp;|&nbsp;
+    <a href="https://arxiv.org/abs/1912.02292" style="color:#7f8c8d;">Nakkiran et al., <em>Deep Double Descent</em>, ICLR 2020</a>
+  </p>
+</section>
+<section style="font-size:0.50em;">
+  <h2>Double Descent &mdash; Details</h2>
+  <ul style="line-height:1.8;">
+    <li><strong>Conceptual picture:</strong> double descent is primarily a conceptual framework. It has been demonstrated in concrete experiments (see references), but the clean U-then-descend shape depends on the model family and data.</li>
+    <li><strong>Classical regime:</strong> in linear regression (Lecture 1), we saw the same effect &mdash; adding polynomial features first reduces error, then overfitting kicks in near the interpolation threshold.</li>
+    <li><strong>Beyond interpolation:</strong> when the number of parameters far exceeds the number of data points, many different weight configurations achieve minimal training loss. Among these, gradient-based optimizers tend to select solutions with specific properties (e.g.&nbsp;small norm, smooth functions) that generalise well.</li>
+    <li><strong>Model complexity (x-axis):</strong> this is a proxy for the effective capacity of the model (e.g.&nbsp;number of parameters, polynomial degree, network width). It is <em>not</em> the training epoch &mdash; each point on the x-axis represents a fully trained model of a given size.</li>
+    <li><strong>Error (y-axis):</strong> this is the test error, i.e.&nbsp;the residual error evaluated on held-out test data, after the model has been fully optimised on the training data.</li>
+  </ul>
+</section>
+</section>
+
+<!-- SLIDE: Why Does Overparameterization Work? -->
+<section>
+  <h2>Why Overparameterization Works: Volume Arguments</h2>
+  <p>At the interpolation threshold, there is essentially <strong>one</strong> solution &mdash; it must contort to fit noise. Beyond it, <strong>many</strong> interpolating solutions exist. Which one does SGD find?</p>
+  <div class="box" style="margin-top:8px; padding:12px;">
+    <strong style="color:#8e44ad;">The volume argument</strong> (<a href="https://jmlr.org/papers/v22/20-676.html" style="color:#8e44ad;">Mingard et al., JMLR 2021</a>)<br>
+    <ul style="font-size:0.92em; margin-top:4px;">
+      <li>SGD finds solutions with probability &asymp; proportional to their <strong>volume in parameter space</strong></li>
+      <li class="fragment">Simple functions have <strong>exponentially more</strong> parameter configurations that implement them (higher degeneracy)</li>
+      <li class="fragment">Therefore: SGD is biased toward simple, well-generalizing solutions &mdash; not by design, but by geometry</li>
+    </ul>
+  </div>
+  <div class="box fragment" style="text-align:center; padding:10px; margin-top:6px;">
+    This explains why good solutions <em>exist</em>. But <strong>why does SGD find them?</strong><br>
+    The answer lies in the <strong>training dynamics</strong> &mdash; the order in which features are learned.
+  </div>
+  <p style="margin-top:6px; font-size:0.65em; color:#95a5a6; line-height:1.4;">
+    <strong>Further reading:</strong>
+    <a href="https://doi.org/10.1073/pnas.1903070116" style="color:#95a5a6;">Belkin et al. (PNAS 2019)</a> &bull;
+    <a href="https://jmlr.org/papers/v22/20-676.html" style="color:#95a5a6;">Mingard et al. (JMLR 2021)</a> &bull;
+    <a href="https://doi.org/10.1214/21-AOS2133" style="color:#95a5a6;">Hastie et al. (Ann. Stat. 2022)</a> &bull;
+    <a href="https://arxiv.org/abs/1806.08734" style="color:#95a5a6;">Rahaman et al. (ICML 2019)</a>
+  </p>
+</section>
+
+<!-- SLIDE: Spectral Bias / Overfitting Demo -->
+<section>
+<section>
+  <h2>Why Overparameterization Works: Spectral Bias</h2>
+  <p style="font-size:0.82em; margin:2px 0;">Neural networks learn <strong>low-frequency (smooth) features first</strong>, and only later fit <strong>high-frequency noise</strong>. This spectral bias means overparameterized models generalise well if training is stopped early enough.</p>
+  <div style="display:flex; gap:6px; align-items:center; margin-top:2px; font-size:0.82em;">
+    <button id="sb-train-btn" style="padding:3px 12px; cursor:pointer; border-radius:4px; border:2px solid #27ae60; background:#eafaf1;">Train</button>
+    <button id="sb-reset-btn" style="padding:3px 12px; cursor:pointer; border-radius:4px; border:2px solid #e74c3c; background:#fdedec;">Reset</button>
+    <span id="sb-epoch-label" style="color:#7f8c8d;"></span>
+  </div>
+  <div style="display:flex; gap:10px; margin-top:6px;">
+    <div id="sb-fit-plot" style="flex:1; height:330px;"></div>
+    <div id="sb-loss-plot" style="flex:0 0 340px; height:330px;"></div>
+  </div>
+  <div style="text-align:center; margin-top:2px; font-size:0.82em; color:#7f8c8d;">
+    <strong>Left:</strong> MLP fit (red) vs true sine (dashed). Train data (blue) &amp; held-out validation data (orange).
+    <strong>Right:</strong> train vs validation loss &mdash; the gap is overfitting.
+  </div>
+</section>
+<section style="font-size:0.50em;">
+  <h2>Spectral Bias &mdash; Details</h2>
+  <ul style="line-height:1.8;">
+    <li><strong>What is spectral bias?</strong> Neural networks trained with gradient descent learn low-frequency components of the target function before high-frequency ones. This is an intrinsic property of the training dynamics, not of the architecture.</li>
+    <li><strong>Demo setup:</strong> MLP with layer sizes \([1,\;64,\;64,\;64,\;64,\;1]\) and GELU activations, trained on 60 noisy samples from \(y = \sin(2\pi x)\) with \(\sigma = 0.45\), \(x \in [-1,1]\).</li>
+    <li><strong>Left panel:</strong> the red curve shows the MLP prediction. Blue dots are training data, orange dots are held-out validation data, and the dashed line is the true sine function.</li>
+    <li><strong>Right panel:</strong> training loss (blue) and validation loss (orange) vs.&nbsp;epoch. Training loss decreases monotonically. Validation loss first decreases (the network is learning the signal), then increases (the network is memorizing noise). The gap between the two curves indicates overfitting.</li>
+    <li><strong>Why this matters for overparameterization:</strong> the network has far more parameters than data points, yet early in training it produces a good fit. The spectral bias of SGD acts as an implicit regularizer &mdash; it prefers smooth solutions. Overfitting only occurs later, and can be prevented by early stopping.</li>
+    <li><strong>Reference:</strong> <a href="https://arxiv.org/abs/1806.08734" style="color:#7f8c8d;">Rahaman et al., <em>On the Spectral Bias of Neural Networks</em>, ICML 2019</a>.</li>
+  </ul>
+</section>
+</section>
+
+<!-- SLIDE: Early Stopping -->
+<section>
+  <h2>Why Overparameterization Works: Early Stopping</h2>
+  <p>The training trajectory goes from modelling <strong>signal</strong> to modelling <strong>noise</strong>. Early stopping picks the sweet spot.</p>
+  <div style="display:flex; gap:12px; margin-top:10px;">
+    <div class="box" style="flex:1; padding:12px;">
+      <strong>The recipe:</strong>
+      <ol style="font-size:0.9em; margin-top:4px;">
+        <li>Split data into <strong>train</strong> and <strong>validation</strong> sets</li>
+        <li>Train on train set, monitor loss on validation set</li>
+        <li>Stop when validation loss starts increasing</li>
+        <li>Use the model from the epoch with lowest validation loss</li>
+      </ol>
+    </div>
+    <div class="box" style="flex:1; padding:12px;">
+      <strong>Why it works:</strong>
+      <ul style="font-size:0.9em; margin-top:4px;">
+        <li>Generalizable features are learned <strong>first</strong> (in general by construction, for MLPs because of spectral bias)</li>
+        <li>Noise memorization comes <strong>later</strong></li>
+        <li>Validation loss detects the transition</li>
+        <li class="fragment">Equivalent to an <strong>implicit complexity penalty</strong> &mdash; fewer effective parameters</li>
+      </ul>
+    </div>
+  </div>
+  <p class="fragment" style="text-align:center; margin-top:10px; font-size:0.75em; color:#7f8c8d;">
+    Caveat: this applies when you are data-limited. Modern LLMs are typically compute-limited &mdash; the training set is so large that overfitting to noise is not the bottleneck.
+  </p>
+</section>
+
+<!-- SLIDE: The Training Trajectory -->
+<section>
+  <h2>The Training Trajectory: Simple Features First</h2>
+  <p>An overparameterized network doesn't learn everything at once. It follows a <strong>trajectory</strong> from simple to complex:</p>
+  <div style="display:flex; gap:10px; margin-top:10px;">
+    <div class="box" style="flex:1; text-align:center; padding:12px; border-left:4px solid #27ae60;">
+      <strong style="color:#27ae60;">Early training</strong><br>
+      <span style="font-size:0.9em;">Low-frequency, smooth features &mdash; the generalizable signal</span>
+    </div>
+    <div style="font-size:1.5em; color:#bdc3c7; align-self:center;">&rarr;</div>
+    <div class="box" style="flex:1; text-align:center; padding:12px; border-left:4px solid #f39c12;">
+      <strong style="color:#f39c12;">Mid training</strong><br>
+      <span style="font-size:0.9em;">Finer structure &mdash; still useful but diminishing returns</span>
+    </div>
+    <div style="font-size:1.5em; color:#bdc3c7; align-self:center;">&rarr;</div>
+    <div class="box" style="flex:1; text-align:center; padding:12px; border-left:4px solid #e74c3c;">
+      <strong style="color:#e74c3c;">Late training</strong><br>
+      <span style="font-size:0.9em;">High-frequency noise &mdash; overfitting</span>
+    </div>
+  </div>
+  <div class="box fragment" style="margin-top:10px; padding:10px; font-size:0.92em;">
+    This is not just SGD &mdash; it's the <strong>whole stack</strong>: ReLU activations create piecewise-linear functions that build complexity incrementally.
+    The architecture (convolutions, skip connections) and regularization (weight decay, dropout) all <strong>shape which features are easy to learn first</strong>,
+    biasing the trajectory toward features that generalize.
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<!-- CLOSING                                                      -->
+<!-- ============================================================ -->
+
+<!-- SLIDE 26: Key Takeaways -->
+<section>
+  <h2>Key Takeaways</h2>
+  <ul style="font-size:0.92em; line-height:1.6;">
+    <li class="fragment"><strong>Making gradients flow:</strong> backprop = chain rule through the computation graph. He initialization + ReLU variants + input normalization keep signals healthy.</li>
+    <li class="fragment"><strong>Making training work:</strong> Adam adapts learning rates per parameter. Learning rate schedules (warmup + decay) improve convergence.</li>
+    <li class="fragment"><strong>Why deep learning works:</strong> overparameterized networks generalize because the training trajectory learns simple (generalizable) features first.</li>
+  </ul>
+</section>
+
+<!-- SLIDE 27: Summary & What's Next -->
+<section>
+  <h2>Summary &amp; What's Next</h2>
+  <div style="display:flex; gap:15px; font-size:0.9em;">
+    <div class="box" style="flex:1;">
+      <h3 style="margin-top:0; color:#2980b9;">Making gradients flow</h3>
+      <ul style="font-size:0.9em; line-height:1.5;">
+        <li>Backpropagation &amp; computation graph</li>
+        <li>Gradient pathologies &amp; ReLU variants</li>
+        <li>He initialization &amp; input normalization</li>
+      </ul>
+    </div>
+    <div class="box" style="flex:1;">
+      <h3 style="margin-top:0; color:#e67e22;">Making training work</h3>
+      <ul style="font-size:0.9em; line-height:1.5;">
+        <li>EMA &amp; SGD with momentum</li>
+        <li>Adam optimizer</li>
+        <li>Learning rate schedules</li>
+      </ul>
+    </div>
+    <div class="box" style="flex:1;">
+      <h3 style="margin-top:0; color:#27ae60;">Why deep learning works</h3>
+      <ul style="font-size:0.9em; line-height:1.5;">
+        <li>Double descent</li>
+        <li>Spectral bias &amp; early stopping</li>
+        <li>Training trajectories</li>
+      </ul>
+    </div>
+  </div>
+  <div class="box" style="text-align:center; margin-top:12px; padding:8px; font-size:0.85em;">
+    <strong>Key equations:</strong> &nbsp;
+    EMA: \(m_t = \beta\,m_{t-1} + (1-\beta)\,g_t\) &nbsp;|&nbsp;
+    Adam: \(\mathbf{w} \leftarrow \mathbf{w} - \eta\,\hat{\mathbf{m}}/(\sqrt{\hat{\mathbf{v}}}+\epsilon)\) &nbsp;|&nbsp;
+    He init: \(\text{Var}(w) = 2/n_{\text{in}}\)
+  </div>
+  <p style="text-align:center; margin-top:10px; font-size:0.85em; color:#7f8c8d;">
+    Next lecture: Convolutional neural networks &mdash; building translation equivariance into the architecture.
+  </p>
+</section>
+
+</div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/plotly.js@2.35.0/dist/plotly.min.js"></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js-plugins@latest/chalkboard/style.css">
+<script src="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reveal.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/plugin/math/math.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/reveal.js-plugins@latest/chalkboard/plugin.js"></script>
+<script>
+// ── Seeded PRNG (mulberry32) ──
+function createRNG(seed) {
+  return function() {
+    seed |= 0; seed = seed + 0x6D2B79F5 | 0;
+    var t = Math.imul(seed ^ seed >>> 15, 1 | seed);
+    t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+    return ((t ^ t >>> 14) >>> 0) / 4294967296;
+  };
+}
+function boxMuller(rng) {
+  var u; do { u = rng(); } while (u === 0);
+  return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * rng());
+}
+
+Reveal.initialize({
+  hash: true, center: false, transition: 'fade', slideNumber: true,
+  width: 1214, height: 700, margin: 0.04, minScale: 0.2, maxScale: 2.0,
+  plugins: [ RevealMath.MathJax3, RevealChalkboard ]
+});
+
+document.querySelectorAll('.reveal .slides > section').forEach(function(slide) {
+  var footer = document.createElement('div');
+  footer.className = 'slide-footer';
+  footer.innerHTML = '<a href="index.html" style="color:#bdc3c7; text-decoration:none; pointer-events:auto;">&larr; Index</a><span>ML4PhA 2026 &mdash; Lecture 4</span><span>Christoph Weniger &mdash; GRAPPA / UvA</span>';
+  slide.appendChild(footer);
+});
+
+// ── Plotly defaults ──
+var pCfg = {displayModeBar: false};
+var pBg = {paper_bgcolor:'rgba(0,0,0,0)', plot_bgcolor:'rgba(0,0,0,0)'};
+
+// ── Shared MLP class (He init, ReLU/GELU, optional dropout + weight decay) ──
+function geluFwd(v) { return 0.5 * v * (1 + Math.tanh(Math.sqrt(2/Math.PI) * (v + 0.044715*v*v*v))); }
+function geluDeriv(v) {
+  var k = Math.sqrt(2/Math.PI), t = Math.tanh(k*(v+0.044715*v*v*v));
+  return 0.5*(1+t) + 0.5*v*(1-t*t)*k*(1+3*0.044715*v*v);
+}
+function MLPRegL4(sizes, rngSeed, activation) {
+  this.W = []; this.b = [];
+  this.activation = activation || 'relu';
+  var rng = createRNG(rngSeed || 5555);
+  for (var l = 0; l < sizes.length - 1; l++) {
+    var rows = sizes[l+1], cols = sizes[l];
+    var scale = Math.sqrt(2.0/cols);
+    var wl = [];
+    for (var i = 0; i < rows; i++) { var row = []; for (var j = 0; j < cols; j++) row.push(scale*boxMuller(rng)); wl.push(row); }
+    this.W.push(wl);
+    var bl = []; for (var i = 0; i < rows; i++) bl.push(0);
+    this.b.push(bl);
+  }
+  this.dropMasks = [];
+}
+MLPRegL4.prototype.forward = function(x, dropout) {
+  this.acts = [Array.isArray(x)?x.slice():[x]]; this.pres = []; this.dropMasks = [];
+  var h = this.acts[0]; var act = this.activation;
+  for (var l = 0; l < this.W.length; l++) {
+    var z = [];
+    for (var i = 0; i < this.W[l].length; i++) {
+      var s = this.b[l][i]; for (var j = 0; j < h.length; j++) s += this.W[l][i][j]*h[j]; z.push(s);
+    }
+    this.pres.push(z);
+    if (l < this.W.length - 1) {
+      h = act === 'gelu' ? z.map(geluFwd) : z.map(function(v) { return Math.max(0, v); });
+      if (dropout > 0) {
+        var mask = [];
+        for (var i = 0; i < h.length; i++) {
+          var keep = Math.random() > dropout ? 1 : 0;
+          mask.push(keep); h[i] *= keep / (1 - dropout);
+        }
+        this.dropMasks.push(mask);
+      } else { this.dropMasks.push(null); }
+    } else { h = z; this.dropMasks.push(null); }
+    this.acts.push(h.slice());
+  }
+  return h[0];
+};
+MLPRegL4.prototype.backward = function(target, lr, wd) {
+  var L = this.W.length, dz = this.acts[L][0] - target, act = this.activation;
+  for (var l = L-1; l >= 0; l--) {
+    var a_prev = this.acts[l];
+    var dzArr;
+    if (l === L-1) { dzArr = [dz]; }
+    else {
+      var mask = this.dropMasks[l];
+      dzArr = this.pres[l].map(function(v,i) {
+        var d = (act === 'gelu' ? geluDeriv(v) : (v > 0 ? 1 : 0)) * dzNext[i];
+        if (mask && !mask[i]) d = 0; return d;
+      });
+    }
+    if (l > 0) { var dzN = []; for (var j = 0; j < this.W[l][0].length; j++) { var s = 0; for (var i = 0; i < dzArr.length; i++) s += this.W[l][i][j]*dzArr[i]; dzN.push(s); } }
+    for (var i = 0; i < this.W[l].length; i++) {
+      for (var j = 0; j < this.W[l][i].length; j++) {
+        this.W[l][i][j] -= lr*(dzArr[i]*a_prev[j] + (wd||0)*this.W[l][i][j]);
+      }
+      this.b[l][i] -= lr*dzArr[i];
+    }
+    if (l > 0) var dzNext = dzN;
+  }
+};
+
+// ================================================================
+// ================================================================
+// DEMO: Backprop with Regularization (slide 5b)
+// ================================================================
+(function() {
+  var step = -1;
+  // Node positions (center of each node for SVG edges)
+  // Node centers (must match CSS positions + half node size: left+22, top+14)
+  var nodes = {
+    x:  {cx:26, cy:44},   w:  {cx:26, cy:154},  y:  {cx:26, cy:264},
+    z:  {cx:112, cy:84},  ld: {cx:202, cy:154}, lr: {cx:112, cy:264},
+    loss:{cx:267, cy:224}
+  };
+  // Edges: [from, to]
+  var edges = [
+    ['x','z'], ['w','z'], ['z','ld'], ['y','ld'],
+    ['w','lr'], ['ld','loss'], ['lr','loss']
+  ];
+
+  function drawEdges(highlights) {
+    var svg = document.getElementById('bp2-svg');
+    var h = '';
+    for (var i = 0; i < edges.length; i++) {
+      var a = nodes[edges[i][0]], b = nodes[edges[i][1]];
+      var col = '#bdc3c7', w = 1.5;
+      if (highlights && highlights[i]) { col = highlights[i]; w = 2.5; }
+      h += '<line x1="'+a.cx+'" y1="'+a.cy+'" x2="'+b.cx+'" y2="'+b.cy+'" stroke="'+col+'" stroke-width="'+w+'" />';
+    }
+    svg.innerHTML = h;
+  }
+
+  function clearAll() {
+    // Clear node classes
+    var nn = ['x','w','y','z','ld','lr','loss'];
+    var nt = {x:true, y:true};
+    for (var i=0; i<nn.length; i++) {
+      document.getElementById('bp2-n-'+nn[i]).className = 'bp2-node' + (nt[nn[i]] ? ' nontensor' : '');
+    }
+    // Clear table values
+    var vs = ['x','y','w','z','ld','lr','loss'];
+    for (var i=0; i<vs.length; i++) document.getElementById('bp2-v-'+vs[i]).textContent = '';
+    var gs = ['w','z','ld','lr','loss'];
+    for (var i=0; i<gs.length; i++) document.getElementById('bp2-g-'+gs[i]).textContent = '';
+    var fs = ['w','z','ld','lr','loss'];
+    for (var i=0; i<fs.length; i++) document.getElementById('bp2-f-'+fs[i]).textContent = '';
+    // Clear code highlights
+    for (var i=0; i<8; i++) document.getElementById('bp2-c'+i).className = '';
+    drawEdges(null);
+    document.getElementById('bp2-narration').innerHTML = '<span style="color:#7f8c8d;">Click <strong>Next &#9654;</strong> to step through forward &amp; backward pass.</span>';
+    document.getElementById('bp2-step-label').textContent = '';
+  }
+
+  var ntSet = {x:true, y:true};
+  function setNodeClass(ids, cls) {
+    for (var i=0; i<ids.length; i++) {
+      var el = document.getElementById('bp2-n-'+ids[i]);
+      if (el) el.className = 'bp2-node' + (ntSet[ids[i]] ? ' nontensor' : '') + ' ' + cls;
+    }
+  }
+  function hlCode(line) {
+    for (var i=0; i<8; i++) document.getElementById('bp2-c'+i).className = (i===line ? 'bp2-hl' : '');
+  }
+  function setVal(id, v) { document.getElementById('bp2-v-'+id).textContent = v; }
+  function setFn(id, v) { document.getElementById('bp2-f-'+id).textContent = v; }
+  function setGrad(id, v, color) {
+    var el = document.getElementById('bp2-g-'+id);
+    el.innerHTML = v; el.style.color = color || '#e74c3c';
+  }
+
+  var steps = [
+    // 0: Setup inputs
+    function() {
+      hlCode(0); hlCode(-1); // clear first
+      document.getElementById('bp2-c0').className = 'bp2-hl';
+      document.getElementById('bp2-c1').className = 'bp2-hl';
+      document.getElementById('bp2-c2').className = 'bp2-hl';
+      setNodeClass(['x','y','w'], 'fwd');
+      setVal('x','2.0'); setVal('y','3.0'); setVal('w','1.0');
+      setFn('w','Leaf');
+      document.getElementById('bp2-narration').innerHTML = '<strong>Setup:</strong> inputs x=2, y=3, parameter w=1 (requires_grad), &lambda;=0.1';
+    },
+    // 1: z = w*x
+    function() {
+      hlCode(3);
+      setNodeClass(['x','y','w','z'], 'fwd');
+      setVal('z','2.0'); setFn('z','MulBackward');
+      // highlight edges x→z, w→z
+      var eh = {}; eh[0]='#27ae60'; eh[1]='#27ae60';
+      drawEdges(eh);
+      document.getElementById('bp2-narration').innerHTML = '<strong>Forward:</strong> z = w &middot; x = 1 &times; 2 = <strong>2.0</strong>';
+    },
+    // 2: loss_data = (z-y)²
+    function() {
+      hlCode(4);
+      setNodeClass(['x','y','w','z','ld'], 'fwd');
+      setVal('ld','1.0'); setFn('ld','PowBackward');
+      var eh = {}; eh[2]='#27ae60'; eh[3]='#27ae60';
+      drawEdges(eh);
+      document.getElementById('bp2-narration').innerHTML = '<strong>Forward:</strong> L<sub>d</sub> = (z &minus; y)&sup2; = (2 &minus; 3)&sup2; = <strong>1.0</strong>';
+    },
+    // 3: loss_reg = lam*w²
+    function() {
+      hlCode(5);
+      setNodeClass(['x','y','w','z','ld','lr'], 'fwd');
+      setVal('lr','0.1'); setFn('lr','MulBackward');
+      var eh = {}; eh[4]='#27ae60';
+      drawEdges(eh);
+      document.getElementById('bp2-narration').innerHTML = '<strong>Forward:</strong> L<sub>r</sub> = &lambda; w&sup2; = 0.1 &times; 1&sup2; = <strong>0.1</strong> &nbsp; (second branch from w!)';
+    },
+    // 4: loss = loss_data + loss_reg
+    function() {
+      hlCode(6);
+      setNodeClass(['x','y','w','z','ld','lr','loss'], 'fwd');
+      setVal('loss','1.1'); setFn('loss','AddBackward');
+      var eh = {}; eh[5]='#27ae60'; eh[6]='#27ae60';
+      drawEdges(eh);
+      document.getElementById('bp2-narration').innerHTML = '<strong>Forward:</strong> L = L<sub>d</sub> + L<sub>r</sub> = 1.0 + 0.1 = <strong>1.1</strong>';
+    },
+    // 5: backward starts — dL/dL=1, dL/dLd=1, dL/dLr=1
+    function() {
+      hlCode(7);
+      setNodeClass(['loss','ld','lr'], 'bwd');
+      setGrad('loss','1');
+      setGrad('ld','1');
+      setGrad('lr','1');
+      var eh = {}; eh[5]='#e74c3c'; eh[6]='#e74c3c';
+      drawEdges(eh);
+      document.getElementById('bp2-narration').innerHTML = '<strong>Backward:</strong> &part;L/&part;L = 1. Sum node: &part;L/&part;L<sub>d</sub> = <strong>1</strong>, &part;L/&part;L<sub>r</sub> = <strong>1</strong>';
+    },
+    // 6: dL/dz = 2(z-y) = -2
+    function() {
+      hlCode(7);
+      setNodeClass(['loss','ld','lr','z'], 'bwd');
+      setGrad('z','&minus;2');
+      var eh = {}; eh[2]='#e74c3c'; eh[3]='#e74c3c';
+      drawEdges(eh);
+      document.getElementById('bp2-narration').innerHTML = '<strong>Backward:</strong> &part;L/&part;z = 2(z&minus;y) = 2(&minus;1) = <strong>&minus;2</strong>';
+    },
+    // 7: dL/dw from data path: dL/dz * dz/dw = (-2)*2 = -4
+    function() {
+      hlCode(7);
+      setNodeClass(['loss','ld','lr','z','w'], 'bwd');
+      setGrad('w','&minus;4');
+      var eh = {}; eh[0]='#e74c3c'; eh[1]='#e74c3c';
+      drawEdges(eh);
+      document.getElementById('bp2-narration').innerHTML = '<strong>Backward (data path):</strong> &part;L/&part;w += &part;L/&part;z &middot; &part;z/&part;w = (&minus;2) &times; 2 = <strong>&minus;4</strong>';
+    },
+    // 8: dL/dw from reg path: += 2*lam*w = 0.2 → total -3.8
+    function() {
+      hlCode(7);
+      setNodeClass(['loss','ld','lr','z','w'], 'bwd');
+      setGrad('w','<strong>&minus;3.8</strong>');
+      var eh = {}; eh[0]='#e74c3c'; eh[1]='#e74c3c'; eh[4]='#e74c3c';
+      drawEdges(eh);
+      document.getElementById('bp2-narration').innerHTML = '<strong>Backward (reg path):</strong> w.grad += &part;L<sub>r</sub>/&part;w = 2&lambda;w = 0.2. &nbsp; Total: &minus;4 + 0.2 = <strong>&minus;3.8</strong> &nbsp; &#x2190; gradients <em>accumulate</em>!';
+    }
+  ];
+
+  document.getElementById('bp2-next').addEventListener('click', function(e) {
+    e.preventDefault(); e.stopPropagation();
+    if (step < steps.length - 1) { step++; steps[step](); document.getElementById('bp2-step-label').textContent = (step+1)+'/'+steps.length; }
+  });
+  document.getElementById('bp2-reset').addEventListener('click', function(e) {
+    e.preventDefault(); e.stopPropagation();
+    step = -1; clearAll();
+  });
+  function init(e) {
+    if (!(e.currentSlide && e.currentSlide.querySelector('#bp2-svg'))) return;
+    step = -1; clearAll();
+  }
+  Reveal.on('slidechanged', init); Reveal.on('ready', init);
+})();
+
+// ================================================================
+// DEMO: Activation Functions + Gradients (slide 9)
+// ================================================================
+(function() {
+  var xF = []; for (var t = -4; t <= 4; t += 0.04) xF.push(t);
+  var currentAct = 'relu';
+
+  function phi(z) { return 0.5*(1+Math.erf(z/Math.sqrt(2))); }
+  // Approximate erf
+  Math.erf = Math.erf || function(x) {
+    var a1=0.254829592,a2=-0.284496736,a3=1.421413741,a4=-1.453152027,a5=1.061405429,p=0.3275911;
+    var sign=x<0?-1:1; x=Math.abs(x);
+    var t=1/(1+p*x); var y=1-(((((a5*t+a4)*t)+a3)*t+a2)*t+a1)*t*Math.exp(-x*x);
+    return sign*y;
+  };
+
+  var acts = {
+    relu:    {fn:function(z){return Math.max(0,z);}, grad:function(z){return z>0?1:0;}, name:'ReLU', info:'Gradient is 1 for z>0, 0 for z<0. Dead zone highlighted.', color:'#e74c3c'},
+    leaky:   {fn:function(z){return z>0?z:0.1*z;}, grad:function(z){return z>0?1:0.1;}, name:'LeakyReLU', info:'Small slope (0.1) for z<0. Never fully dead.', color:'#2980b9'},
+    elu:     {fn:function(z){return z>0?z:Math.exp(z)-1;}, grad:function(z){return z>0?1:Math.exp(z);}, name:'ELU (\u03b1=1)', info:'Smooth for z<0, pushes mean activations toward zero.', color:'#27ae60'},
+    gelu:    {fn:function(z){return z*0.5*(1+Math.erf(z/Math.sqrt(2)));}, grad:function(z){var p=0.5*(1+Math.erf(z/Math.sqrt(2)));var dp=Math.exp(-z*z/2)/Math.sqrt(2*Math.PI);return p+z*dp;}, name:'GELU', info:'Smooth approximation of ReLU. Default in transformers.', color:'#8e44ad'},
+    sigmoid: {fn:function(z){return 1/(1+Math.exp(-z));}, grad:function(z){var s=1/(1+Math.exp(-z));return s*(1-s);}, name:'Sigmoid', info:'Gradient max 0.25 at z=0. Saturates for large |z| \u2192 vanishing gradients.', color:'#e67e22'},
+    tanh:    {fn:function(z){return Math.tanh(z);}, grad:function(z){var t=Math.tanh(z);return 1-t*t;}, name:'Tanh', info:'Zero-centered, but still saturates. Gradient max 1 at z=0.', color:'#1abc9c'}
+  };
+
+  function update() {
+    var a = acts[currentAct];
+    var yFn = xF.map(a.fn), yGrad = xF.map(a.grad);
+    // Highlight dead zone for ReLU
+    var deadX = [], deadY = [];
+    if (currentAct === 'relu') { for (var i = 0; i < xF.length; i++) { if (xF[i] < 0) { deadX.push(xF[i]); deadY.push(0); } } }
+    var fnTraces = [{x:xF, y:yFn, mode:'lines', line:{width:3, color:a.color}, name:a.name, showlegend:false}];
+    var gradTraces = [{x:xF, y:yGrad, mode:'lines', line:{width:3, color:a.color}, name:"g'(z)", showlegend:false}];
+    var deadZone = currentAct === 'relu' ? [{type:'rect', x0:-4, x1:0, y0:-2, y1:5, fillcolor:'rgba(241,196,15,0.25)', line:{width:0}, layer:'below'}] : [];
+    Plotly.react('act-fn-plot', fnTraces, Object.assign({xaxis:{title:'z',range:[-4,4]}, yaxis:{title:'g(z)',range:[-1.5,4]}, margin:{t:30,r:10,b:35,l:45}, font:{size:13}, title:{text:'Activation g(z)',font:{size:13},x:0.5,y:0.98}, shapes:deadZone}, pBg), pCfg);
+    Plotly.react('act-grad-plot', gradTraces, Object.assign({xaxis:{title:'z',range:[-4,4]}, yaxis:{title:"g'(z)",range:[-0.2,1.5]}, margin:{t:30,r:10,b:35,l:45}, font:{size:13}, title:{text:"Gradient g'(z)",font:{size:13},x:0.5,y:0.98}, shapes:deadZone}, pBg), pCfg);
+    document.getElementById('act-info').innerHTML = '<strong>' + a.name + ':</strong> ' + a.info;
+    // Highlight active button
+    document.querySelectorAll('.act-btn').forEach(function(btn) {
+      btn.style.fontWeight = btn.dataset.act === currentAct ? 'bold' : 'normal';
+      btn.style.boxShadow = btn.dataset.act === currentAct ? '0 0 0 2px #2c3e50' : 'none';
+    });
+  }
+
+  document.querySelectorAll('.act-btn').forEach(function(btn) {
+    btn.addEventListener('click', function(e) {
+      e.preventDefault(); e.stopPropagation();
+      currentAct = this.dataset.act; update();
+    });
+  });
+  function init(e) { if (e.currentSlide && e.currentSlide.querySelector('#act-fn-plot')) update(); }
+  Reveal.on('slidechanged', init); Reveal.on('ready', init);
+})();
+
+// ================================================================
+// ================================================================
+// DEMO: Why Normalization Matters
+// ================================================================
+(function() {
+  var N = 128, net = null, animId = null, epoch = 0;
+  var Xbase = [], Ybase = [], Xdata = [], Ydata = [];
+  var lossHist = [];
+  var drng = createRNG(55);
+
+  function genData() {
+    var xoff = parseFloat(document.getElementById('norm-xoff').value);
+    var yoff = parseFloat(document.getElementById('norm-yoff').value);
+    Xdata = []; Ydata = [];
+    for (var i = 0; i < N; i++) {
+      Xdata.push(Xbase[i] + xoff);
+      Ydata.push(Ybase[i] + yoff);
+    }
+  }
+
+  function initAll() {
+    stopAnim();
+    // Generate base data once with fixed seed
+    if (Xbase.length === 0) {
+      var rng = createRNG(55);
+      for (var i = 0; i < N; i++) {
+        var xb = -1 + 2 * rng(); // [-1, 1]
+        Xbase.push(xb);
+        Ybase.push(Math.sin(2 * Math.PI * xb) + 0.2 * boxMuller(rng));
+      }
+    }
+    genData();
+    var rngSeed = Math.floor(Math.random() * 99999) + 1;
+    net = new MLPRegL4([1, 64, 64, 64, 64, 1], rngSeed);
+    lossHist = []; epoch = 0;
+    document.getElementById('norm-epoch-label').textContent = '';
+    render();
+  }
+
+  function trainEpoch() {
+    var lr = 1.0;
+    // Full-batch: forward+backward on each point (effective lr = lr after full pass)
+    for (var i = 0; i < N; i++) {
+      net.forward([Xdata[i]], 0);
+      net.backward(Ydata[i], lr / N, 0);
+    }
+    // Compute MSE
+    var mse = 0;
+    for (var i = 0; i < N; i++) {
+      var p = net.forward([Xdata[i]], 0);
+      var d = p - Ydata[i];
+      mse += d * d;
+    }
+    mse /= N;
+    lossHist.push(mse);
+    epoch++;
+  }
+
+  function render() {
+    // True curve + network prediction
+    var xoff = parseFloat(document.getElementById('norm-xoff').value);
+    var yoff = parseFloat(document.getElementById('norm-yoff').value);
+    var nPts = 200;
+    var xFit = [], yTrue = [], yPred = [];
+    for (var i = 0; i < nPts; i++) {
+      var x = -3 + 6 * i / (nPts - 1); // plot range [-3, 3]
+      var xb = x - xoff; // base coordinate
+      xFit.push(x);
+      yTrue.push(Math.sin(2 * Math.PI * xb) + yoff);
+      yPred.push(net ? net.forward([x], 0) : 0);
+    }
+
+    Plotly.react('norm-fit-plot', [
+      {x: xFit, y: yTrue, mode: 'lines', name: 'Target', line: {width: 2, color: '#bdc3c7', dash: 'dash'}},
+      {x: Xdata, y: Ydata, mode: 'markers', name: 'Data', marker: {size: 4, color: '#2980b9', opacity: 0.6}},
+      {x: xFit, y: yPred, mode: 'lines', name: 'MLP fit', line: {width: 2.5, color: '#e74c3c'}}
+    ], Object.assign({
+      xaxis: {title: 'x', range: [-3, 3]},
+      yaxis: {title: 'y', range: [-3, 3]},
+      margin: {t: 5, r: 10, b: 35, l: 45}, font: {size: 12},
+      legend: {x: 0.65, y: 0.98}, hovermode: false
+    }, pBg), pCfg);
+
+    // Loss plot
+    if (lossHist.length > 0) {
+      var xEpochs = []; for (var i = 0; i < lossHist.length; i++) xEpochs.push(i + 1);
+      Plotly.react('norm-loss-plot', [
+        {x: xEpochs, y: lossHist, mode: 'lines', name: 'MSE', line: {width: 2, color: '#e74c3c'}}
+      ], Object.assign({
+        xaxis: {title: 'Epoch'},
+        yaxis: {title: 'MSE', type: 'log'},
+        margin: {t: 5, r: 10, b: 35, l: 50}, font: {size: 12},
+        showlegend: false
+      }, pBg), pCfg);
+    }
+  }
+
+  function animate() {
+    if (epoch >= 2000) { stopAnim(); return; }
+    trainEpoch(); trainEpoch();
+    document.getElementById('norm-epoch-label').textContent = 'Epoch ' + epoch;
+    if (epoch % 4 === 0) render();
+    animId = setTimeout(animate, 50);
+  }
+  function stopAnim() { if (animId) { clearTimeout(animId); animId = null; } }
+
+  // Slider display updates
+  document.getElementById('norm-xoff').addEventListener('input', function() {
+    document.getElementById('norm-xoff-val').textContent = this.value;
+  });
+  document.getElementById('norm-yoff').addEventListener('input', function() {
+    document.getElementById('norm-yoff-val').textContent = this.value;
+  });
+
+  // Buttons
+  document.getElementById('norm-train-btn').addEventListener('click', function(e) {
+    e.preventDefault(); e.stopPropagation();
+    if (animId) { stopAnim(); return; }
+    if (epoch === 0) initAll();
+    animate();
+  });
+  document.getElementById('norm-reset-btn').addEventListener('click', function(e) {
+    e.preventDefault(); e.stopPropagation();
+    initAll();
+  });
+
+  // Re-init on slider change
+  ['norm-xoff', 'norm-yoff'].forEach(function(id) {
+    document.getElementById(id).addEventListener('change', function() { initAll(); });
+  });
+
+  // Narration steps
+  var normNarrStep = 0;
+  var normNarr = [
+    {xoff: 0, yoff: 0, text: '<strong>x-offset = 0:</strong> With He-initialized weights, the network\'s flexible region sits around the origin. Training quickly picks up the structure because the data lives where the network can bend.'},
+    {xoff: -2, yoff: 0, text: '<strong>x-offset = &minus;2:</strong> The data has shifted away from the origin, but the network\'s initial flexibility is still centred at zero. Training stalls or takes much longer &mdash; the network must first "move" its representational capacity into the relevant region.'},
+    {xoff: 0, yoff: 2, text: '<strong>y-offset = 2:</strong> A vertical shift is easy &mdash; the output bias can absorb a constant offset quickly. Try it: training still converges. The x-offset is (for this particular problem) the real problem.'}
+  ];
+  function setNormNarr(step) {
+    normNarrStep = step % normNarr.length;
+    var s = normNarr[normNarrStep];
+    document.getElementById('norm-xoff').value = s.xoff;
+    document.getElementById('norm-xoff-val').textContent = s.xoff;
+    document.getElementById('norm-yoff').value = s.yoff;
+    document.getElementById('norm-yoff-val').textContent = s.yoff;
+    document.getElementById('norm-narr-text').innerHTML = s.text;
+    initAll();
+  }
+  document.getElementById('norm-narr-btn').addEventListener('click', function(e) {
+    e.preventDefault(); e.stopPropagation();
+    setNormNarr(normNarrStep + 1);
+  });
+
+  function init(e) {
+    if (!(e.currentSlide && e.currentSlide.querySelector('#norm-fit-plot'))) return;
+    normNarrStep = 0;
+    setNormNarr(0);
+  }
+  Reveal.on('slidechanged', init); Reveal.on('ready', init);
+})();
+
+// DEMO: EMA intuition (slide 12b)
+// ================================================================
+(function() {
+  // Generate a noisy "gradient" signal: slow sine + noise
+  var Nema = 100, gRaw = [], ema = [];
+  var rng = createRNG(31);
+  for (var i = 0; i < Nema; i++) {
+    gRaw.push(2*Math.sin(0.08*i) + 1.5*boxMuller(rng));
+  }
+
+  function computeEMA(beta, biasCorr) {
+    ema = []; var m = 0;
+    for (var i = 0; i < Nema; i++) {
+      m = beta*m + (1-beta)*gRaw[i];
+      ema.push(biasCorr ? m / (1 - Math.pow(beta, i+1)) : m);
+    }
+  }
+
+  function renderEMA() {
+    var beta = parseFloat(document.getElementById('ema-beta').value);
+    var biasCorr = document.getElementById('ema-bias-corr').checked;
+    computeEMA(beta, biasCorr);
+    var xs = []; for (var i = 0; i < Nema; i++) xs.push(i);
+    Plotly.react('ema-plot', [
+      {x:xs, y:gRaw, mode:'lines', name:'Noisy signal g_t', line:{width:1, color:'#bdc3c7'}},
+      {x:xs, y:ema, mode:'lines', name:biasCorr ? 'EMA m\u0302_t' : 'EMA m_t', line:{width:3, color:'#e74c3c'}}
+    ], Object.assign({
+      xaxis:{title:'Step t'}, yaxis:{title:biasCorr ? 'm\u0302_t' : 'm_t', range:[-6,6]},
+      margin:{t:5,r:10,b:35,l:45}, font:{size:12},
+      legend:{x:0.65, y:0.98}
+    }, pBg), pCfg);
+  }
+
+  document.getElementById('ema-bias-corr').addEventListener('change', function() { renderEMA(); });
+  document.getElementById('ema-beta').addEventListener('input', function() {
+    var beta = parseFloat(this.value);
+    document.getElementById('ema-beta-val').textContent = beta.toFixed(2);
+    var win = beta > 0 ? (1/(1-beta)).toFixed(0) : '1';
+    document.getElementById('ema-window-label').textContent = 'Window \u2248 ' + win + ' steps';
+    renderEMA();
+  });
+
+  function init(e) {
+    if (!(e.currentSlide && e.currentSlide.querySelector('#ema-plot'))) return;
+    renderEMA();
+  }
+  Reveal.on('slidechanged', init); Reveal.on('ready', init);
+})();
+
+// ================================================================
+// DEMO: Adam Optimizer with real mini-batch regression (slide 14)
+// ================================================================
+(function() {
+  // --- Fixed dataset: y = sin(pi*x) + noise, x in [-1,1] ---
+  var ND = 500;
+  var Xd = [], Yd = [];
+  var drng = createRNG(42);
+  for (var i = 0; i < ND; i++) {
+    var x = -1 + 2*drng();
+    Xd.push(x);
+    Yd.push(Math.sin(Math.PI*x) + 0.2*boxMuller(drng));
+  }
+
+  // --- Precompute analytic loss surface: L(w1,w2) = quadratic ---
+  // Model: yhat = w1*x + w2*x^3.  Basis: phi1=x, phi2=x^3
+  var Sxx=0, Sx3x3=0, Sxx3=0, Sxy=0, Sx3y=0, Syy=0;
+  for (var i = 0; i < ND; i++) {
+    var x=Xd[i], y=Yd[i], x3=x*x*x;
+    Sxx+=x*x; Sx3x3+=x3*x3; Sxx3+=x*x3;
+    Sxy+=x*y; Sx3y+=x3*y; Syy+=y*y;
+  }
+  Sxx/=ND; Sx3x3/=ND; Sxx3/=ND; Sxy/=ND; Sx3y/=ND; Syy/=ND;
+
+  function trueLoss(w1,w2) {
+    return w1*w1*Sxx + w2*w2*Sx3x3 + 2*w1*w2*Sxx3 - 2*w1*Sxy - 2*w2*Sx3y + Syy;
+  }
+
+  // Optimal weights (for reference)
+  var det = Sxx*Sx3x3 - Sxx3*Sxx3;
+  var wOpt1 = (Sx3x3*Sxy - Sxx3*Sx3y)/det;
+  var wOpt2 = (Sxx*Sx3y - Sxx3*Sxy)/det;
+
+  // --- Optimizer state ---
+  var animId = null, stepCount = 0;
+  var w1, w2, m1, m2, v1, v2, t;
+  var path = [], lossHist = [], batchLossHist = [];
+  var stepRng;
+  var eps = 1e-8;
+
+  function getParams() {
+    return {
+      lr: Math.pow(10, parseFloat(document.getElementById('adam-lr').value)),
+      b1: parseFloat(document.getElementById('adam-b1').value),
+      b2: parseFloat(document.getElementById('adam-b2').value),
+      B: Math.pow(2, parseInt(document.getElementById('adam-B').value))
+    };
+  }
+
+  function initState() {
+    w1=0; w2=0; m1=0; m2=0; v1=0; v2=0; t=0;
+    path=[[w1,w2]]; lossHist=[trueLoss(w1,w2)]; batchLossHist=[];
+    stepCount=0; stepRng=createRNG(7);
+  }
+
+  function doStep() {
+    var p = getParams();
+    var B = p.B, lr = p.lr, b1 = p.b1, b2 = p.b2;
+    // Stochastic gradient from mini-batch
+    var g1=0, g2=0, bLoss=0;
+    for (var b=0; b<B; b++) {
+      var idx = Math.floor(stepRng()*ND);
+      var x=Xd[idx], y=Yd[idx], x3=x*x*x;
+      var resid = w1*x + w2*x3 - y;
+      g1 += 2*resid*x/B;
+      g2 += 2*resid*x3/B;
+      bLoss += resid*resid/B;
+    }
+    batchLossHist.push(bLoss);
+    t++;
+    // First moment (momentum)
+    m1 = b1*m1 + (1-b1)*g1;
+    m2 = b1*m2 + (1-b1)*g2;
+    var mh1, mh2;
+    if (b1 > 0) { var bc1=1-Math.pow(b1,t); mh1=m1/bc1; mh2=m2/bc1; }
+    else { mh1=g1; mh2=g2; }
+    // Second moment (adaptive) — when b2=0, skip (vanilla SGD/momentum)
+    if (b2 > 0) {
+      v1 = b2*v1 + (1-b2)*g1*g1;
+      v2 = b2*v2 + (1-b2)*g2*g2;
+      var bc2=1-Math.pow(b2,t);
+      var vh1=v1/bc2, vh2=v2/bc2;
+      w1 -= lr*mh1/(Math.sqrt(vh1)+eps);
+      w2 -= lr*mh2/(Math.sqrt(vh2)+eps);
+    } else {
+      w1 -= lr*mh1;
+      w2 -= lr*mh2;
+    }
+    path.push([w1,w2]);
+    lossHist.push(trueLoss(w1,w2));
+    stepCount++;
+  }
+
+  // --- Rendering ---
+  var contourData = null;
+  function getContour() {
+    if (contourData) return contourData;
+    var res=60, xg=[], yg=[], zg=[];
+    // Range centered on trajectory from (0,0) to optimum
+    var xlo=-2, xhi=8, ylo=-12, yhi=4;
+    for (var i=0; i<res; i++) { xg.push(xlo+(xhi-xlo)*i/(res-1)); yg.push(ylo+(yhi-ylo)*i/(res-1)); }
+    for (var i=0; i<res; i++) { var row=[]; for(var j=0;j<res;j++) row.push(Math.sqrt(trueLoss(xg[j],yg[i]))); zg.push(row); }
+    contourData = {xg:xg, yg:yg, zg:zg};
+    return contourData;
+  }
+
+  function render() {
+    var c = getContour();
+    // z = sqrt(loss), contours at 1,2,3,...,10 → loss levels 1,4,9,...,100
+    var traces = [
+      {x:c.xg, y:c.yg, z:c.zg, type:'contour', colorscale:'YlOrRd', showscale:false,
+       autocontour:false, contours:{start:1, end:10, size:1},
+       line:{width:0.5}, opacity:0.7}
+    ];
+    // Optimum marker
+    traces.push({x:[wOpt1], y:[wOpt2], mode:'markers', marker:{size:10, color:'#27ae60', symbol:'star'}, showlegend:false, name:'Optimum'});
+    // Path
+    if (path.length > 1) {
+      traces.push({x:path.map(function(p){return p[0];}), y:path.map(function(p){return p[1];}),
+        mode:'lines+markers', line:{width:2, color:'#e74c3c'}, marker:{size:2, color:'#e74c3c'}, showlegend:false});
+    }
+    // Current position
+    if (path.length > 0) {
+      var last=path[path.length-1];
+      traces.push({x:[last[0]], y:[last[1]], mode:'markers', marker:{size:10, color:'#e74c3c', symbol:'circle'}, showlegend:false});
+    }
+    Plotly.react('adam-contour-plot', traces, Object.assign({
+      xaxis:{title:'w\u2081', range:[-2,8]}, yaxis:{title:'w\u2082', range:[-12,4]},
+      margin:{t:5,r:10,b:35,l:45}, font:{size:12}
+    }, pBg), pCfg);
+    // Loss plot
+    var lt = [], xIdx=[]; for(var ii=0;ii<lossHist.length;ii++) xIdx.push(ii);
+    var xBIdx=[]; for(var ii=0;ii<batchLossHist.length;ii++) xBIdx.push(ii+1);
+    if (batchLossHist.length > 0) lt.push({x:xBIdx, y:batchLossHist, mode:'lines', name:'Mini-batch loss', line:{width:1.5, color:'#e74c3c'}});
+    if (lt.length) Plotly.react('adam-loss-plot', lt, Object.assign({
+      xaxis:{title:'Step'},
+      yaxis:{title:'MSE', range:[0, 0.6]},
+      margin:{t:5,r:10,b:35,l:50}, font:{size:12},
+      legend:{x:0.5,y:0.99,bgcolor:'rgba(255,255,255,0.8)',font:{size:9}}
+    }, pBg), pCfg);
+  }
+
+  function animate() {
+    if (stepCount >= 500) { stopAnim(); return; }
+    doStep();
+    document.getElementById('adam-step-label').textContent = 'Step '+stepCount;
+    render();
+    animId = setTimeout(animate, 50);
+  }
+  function stopAnim() { if(animId){clearTimeout(animId); animId=null;} }
+
+  // --- Presets (Next button) ---
+  var presets = [
+    {b1:0, b2:0, lr:-0.3, B:6, text:'<strong>1/4 — Vanilla SGD:</strong> No momentum, no adaptive rates (β₁=β₂=0). The trajectory follows the raw gradient &mdash; noisy and oscillating, especially in narrow valleys.'},
+    {b1:0.9, b2:0, lr:-0.5, B:6, text:'<strong>2/4 — SGD + Momentum:</strong> β₁=0.9 smooths the gradient via an exponential moving average. The trajectory is more stable and accelerates through flat regions.'},
+    {b1:0, b2:0.999, lr:-0.7, B:6, text:'<strong>3/4 — RMSprop-like:</strong> β₂=0.999 adapts the step size per parameter by tracking gradient magnitudes. Helps with ill-conditioned loss landscapes.'},
+    {b1:0.9, b2:0.999, lr:-0.7, B:6, text:'<strong>4/4 — Full Adam:</strong> Both momentum (β₁) and adaptive rates (β₂). The default optimizer &mdash; fast, stable convergence in most settings.'}
+  ];
+  var presetIdx = -1;
+
+  function applyPreset(p) {
+    document.getElementById('adam-lr').value = p.lr;
+    document.getElementById('adam-lr-val').textContent = Math.pow(10,p.lr).toFixed(3);
+    document.getElementById('adam-b1').value = p.b1;
+    document.getElementById('adam-b1-val').textContent = p.b1.toFixed(2);
+    document.getElementById('adam-b2').value = p.b2;
+    document.getElementById('adam-b2-val').textContent = p.b2.toFixed(3);
+    document.getElementById('adam-B').value = p.B;
+    document.getElementById('adam-B-val').textContent = Math.pow(2,p.B);
+    document.getElementById('adam-narr-text').innerHTML = presets[presetIdx].text;
+  }
+
+  // --- Slider display updates ---
+  document.getElementById('adam-lr').addEventListener('input', function() {
+    document.getElementById('adam-lr-val').textContent = Math.pow(10,parseFloat(this.value)).toFixed(3);
+  });
+  document.getElementById('adam-b1').addEventListener('input', function() {
+    document.getElementById('adam-b1-val').textContent = parseFloat(this.value).toFixed(2);
+  });
+  document.getElementById('adam-b2').addEventListener('input', function() {
+    document.getElementById('adam-b2-val').textContent = parseFloat(this.value).toFixed(3);
+  });
+  document.getElementById('adam-B').addEventListener('input', function() {
+    document.getElementById('adam-B-val').textContent = Math.pow(2,parseInt(this.value));
+  });
+
+  // --- Buttons ---
+  document.getElementById('adam-run-btn').addEventListener('click', function(e) {
+    e.preventDefault(); e.stopPropagation();
+    if (animId) { stopAnim(); return; }
+    if (stepCount === 0) initState();
+    animate();
+  });
+  document.getElementById('adam-reset-btn').addEventListener('click', function(e) {
+    e.preventDefault(); e.stopPropagation();
+    stopAnim(); initState();
+    document.getElementById('adam-step-label').textContent = '';
+    render();
+  });
+  document.getElementById('adam-next-btn').addEventListener('click', function(e) {
+    e.preventDefault(); e.stopPropagation();
+    stopAnim();
+    presetIdx = (presetIdx + 1) % presets.length;
+    applyPreset(presets[presetIdx]);
+    initState();
+    document.getElementById('adam-step-label').textContent = '';
+    animate();
+  });
+
+  function init(e) {
+    if (!(e.currentSlide && e.currentSlide.querySelector('#adam-contour-plot'))) return;
+    stopAnim(); initState();
+    document.getElementById('adam-step-label').textContent = '';
+    document.getElementById('adam-narr-text').innerHTML = 'Click <strong>Next →</strong> to cycle through optimizer variants: SGD → Momentum → RMSprop → Adam.';
+    presetIdx = -1;
+    render();
+  }
+  Reveal.on('slidechanged', init); Reveal.on('ready', init);
+})();
+
+// ================================================================
+// DEMO: Learning Rate Schedules (slide 15)
+// ================================================================
+(function() {
+  function render(e) {
+    if (!(e.currentSlide && (e.currentSlide.querySelector('#lr-step-plot')))) return;
+    var epochs = []; for (var i = 0; i <= 100; i++) epochs.push(i);
+    var lr0 = 0.1;
+    // Step decay
+    var stepLR = epochs.map(function(e) { return lr0 * Math.pow(0.1, Math.floor(e/30)); });
+    Plotly.react('lr-step-plot', [{x:epochs,y:stepLR,mode:'lines',line:{width:2,color:'#2980b9'},showlegend:false}],
+      Object.assign({xaxis:{title:'epoch',range:[0,100]},yaxis:{title:'\u03b7',range:[0,0.12],tickformat:'.3f'},margin:{t:5,r:5,b:30,l:40},font:{size:10}},pBg),pCfg);
+    // Cosine
+    var cosLR = epochs.map(function(e) { return lr0*0.5*(1+Math.cos(Math.PI*e/100)); });
+    Plotly.react('lr-cosine-plot', [{x:epochs,y:cosLR,mode:'lines',line:{width:2,color:'#e67e22'},showlegend:false}],
+      Object.assign({xaxis:{title:'epoch',range:[0,100]},yaxis:{title:'\u03b7',range:[0,0.12],tickformat:'.3f'},margin:{t:5,r:5,b:30,l:40},font:{size:10}},pBg),pCfg);
+    // Warmup + decay
+    var warmLR = epochs.map(function(e) { return e<10 ? lr0*e/10 : lr0*0.5*(1+Math.cos(Math.PI*(e-10)/90)); });
+    Plotly.react('lr-warmup-plot', [{x:epochs,y:warmLR,mode:'lines',line:{width:2,color:'#27ae60'},showlegend:false}],
+      Object.assign({xaxis:{title:'epoch',range:[0,100]},yaxis:{title:'\u03b7',range:[0,0.12],tickformat:'.3f'},margin:{t:5,r:5,b:30,l:40},font:{size:10}},pBg),pCfg);
+  }
+  Reveal.on('slidechanged', render); Reveal.on('ready', render);
+})();
+
+// ================================================================
+// DEMO: Overfitting plot (slide 16)
+// ================================================================
+(function() {
+  function render(e) {
+    if (!(e.currentSlide && e.currentSlide.querySelector('#overfit-plot'))) return;
+    var epochs = []; for (var i = 1; i <= 100; i++) epochs.push(i);
+    var trainL = epochs.map(function(e) { return 2*Math.exp(-0.08*e) + 0.01; });
+    var testL = epochs.map(function(e) { return 2*Math.exp(-0.08*e) + 0.01 + 0.0008*e*e*Math.exp(-0.02*e) + (e>30 ? 0.003*(e-30) : 0); });
+    // Find epoch of minimum test loss
+    var minVal = Infinity, minEp = 1;
+    for (var i = 0; i < testL.length; i++) { if (testL[i] < minVal) { minVal = testL[i]; minEp = epochs[i]; } }
+    Plotly.react('overfit-plot', [
+      {x:epochs, y:trainL, mode:'lines', name:'Train loss', line:{width:2.5, color:'#2980b9'}},
+      {x:epochs, y:testL, mode:'lines', name:'Validation loss', line:{width:2.5, color:'#e74c3c', dash:'dash'}}
+    ], Object.assign({
+      xaxis:{title:'Epoch'}, yaxis:{title:'Loss',range:[0,2.5]},
+      margin:{t:10,r:20,b:35,l:45}, font:{size:13}, legend:{x:0.65,y:0.95},
+      shapes:[{type:'line', x0:minEp, x1:minEp, y0:0, y1:2.4, line:{color:'#27ae60', width:2.5, dash:'dot'}}],
+      annotations:[
+        {x:minEp-2, y:2.2, text:'← learning generalizable<br>&nbsp;&nbsp;&nbsp;features', showarrow:false, font:{size:12, color:'#27ae60'}, xanchor:'right'},
+        {x:minEp+2, y:2.2, text:'memorizing noise →', showarrow:false, font:{size:12, color:'#e74c3c'}, xanchor:'left'},
+        {x:minEp, y:minVal-0.15, text:'stop here', showarrow:true, arrowhead:2, arrowcolor:'#27ae60', font:{size:12, color:'#27ae60', weight:'bold'}, ay:40}
+      ]
+    }, pBg), pCfg);
+  }
+  Reveal.on('slidechanged', render); Reveal.on('ready', render);
+})();
+
+
+
+
+// ================================================================
+// DEMO: Spectral Bias / Overfitting (signal to noise)
+// ================================================================
+(function() {
+  function targetFn(x) { return Math.sin(2*Math.PI*x); }
+
+  var net = null, epoch = 0, animId = null;
+  var trainX=[], trainY=[], valX=[], valY=[];
+  var trainLoss=[], valLoss=[];
+
+  function genData() {
+    var rng = createRNG(42);
+    trainX=[]; trainY=[]; valX=[]; valY=[];
+    // 60 train + 200 validation, x in [-1,1], noise sigma=0.15
+    for (var i = 0; i < 60; i++) {
+      var x = -1 + 2*rng();
+      trainX.push(x); trainY.push(targetFn(x) + 0.45*boxMuller(rng));
+    }
+    for (var i = 0; i < 200; i++) {
+      var x = -1 + 2*rng();
+      valX.push(x); valY.push(targetFn(x) + 0.45*boxMuller(rng));
+    }
+  }
+
+  function reset() {
+    if (animId) { clearTimeout(animId); animId = null; }
+    genData();
+    net = new MLPRegL4([1, 64, 64, 64, 64, 1], Math.floor(Math.random()*99999) + 1, 'gelu');
+    epoch = 0; trainLoss=[]; valLoss=[];
+    document.getElementById('sb-epoch-label').textContent = '';
+    renderAll();
+  }
+
+  function computeMSE(X, Y) {
+    var s = 0;
+    for (var i = 0; i < X.length; i++) {
+      var p = net.forward([X[i]], 0); var d = p - Y[i]; s += d*d;
+    }
+    return s / X.length;
+  }
+
+  function renderAll() {
+    var xF=[]; for (var t=-1; t<=1; t+=0.01) xF.push(t);
+    var yT = xF.map(targetFn);
+    var yP = xF.map(function(x) { return net.forward([x], 0); });
+
+    Plotly.react('sb-fit-plot', [
+      {x:xF, y:yT, mode:'lines', name:'True f(x)', line:{width:2, color:'#bdc3c7', dash:'dash'}},
+      {x:trainX, y:trainY, mode:'markers', name:'Train', marker:{size:5, color:'#2980b9', opacity:0.7}},
+      {x:valX, y:valY, mode:'markers', name:'Val', marker:{size:3, color:'#e67e22', opacity:0.4}},
+      {x:xF, y:yP, mode:'lines', name:'MLP fit', line:{width:2.5, color:'#e74c3c'}}
+    ], Object.assign({xaxis:{title:'x',range:[-1.1,1.1]}, yaxis:{title:'f(x)',range:[-2,2]}, margin:{t:5,r:10,b:35,l:45}, font:{size:12}, legend:{x:0.01,y:0.99,font:{size:9}}}, pBg), pCfg);
+
+    // Loss plot
+    if (trainLoss.length > 0) {
+      var xEp=[]; for (var i=0; i<trainLoss.length; i++) xEp.push(i+1);
+      Plotly.react('sb-loss-plot', [
+        {x:xEp, y:trainLoss, mode:'lines', name:'Train MSE', line:{width:2, color:'#2980b9'}},
+        {x:xEp, y:valLoss, mode:'lines', name:'Val MSE', line:{width:2, color:'#e67e22'}}
+      ], Object.assign({xaxis:{title:'Epoch'}, yaxis:{title:'MSE', type:'log'}, margin:{t:5,r:10,b:35,l:50}, font:{size:12}, legend:{x:0.55,y:0.98,font:{size:9}}}, pBg), pCfg);
+    }
+  }
+
+  var warmupEpochs = 50;
+  var baseLr = 4.0;
+  function trainStep() {
+    var lr = epoch < warmupEpochs ? baseLr * (epoch + 1) / warmupEpochs : baseLr;
+    for (var i = 0; i < trainX.length; i++) {
+      net.forward([trainX[i]], 0);
+      net.backward(trainY[i], lr / trainX.length, 0);
+    }
+    trainLoss.push(computeMSE(trainX, trainY));
+    valLoss.push(computeMSE(valX, valY));
+    epoch++;
+    document.getElementById('sb-epoch-label').textContent = 'Epoch: ' + epoch;
+  }
+
+  function trainLoop() {
+    for (var i = 0; i < 6; i++) trainStep();
+    renderAll();
+    if (epoch < 5000) animId = setTimeout(trainLoop, 50);
+    else { if (animId) { clearTimeout(animId); animId = null; } }
+  }
+
+  document.getElementById('sb-train-btn').addEventListener('click', function(e) {
+    e.preventDefault(); e.stopPropagation();
+    if (animId) { clearTimeout(animId); animId = null; return; }
+    trainLoop();
+  });
+  document.getElementById('sb-reset-btn').addEventListener('click', function(e) {
+    e.preventDefault(); e.stopPropagation();
+    if (animId) { clearTimeout(animId); animId = null; }
+    reset();
+  });
+  function init(e) {
+    if (!(e.currentSlide && e.currentSlide.querySelector('#sb-fit-plot'))) return;
+    reset();
+  }
+  Reveal.on('slidechanged', init); Reveal.on('ready', init);
+})();
+
+// ================================================================
+// DEMO: Double Descent plot
+// ================================================================
+(function() {
+  function render(e) {
+    if (!(e.currentSlide && e.currentSlide.querySelector('#dd-plot'))) return;
+    // Generate a synthetic double descent curve
+    var params = []; for (var i = 1; i <= 200; i++) params.push(i);
+    var interpThresh = 50; // interpolation threshold
+    var testErr = params.map(function(p) {
+      if (p < interpThresh) {
+        // Classical regime: decreasing then increasing
+        return 1.5*Math.exp(-0.04*p) + 0.3 + 0.8*Math.exp(-0.5*Math.pow((p-interpThresh)/8, 2)) * (p/interpThresh);
+      } else if (p < interpThresh + 15) {
+        // Peak around interpolation threshold
+        return 0.3 + 1.2*Math.exp(-0.5*Math.pow((p-interpThresh)/6, 2));
+      } else {
+        // Overparameterized: decreasing again
+        return 0.3 + 0.15*Math.exp(-0.02*(p-interpThresh-15)) + 0.05;
+      }
+    });
+    var trainErr = params.map(function(p) {
+      return p < interpThresh ? 0.5*Math.exp(-0.06*p) + 0.05 : 0.01;
+    });
+    Plotly.react('dd-plot', [
+      {x:params, y:trainErr, mode:'lines', name:'Train error', line:{width:2, color:'#2980b9'}},
+      {x:params, y:testErr, mode:'lines', name:'Test error', line:{width:2.5, color:'#e74c3c'}},
+      {x:[interpThresh,interpThresh], y:[0,1.6], mode:'lines', name:'Interpolation threshold', line:{width:2, color:'#7f8c8d', dash:'dot'}}
+    ], Object.assign({
+      xaxis:{title:'Model complexity (# parameters)',range:[0,200]},
+      yaxis:{title:'Error',range:[0,1.8]},
+      margin:{t:10,r:20,b:35,l:45}, font:{size:13},
+      legend:{x:0.5,y:0.95},
+      annotations:[
+        {x:25,y:1.2,text:'Underfitting',showarrow:false,font:{size:11,color:'#7f8c8d'}},
+        {x:50,y:1.65,text:'Classical<br>overfitting',showarrow:false,font:{size:11,color:'#e74c3c'}},
+        {x:140,y:0.55,text:'Overparameterized<br>(modern regime)',showarrow:false,font:{size:11,color:'#27ae60'}},
+        {x:25,y:1.75,text:'<b>Classical ML</b>',showarrow:false,font:{size:13,color:'#2980b9'}},
+        {x:140,y:1.75,text:'<b>Modern deep learning</b>',showarrow:false,font:{size:13,color:'#8e44ad'}}
+      ]
+    }, pBg), pCfg);
+  }
+  Reveal.on('slidechanged', render); Reveal.on('ready', render);
+})();
+
+// ================================================================
+// DEMO: He Initialization Explorer
+// ================================================================
+(function() {
+  var nLayers = 5, dim = 128;
+  var weights = [], biases = [], activations = [];
+  var layerColors = ['#3498db','#e67e22','#e74c3c','#9b59b6','#27ae60'];
+
+  function randn() {
+    var u = 0, v = 0;
+    while (u === 0) u = Math.random();
+    while (v === 0) v = Math.random();
+    return Math.sqrt(-2.0 * Math.log(u)) * Math.cos(2.0 * Math.PI * v);
+  }
+
+  function sample() {
+    var scale = Math.pow(10, parseFloat(document.getElementById('he-scale').value));
+    var mu = parseFloat(document.getElementById('he-mu').value);
+    var sigma = Math.pow(10, parseFloat(document.getElementById('he-sigma').value));
+    var heStd = Math.sqrt(2.0 / dim) * scale;
+
+    // Input
+    var x = [];
+    for (var i = 0; i < dim; i++) x.push(mu + sigma * randn());
+
+    var useLN = document.getElementById('he-layernorm').checked;
+    weights = []; biases = []; activations = [x];
+    for (var l = 0; l < nLayers; l++) {
+      var W = [], b = [];
+      for (var i = 0; i < dim; i++) {
+        var row = [];
+        for (var j = 0; j < dim; j++) row.push(heStd * randn());
+        W.push(row);
+        b.push(0);
+      }
+      weights.push(W); biases.push(b);
+      // Forward pass: ReLU for hidden layers, linear for last layer
+      var y = [];
+      for (var i = 0; i < dim; i++) {
+        var s = b[i];
+        for (var j = 0; j < dim; j++) s += W[i][j] * x[j];
+        y.push(l < nLayers - 1 ? Math.max(0, s) : s);
+      }
+      // LayerNorm: normalize across the 128 features
+      if (useLN) {
+        var mn = 0; for (var i = 0; i < dim; i++) mn += y[i]; mn /= dim;
+        var vr = 0; for (var i = 0; i < dim; i++) vr += (y[i]-mn)*(y[i]-mn); vr /= dim;
+        var sd = Math.sqrt(vr + 1e-5);
+        for (var i = 0; i < dim; i++) y[i] = (y[i] - mn) / sd;
+      }
+      activations.push(y);
+      x = y;
+    }
+  }
+
+  function renderHistograms() {
+    var panel = document.getElementById('he-hist-panel');
+    // Create subplot divs on first call
+    if (!panel.querySelector('.he-hist-div')) {
+      panel.innerHTML = '';
+      for (var l = 0; l <= nLayers; l++) {
+        var d = document.createElement('div');
+        d.className = 'he-hist-div';
+        d.id = 'he-hist-' + l;
+        d.style.cssText = 'flex:1; min-height:0;';
+        panel.appendChild(d);
+      }
+    }
+    for (var l = 0; l <= nLayers; l++) {
+      var vals = activations[l];
+      var isInput = l === 0;
+      var isOutput = l === nLayers;
+      var label = isInput ? 'Input x' : (isOutput ? 'Output y' : 'h⁽' + l + '⁾');
+      var color = isInput ? '#7f8c8d' : layerColors[l-1];
+      // Compute stats
+      var mn = vals.reduce(function(a,b){return a+b;},0) / vals.length;
+      var v = vals.reduce(function(a,b){return a + (b-mn)*(b-mn);},0) / vals.length;
+      var std = Math.sqrt(v);
+      var xRange = [-3, 3];
+      var binStart = -3, binEnd = 3, binSize = 6 / 11;
+      Plotly.react('he-hist-' + l, [{
+        x: vals, type: 'histogram',
+        xbins: {start: binStart, end: binEnd, size: binSize},
+        marker: {color: color, line:{width:0.5, color:'#fff'}},
+        showlegend: false
+      }], Object.assign({
+        xaxis: {title: '', range: xRange, tickfont:{size:9}},
+        yaxis: {title: '', tickfont:{size:9}},
+        margin: {t:18, r:5, b:20, l:30},
+        font: {size:10},
+        annotations: [{
+          x: 0.02, y: 1.0, xref:'paper', yref:'paper', xanchor:'left',
+          text: '<b>' + label + '</b>  σ=' + std.toFixed(3),
+          showarrow: false, font:{size:10, color: color}
+        }]
+      }, pBg), pCfg);
+    }
+  }
+
+  function renderNetwork() {
+    var canvas = document.getElementById('he-net-viz');
+    var w = 260, h = 370;
+    // Use SVG for the network diagram
+    var nShow = 6; // neurons shown per layer
+    var totalLayers = nLayers + 2; // input + hidden + output
+    var xStep = w / (totalLayers + 1);
+    var svg = '<svg width="' + w + '" height="' + h + '" style="position:absolute;top:0;left:0;">';
+
+    // Compute layer x positions and mean activation magnitudes for color
+    var layerX = [];
+    for (var l = 0; l < totalLayers; l++) layerX.push(xStep * (l + 1));
+
+    // For each layer, compute mean |activation| for node coloring
+    var maxAct = 1;
+    var layerMeans = [];
+    for (var l = 0; l <= nLayers; l++) {
+      var vals = activations[l];
+      var m = vals.reduce(function(a,b){return a+Math.abs(b);},0) / vals.length;
+      layerMeans.push(m);
+      if (m > maxAct) maxAct = m;
+    }
+    layerMeans.push(layerMeans[layerMeans.length-1]); // output placeholder
+
+    function neuronY(idx) {
+      return 40 + idx * ((h - 80) / (nShow - 1));
+    }
+
+    // Draw connections (faint)
+    for (var l = 0; l < totalLayers - 1; l++) {
+      for (var i = 0; i < nShow; i++) {
+        for (var j = 0; j < nShow; j++) {
+          svg += '<line x1="'+layerX[l]+'" y1="'+neuronY(i)+'" x2="'+layerX[l+1]+'" y2="'+neuronY(j)+'" stroke="rgba(150,150,150,0.12)" stroke-width="0.5"/>';
+        }
+      }
+    }
+
+    // Draw neurons
+    var labels = ['In'].concat(Array.from({length:nLayers},function(_,i){return 'H'+(i+1);})).concat(['Out']);
+    for (var l = 0; l < totalLayers; l++) {
+      var intensity = Math.min(1, layerMeans[l] / maxAct);
+      var r, g, b;
+      if (l === 0) { r=127; g=140; b=141; }
+      else {
+        var lc = layerColors[Math.min(l-1, layerColors.length-1)];
+        // Parse hex
+        var hr = parseInt(lc.slice(1,3),16), hg = parseInt(lc.slice(3,5),16), hb = parseInt(lc.slice(5,7),16);
+        r = hr; g = hg; b = hb;
+      }
+      for (var i = 0; i < nShow; i++) {
+        var opacity = 0.3 + 0.7 * intensity;
+        svg += '<circle cx="'+layerX[l]+'" cy="'+neuronY(i)+'" r="7" fill="rgba('+r+','+g+','+b+','+opacity+')" stroke="#fff" stroke-width="0.5"/>';
+      }
+      // Dots to indicate more neurons
+      svg += '<text x="'+layerX[l]+'" y="'+(h-10)+'" text-anchor="middle" font-size="9" fill="#7f8c8d">'+labels[l]+'</text>';
+    }
+    svg += '</svg>';
+    canvas.innerHTML = svg;
+  }
+
+  function update() {
+    sample();
+    renderHistograms();
+  }
+
+  // Slider labels
+  document.getElementById('he-scale').addEventListener('input', function() {
+    document.getElementById('he-scale-val').textContent = Math.pow(10, parseFloat(this.value)).toFixed(2) + '×';
+    update();
+  });
+  document.getElementById('he-mu').addEventListener('input', function() {
+    document.getElementById('he-mu-val').textContent = parseFloat(this.value).toFixed(1);
+    update();
+  });
+  document.getElementById('he-sigma').addEventListener('input', function() {
+    document.getElementById('he-sigma-val').textContent = Math.pow(10, parseFloat(this.value)).toFixed(2);
+    update();
+  });
+  document.getElementById('he-resample').addEventListener('click', function(e) {
+    e.preventDefault(); e.stopPropagation();
+    update();
+  });
+  document.getElementById('he-layernorm').addEventListener('change', function() {
+    update();
+  });
+
+  function init(e) {
+    if (!(e.currentSlide && e.currentSlide.querySelector('#he-hist-panel'))) return;
+    update();
+  }
+  Reveal.on('slidechanged', init); Reveal.on('ready', init);
+})();
+
+// ================================================================
+// DEMO: Gradient Flow Explorer
+// ================================================================
+(function() {
+  var nLayers = 5, dim = 128;
+  var layerColors = ['#3498db','#e67e22','#e74c3c','#9b59b6','#27ae60'];
+  var currentAct = 'relu';
+  var weights, preacts, acts, gradients;
+
+  function randn() {
+    var u = 0, v = 0;
+    while (u === 0) u = Math.random();
+    while (v === 0) v = Math.random();
+    return Math.sqrt(-2.0 * Math.log(u)) * Math.cos(2.0 * Math.PI * v);
+  }
+
+  function activate(z) {
+    if (currentAct === 'relu') return Math.max(0, z);
+    if (currentAct === 'sigmoid') return 1.0 / (1.0 + Math.exp(-z));
+    /* tanh */ return Math.tanh(z);
+  }
+
+  function activateDeriv(z) {
+    if (currentAct === 'relu') return z > 0 ? 1 : 0;
+    if (currentAct === 'sigmoid') { var s = 1.0/(1.0+Math.exp(-z)); return s*(1-s); }
+    /* tanh */ { var t = Math.tanh(z); return 1 - t*t; }
+  }
+
+  function sample() {
+    var scale = Math.pow(10, parseFloat(document.getElementById('gf-scale').value));
+    var heStd = Math.sqrt(2.0 / dim) * scale;
+
+    // Input: standard normal
+    var x = [];
+    for (var i = 0; i < dim; i++) x.push(randn());
+
+    var useLN = document.getElementById('gf-layernorm').checked;
+    weights = []; preacts = []; acts = [x];
+    // Store LayerNorm stats for backward pass
+    var lnMeans = [], lnStds = [], lnInputs = [];
+    // Forward pass
+    for (var l = 0; l < nLayers; l++) {
+      var W = [];
+      for (var i = 0; i < dim; i++) {
+        var row = [];
+        for (var j = 0; j < dim; j++) row.push(heStd * randn());
+        W.push(row);
+      }
+      weights.push(W);
+      var z = [], a = [];
+      for (var i = 0; i < dim; i++) {
+        var s = 0;
+        for (var j = 0; j < dim; j++) s += W[i][j] * x[j];
+        z.push(s);
+        a.push(l < nLayers - 1 ? activate(s) : s); // last layer linear
+      }
+      preacts.push(z);
+      // LayerNorm
+      if (useLN) {
+        lnInputs.push(a.slice());
+        var mn = 0; for (var i = 0; i < dim; i++) mn += a[i]; mn /= dim;
+        var vr = 0; for (var i = 0; i < dim; i++) vr += (a[i]-mn)*(a[i]-mn); vr /= dim;
+        var sd = Math.sqrt(vr + 1e-5);
+        lnMeans.push(mn); lnStds.push(sd);
+        for (var i = 0; i < dim; i++) a[i] = (a[i] - mn) / sd;
+      }
+      acts.push(a);
+      x = a;
+    }
+
+    // Backward pass: inject a random unit vector as the gradient signal at the output.
+    // This measures how much the gradient attenuates through the network,
+    // independent of any particular loss function.
+    var dout = [];
+    for (var i = 0; i < dim; i++) dout.push(randn());
+    var norm = Math.sqrt(dout.reduce(function(s,v){return s+v*v;},0));
+    for (var i = 0; i < dim; i++) dout[i] /= (norm + 1e-12);
+
+    gradients = [dout]; // gradients[0] = grad at layer nLayers output
+    var delta = dout;
+    for (var l = nLayers - 1; l >= 0; l--) {
+      // LayerNorm backward: d_input = (1/std) * (d_out - mean(d_out) - xhat * mean(d_out * xhat))
+      if (useLN) {
+        var sd = lnStds[l], mn = lnMeans[l];
+        var xhat = [];
+        for (var i = 0; i < dim; i++) xhat.push((lnInputs[l][i] - mn) / sd);
+        var dmu = 0, dxh = 0;
+        for (var i = 0; i < dim; i++) { dmu += delta[i]; dxh += delta[i] * xhat[i]; }
+        dmu /= dim; dxh /= dim;
+        var dlnIn = [];
+        for (var i = 0; i < dim; i++) dlnIn.push((delta[i] - dmu - xhat[i] * dxh) / sd);
+        delta = dlnIn;
+      }
+
+      // dL/dz_l = delta .* act'(preacts[l])
+      var dz = [];
+      for (var i = 0; i < dim; i++) dz.push(delta[i] * (l < nLayers - 1 ? activateDeriv(preacts[l][i]) : 1));
+
+      // dL/da_l = W_l^T * dz
+      var da = [];
+      for (var i = 0; i < dim; i++) {
+        var s = 0;
+        for (var j = 0; j < dim; j++) s += weights[l][j][i] * dz[j];
+        da.push(s);
+      }
+      gradients.push(da);
+      delta = da;
+    }
+    // gradients is [grad_at_output, grad_at_layer5_input, ..., grad_at_layer1_input]
+    // Reverse so index 0 = input side, index nLayers = output side
+    gradients.reverse();
+  }
+
+  function renderHistograms() {
+    var panel = document.getElementById('gf-grad-panel');
+    if (!panel.querySelector('.gf-hist-div')) {
+      panel.innerHTML = '';
+      for (var l = 0; l <= nLayers; l++) {
+        var d = document.createElement('div');
+        d.className = 'gf-hist-div';
+        d.id = 'gf-hist-' + l;
+        d.style.cssText = 'flex:1; min-height:0;';
+        panel.appendChild(d);
+      }
+    }
+    for (var l = 0; l <= nLayers; l++) {
+      var vals = gradients[l];
+      var isInput = l === 0;
+      var isOutput = l === nLayers;
+      var label = isInput ? '∇ Input' : (isOutput ? '∇ y' : '∇ h⁽' + l + '⁾');
+      var color = isInput ? '#7f8c8d' : layerColors[l-1];
+      var mn = vals.reduce(function(a,b){return a+b;},0) / vals.length;
+      var v = vals.reduce(function(a,b){return a+(b-mn)*(b-mn);},0) / vals.length;
+      var std = Math.sqrt(v);
+      Plotly.react('gf-hist-' + l, [{
+        x: vals, type: 'histogram',
+        xbins: {start: -0.3, end: 0.3, size: 0.6 / 11},
+        marker: {color: color, line:{width:0.5, color:'#fff'}},
+        showlegend: false
+      }], Object.assign({
+        xaxis: {title:'', range:[-0.3, 0.3], tickfont:{size:9}},
+        yaxis: {title:'', tickfont:{size:9}},
+        margin: {t:18, r:5, b:20, l:30},
+        font: {size:10},
+        annotations: [{
+          x:0.02, y:1.0, xref:'paper', yref:'paper', xanchor:'left',
+          text: '<b>'+label+'</b>  σ='+std.toExponential(2),
+          showarrow:false, font:{size:10, color:color}
+        }]
+      }, pBg), pCfg);
+    }
+  }
+
+  function renderSummary() {
+    // Bar chart: log10(gradient std) per layer
+    var stds = [];
+    var labels = [];
+    var colors = ['#7f8c8d'];
+    for (var l = 0; l <= nLayers; l++) {
+      var vals = gradients[l];
+      var mn = vals.reduce(function(a,b){return a+b;},0) / vals.length;
+      var v = vals.reduce(function(a,b){return a+(b-mn)*(b-mn);},0) / vals.length;
+      stds.push(Math.sqrt(v));
+      labels.push(l === 0 ? 'Input' : (l === nLayers ? 'y' : 'h'+l));
+      if (l > 0) colors.push(layerColors[l-1]);
+    }
+    Plotly.react('gf-summary', [{
+      x: labels, y: stds, type:'bar',
+      marker: {color: colors},
+      showlegend: false
+    }], Object.assign({
+      xaxis: {title:'Layer', tickfont:{size:11}},
+      yaxis: {title:'σ of gradient', tickfont:{size:10}, titlefont:{size:11}, rangemode:'tozero'},
+      margin: {t:25, r:10, b:35, l:50},
+      font: {size:11},
+      annotations: [{
+        x:0.5, y:1.0, xref:'paper', yref:'paper',
+        text: '<b>Gradient scale per layer</b>',
+        showarrow:false, font:{size:11}
+      }]
+    }, pBg), pCfg);
+  }
+
+  function update() {
+    sample();
+    renderHistograms();
+    renderSummary();
+  }
+
+  function setActiveBtn(act) {
+    currentAct = act;
+    document.querySelectorAll('.gf-act-btn').forEach(function(btn) {
+      if (btn.dataset.act === act) {
+        btn.style.borderColor = '#e74c3c'; btn.style.background = '#fdedec';
+      } else {
+        btn.style.borderColor = '#95a5a6'; btn.style.background = '#f8f9fa';
+      }
+    });
+  }
+
+  document.getElementById('gf-scale').addEventListener('input', function() {
+    document.getElementById('gf-scale-val').textContent = Math.pow(10, parseFloat(this.value)).toFixed(2) + '×';
+    update();
+  });
+  document.querySelectorAll('.gf-act-btn').forEach(function(btn) {
+    btn.addEventListener('click', function(e) {
+      e.preventDefault(); e.stopPropagation();
+      setActiveBtn(this.dataset.act); update();
+    });
+  });
+  document.getElementById('gf-resample').addEventListener('click', function(e) {
+    e.preventDefault(); e.stopPropagation();
+    update();
+  });
+  document.getElementById('gf-layernorm').addEventListener('change', function() {
+    update();
+  });
+
+  function init(e) {
+    if (!(e.currentSlide && e.currentSlide.querySelector('#gf-grad-panel'))) return;
+    update();
+  }
+  Reveal.on('slidechanged', init); Reveal.on('ready', init);
+})();
+
+</script>
+</body></html>

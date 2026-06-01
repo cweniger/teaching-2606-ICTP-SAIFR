@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ML4PhA 2026 — Machine Learning for Physics & Astronomy</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: 'Inter', sans-serif;
+    font-weight: 400;
+    background: #ffffff;
+    color: #2c3e50;
+    min-height: 100vh;
+  }
+  .container {
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 60px 24px;
+  }
+  h1 {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 2.4em;
+    font-weight: 700;
+    color: #2c3e50;
+    margin-bottom: 0.2em;
+  }
+  .subtitle {
+    font-size: 1.1em;
+    color: #7f8c8d;
+    margin-bottom: 2em;
+  }
+  .subtitle a {
+    color: #7f8c8d;
+    text-decoration: none;
+    border-bottom: 1px dotted #7f8c8d;
+  }
+  .subtitle a:hover { color: #2c3e50; }
+  .lecture-list {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+  .lecture-card {
+    display: block;
+    background: #ecf0f1;
+    border: 1px solid #dce1e3;
+    border-radius: 12px;
+    padding: 24px 28px;
+    text-decoration: none;
+    color: inherit;
+    transition: all 0.25s ease;
+  }
+  .lecture-card:hover {
+    border-color: #3498db;
+    background: #e8eef1;
+    transform: translateX(6px);
+    box-shadow: 0 4px 20px rgba(52, 152, 219, 0.12);
+  }
+  .lecture-card .number {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 0.85em;
+    font-weight: 600;
+    color: #3498db;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+  .lecture-card .title {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 1.3em;
+    font-weight: 600;
+    color: #2c3e50;
+    margin-top: 4px;
+  }
+  .lecture-card .description {
+    font-size: 0.9em;
+    color: #7f8c8d;
+    margin-top: 6px;
+    line-height: 1.5;
+  }
+  .lecture-card .topics {
+    display: flex;
+    gap: 8px;
+    margin-top: 12px;
+    flex-wrap: wrap;
+  }
+  .lecture-card .pdf-link {
+    display: inline-block;
+    font-size: 0.8em;
+    color: #3498db;
+    margin-top: 10px;
+    pointer-events: auto;
+  }
+  .lecture-card .pdf-link:hover { text-decoration: underline; }
+  .lecture-card .tag {
+    font-size: 0.75em;
+    background: #dce1e3;
+    color: #555;
+    padding: 3px 10px;
+    border-radius: 20px;
+  }
+  .footer {
+    margin-top: 60px;
+    padding-top: 24px;
+    border-top: 1px solid #dce1e3;
+    font-size: 0.85em;
+    color: #7f8c8d;
+  }
+  .footer a { color: #3498db; text-decoration: none; }
+  .footer a:hover { text-decoration: underline; }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>Machine Learning for<br>Physics & Astronomy</h1>
+  <p class="subtitle">
+    2026 &mdash; <a href="https://grappa.amsterdam" target="_blank">GRAPPA</a> / University of Amsterdam
+    &mdash; Christoph Weniger
+  </p>
+
+  <ul class="lecture-list">
+    <li>
+      <a class="lecture-card" href="material.html">
+        <div class="number">Resources</div>
+        <div class="title">Course Material from Canvas</div>
+        <div class="description">
+          Additional materials, readings, and resources for the course.
+        </div>
+      </a>
+    </li>
+    <li>
+      <a class="lecture-card" href="lecture0.html">
+        <div class="number">Lecture 0</div>
+        <div class="title">Welcome &amp; Course Overview</div>
+        <div class="description">
+          Course structure, grading, lecture topics, and practicalities.
+        </div>
+        <div class="topics">
+          <span class="tag">Course structure</span>
+          <span class="tag">Grading</span>
+          <span class="tag">Projects</span>
+          <span class="tag">Practicalities</span>
+        </div>
+        <span class="pdf-link" onclick="event.preventDefault(); window.open('lecture0.pdf');">PDF</span>
+      </a>
+    </li>
+    <li>
+      <a class="lecture-card" href="lecture1.html">
+        <div class="number">Lecture 1</div>
+        <div class="title">Introduction &amp; Linear Regression</div>
+        <div class="description">
+          What is ML? From basis functions and least squares to the probabilistic view:
+          likelihood, MAP, Bayesian regularisation, overfitting, and validation.
+        </div>
+        <div class="topics">
+          <span class="tag">Basis functions</span>
+          <span class="tag">Maximum likelihood</span>
+          <span class="tag">Bayes' theorem</span>
+          <span class="tag">Regularisation</span>
+          <span class="tag">Overfitting</span>
+          <span class="tag">Validation</span>
+        </div>
+        <span class="pdf-link" onclick="event.preventDefault(); window.open('lecture1.pdf');">PDF</span>
+      </a>
+    </li>
+    <li>
+      <a class="lecture-card" href="lecture2.html">
+        <div class="number">Lecture 2</div>
+        <div class="title">Generative AI: Literacy, Usage &amp; Policy</div>
+        <div class="description">
+          How LLMs work, effective use for learning and coding, UvA &amp; course GenAI policy,
+          tier-based framework, and accountable AI usage.
+        </div>
+        <div class="topics">
+          <span class="tag">LLMs</span>
+          <span class="tag">Prompt engineering</span>
+          <span class="tag">AI for learning</span>
+          <span class="tag">Code generation</span>
+          <span class="tag">GenAI policy</span>
+          <span class="tag">Accountability</span>
+        </div>
+        <span class="pdf-link" onclick="event.preventDefault(); window.open('lecture2.pdf');">PDF</span>
+      </a>
+    </li>
+    <li>
+      <a class="lecture-card" href="lecture3.html">
+        <div class="number">Lecture 3</div>
+        <div class="title">From Classification to Neural Networks</div>
+        <div class="description">
+          Binary classification via Bayes&rsquo; rule and the sigmoid. Cross-entropy loss,
+          gradient descent &amp; SGD, then learnable basis functions: the MLP.
+        </div>
+        <div class="topics">
+          <span class="tag">Logistic regression</span>
+          <span class="tag">Sigmoid &amp; logit</span>
+          <span class="tag">Cross-entropy</span>
+          <span class="tag">Gradient descent</span>
+          <span class="tag">SGD</span>
+          <span class="tag">Neural networks</span>
+          <span class="tag">MLP</span>
+        </div>
+        <span class="pdf-link" onclick="event.preventDefault(); window.open('lecture3.pdf');">PDF</span>
+      </a>
+    </li>
+    <li>
+      <a class="lecture-card" href="lecture4.html">
+        <div class="number">Lecture 4</div>
+        <div class="title">Training Deep Networks</div>
+        <div class="description">
+          Backpropagation in detail, gradient flows, data normalization,
+          Adam &amp; beyond SGD, overparameterisation &amp; generalisation.
+        </div>
+        <div class="topics">
+          <span class="tag">Backpropagation</span>
+          <span class="tag">Adam</span>
+          <span class="tag">Normalization</span>
+          <span class="tag">Double descent</span>
+          <span class="tag">Spectral bias</span>
+        </div>
+        <span class="pdf-link" onclick="event.preventDefault(); window.open('lecture4.pdf');">PDF</span>
+      </a>
+    </li>
+    <li>
+      <a class="lecture-card" href="lecture4b.html">
+        <div class="number">Lecture 4b (extra material - not relevant for exam)</div>
+        <div class="title">Regularisation &amp; What Networks Learn</div>
+        <div class="description">
+          Shaping the training trajectory with weight decay, dropout, and batch normalisation.
+          What hidden layers learn: progressive disentanglement of representations.
+        </div>
+        <div class="topics">
+          <span class="tag">Weight decay</span>
+          <span class="tag">Dropout</span>
+          <span class="tag">Batch normalisation</span>
+          <span class="tag">Hidden representations</span>
+          <span class="tag">Regularisation</span>
+        </div>
+        <span class="pdf-link" onclick="event.preventDefault(); window.open('lecture4b.pdf');">PDF</span>
+      </a>
+    </li>
+    <li>
+      <a class="lecture-card" href="lecture5.html">
+        <div class="number">Lecture 5</div>
+        <div class="title">Convolutional Neural Networks</div>
+        <div class="description">
+          From colour channels to semantic channels. 2D convolutions step by step,
+          multiple channels, ReLU, max pooling. CNN architectures (LeNet-5, ResNet),
+          skip connections, and interpreting what CNNs learn.
+        </div>
+        <div class="topics">
+          <span class="tag">CNNs</span>
+          <span class="tag">Convolutions</span>
+          <span class="tag">ReLU</span>
+          <span class="tag">Max pooling</span>
+          <span class="tag">LeNet-5</span>
+          <span class="tag">ResNet</span>
+          <span class="tag">Feature hierarchy</span>
+        </div>
+        <span class="pdf-link" onclick="event.preventDefault(); window.open('lecture5.pdf');">PDF</span>
+      </a>
+    </li>
+    <li>
+      <a class="lecture-card" href="lecture6.html">
+        <div class="number">Lecture 6</div>
+        <div class="title">Simulation-Based Inference and Normalising Flows</div>
+        <div class="description">
+          Classifiers are Bayesian in the infinite-data limit. Swapping the image
+          dataset for a physics simulator gives simulation-based inference (SBI).
+          Normalising flows as flexible conditional densities for neural posterior
+          estimation.
+        </div>
+        <div class="topics">
+          <span class="tag">SBI</span>
+          <span class="tag">NPE</span>
+          <span class="tag">Bayes</span>
+          <span class="tag">Cross-entropy</span>
+          <span class="tag">Normalising flows</span>
+          <span class="tag">Coupling layers</span>
+          <span class="tag">Change of variables</span>
+        </div>
+        <span class="pdf-link" onclick="event.preventDefault(); window.open('lecture6.pdf');">PDF</span>
+      </a>
+    </li>
+    <li>
+      <a class="lecture-card" href="lecture7.html">
+        <div class="number">Lecture 7</div>
+        <div class="title">Transformers &amp; Large Language Models</div>
+        <div class="description">
+          Language modelling as next-token classification. Inside the Transformer block:
+          self-attention, multihead, causal masking, layer norm, residuals. Pretraining,
+          SFT, RLHF, and autoregressive sampling.
+        </div>
+        <div class="topics">
+          <span class="tag">Tokenisation</span>
+          <span class="tag">Self-attention</span>
+          <span class="tag">Q/K/V</span>
+          <span class="tag">Multihead</span>
+          <span class="tag">Causal mask</span>
+          <span class="tag">Positional encoding</span>
+          <span class="tag">Layer norm</span>
+          <span class="tag">Pretraining</span>
+          <span class="tag">SFT / RLHF</span>
+        </div>
+        <span class="pdf-link" onclick="event.preventDefault(); window.open('lecture7.pdf');">PDF</span>
+      </a>
+    </li>
+  </ul>
+
+  <div class="footer">
+    <p>
+      Course materials for ML4PhA 2026.
+      Built with <a href="https://revealjs.com" target="_blank">reveal.js</a>.
+    </p>
+  </div>
+</div>
+</body>
+</html>

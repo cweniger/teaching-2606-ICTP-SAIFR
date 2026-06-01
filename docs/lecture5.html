@@ -1,0 +1,2712 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Lecture 5: Convolutional Neural Networks</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reveal.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/theme/white.css">
+<style>
+  #bg-canvas { display: none; }
+  .reveal .slides section {
+    background: #ffffff;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+    padding: 30px 40px;
+    box-sizing: border-box;
+    height: 700px !important;
+  }
+  .reveal .slides section.stack {
+    background: none;
+    box-shadow: none;
+    padding: 0;
+    height: auto !important;
+  }
+  .reveal { font-family: 'Inter', sans-serif; font-weight: 400; }
+  .reveal h1, .reveal h2, .reveal h3 { color: #2c3e50; font-family: 'Space Grotesk', sans-serif; font-weight: 700; }
+  .reveal h2 { font-size: 1.2em; margin-bottom: 0.3em; text-align: left; }
+  .reveal .subtitle { font-size: 0.6em; color: #7f8c8d; margin-top: 0.5em; }
+  .reveal section { font-size: 0.66em; }
+  .reveal section.stack { font-size: 1em; }
+  .reveal p { margin: 0.3em 0; }
+  .reveal ul { text-align: left; margin: 0.3em 0; }
+  .reveal li { margin: 0.15em 0; }
+  .reveal .highlight { color: #e74c3c; font-weight: bold; }
+  .reveal .katex { font-size: 0.95em; }
+  .reveal .box {
+    background: #ecf0f1; border-radius: 10px; padding: 12px 16px;
+    margin: 10px 0; text-align: left;
+  }
+  .slide-footer {
+    position: absolute;
+    bottom: 8px;
+    left: 40px;
+    right: 40px;
+    font-size: 10px;
+    color: #bdc3c7;
+    display: flex;
+    justify-content: space-between;
+    pointer-events: none;
+  }
+  .sec-btn {
+    flex: 1; padding: 12px; border: 2px solid #ecf0f1; border-radius: 8px;
+    background: #f8f9fa; cursor: default; font-size: 1em; text-align: center;
+  }
+  .reveal img.fig {
+    max-width: 100%;
+    max-height: 420px;
+    border-radius: 4px;
+  }
+  .reveal img.fig-sm {
+    max-width: 100%;
+    max-height: 300px;
+    border-radius: 4px;
+  }
+  .reveal img.fig-lg {
+    max-width: 100%;
+    max-height: 520px;
+    border-radius: 4px;
+  }
+  .credit {
+    font-size: 0.7em;
+    color: #95a5a6;
+    text-align: center;
+    margin-top: 6px;
+  }
+  .cline { padding: 1px 4px; border-radius: 3px; transition: background 0.15s; }
+  .cline:hover { background: rgba(230,126,34,0.15); }
+  .cline.active { background: rgba(230,126,34,0.25); }
+  .cline-hl { background: rgba(230,126,34,0.10); }
+  #lenet-info-sub .sub-item {
+    cursor: pointer; padding: 3px 6px; margin: 2px 0; border-radius: 4px;
+    border-left: 3px solid #bdc3c7; transition: all 0.15s;
+  }
+  #lenet-info-sub .sub-item:hover { background: #dfe6e9; border-left-color: #e67e22; }
+  #lenet-info-sub .sub-detail {
+    padding: 4px 8px 4px 12px; color: #555; font-size: 0.9em;
+    border-left: 2px solid #e67e22; margin: 2px 0 4px 6px; display: none;
+  }
+</style>
+</head>
+<body>
+<canvas id="bg-canvas"></canvas>
+<div class="reveal">
+<div class="slides">
+
+<!-- ============================================================ -->
+<!-- SLIDE: Title -->
+<!-- ============================================================ -->
+<section>
+  <h1 style="font-size:1.5em;">Machine Learning for<br>Physics &amp; Astronomy 2026</h1>
+  <h3>Lecture 5: Convolutional Neural Networks</h3>
+  <p class="subtitle">Christoph Weniger &mdash; University of Amsterdam (GRAPPA)</p>
+</section>
+
+
+<!-- ============================================================ -->
+<!-- SLIDE: Roadmap -->
+<!-- ============================================================ -->
+<section>
+  <h2>Today's Roadmap</h2>
+  <div style="display:flex; gap:10px; margin-top:20px;">
+    <div class="sec-btn" style="border-color:#2980b9; flex:1;">
+      <strong style="color:#2980b9;">1. Motivation</strong><br>
+      From colour channels<br>to semantic channels
+    </div>
+    <div style="align-self:center; font-size:1.4em; color:#bdc3c7;">&rarr;</div>
+    <div class="sec-btn" style="border-color:#e67e22; flex:1;">
+      <strong style="color:#e67e22;">2. Convolutions</strong><br>
+      The operation, multiple<br>channels, kernels, ReLU, pooling
+    </div>
+    <div style="align-self:center; font-size:1.4em; color:#bdc3c7;">&rarr;</div>
+    <div class="sec-btn" style="border-color:#27ae60; flex:1;">
+      <strong style="color:#27ae60;">3. Architectures</strong><br>
+      LeNet-5, ResNet,<br>skip connections
+    </div>
+    <div style="align-self:center; font-size:1.4em; color:#bdc3c7;">&rarr;</div>
+    <div class="sec-btn" style="border-color:#8e44ad; flex:1;">
+      <strong style="color:#8e44ad;">4. Interpreting CNNs</strong><br>
+      What do networks<br>actually learn?
+    </div>
+  </div>
+  <div class="box" style="margin-top:20px; text-align:center; font-size:1.0em;">
+    <strong>The thread:</strong> In Lectures 3 &amp; 4 we built fully connected neural networks.<br>
+    Today we learn how <strong style="color:#e74c3c;">convolutional layers</strong> exploit spatial structure
+    to go from pixels to semantics.
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<!-- SECTION 1: BRIEF HISTORY (vertical stack)                     -->
+<!-- ============================================================ -->
+<section>
+
+<!-- Summary slide (horizontal) -->
+<section>
+  <h2>Brief History &mdash; From Biology to Deep Learning</h2>
+  <div style="display:flex; gap:24px; margin-top:10px; align-items:flex-start;">
+    <div style="flex:1;">
+      <div style="text-align:center;">
+        <img src="figures/lecture5/feature_hierarchy.png" class="fig" style="max-height:380px;">
+      </div>
+      <p class="credit" style="text-align:center;">Hierarchical feature composition in CNNs.</p>
+    </div>
+    <div style="flex:0.8; font-size:0.78em; color:#2c3e50;">
+      <ul style="line-height:1.8;">
+        <li><strong>1959–62</strong> &mdash; Hubel &amp; Wiesel discover hierarchical receptive fields in the visual cortex.</li>
+        <li><strong>1980</strong> &mdash; Fukushima's Neocognitron: first neural hierarchy for visual pattern recognition.</li>
+        <li><strong>1986</strong> &mdash; Rumelhart et al. introduce backpropagation for training multi-layer networks.</li>
+        <li><strong>1990</strong> &mdash; LeCun trains convolutional networks end-to-end on handwritten digits.</li>
+        <li><strong>2012</strong> &mdash; AlexNet wins ImageNet by a large margin &rarr; deep learning revolution.</li>
+      </ul>
+      <p style="font-size:0.85em; color:#888; margin-top:8px; font-style:italic;">↓ Scroll down for details on each milestone.</p>
+    </div>
+  </div>
+</section>
+
+<!-- SLIDE: Visual perception (vertical) -->
+<section>
+  <h2>Visual Perception &mdash; Hubel &amp; Wiesel, 1959&ndash;1962</h2>
+  <ul>
+    <li>David Hubel and Torsten Wiesel discover the neural basis of <strong>visual perception</strong>.</li>
+    <li>Awarded the Nobel Prize of Medicine in 1981 for their discovery.</li>
+    <li class="fragment">Key insight: neurons in the visual cortex respond to specific <strong>oriented edges</strong> within a local <strong>receptive field</strong>.</li>
+  </ul>
+  <div style="display:flex; gap:20px; margin-top:12px; align-items:center; justify-content:center;">
+    <img src="figures/lecture5/hubel_wiesel_experiment.png" class="fig" style="max-height:300px;">
+    <div style="display:flex; gap:8px;">
+      <img src="figures/lecture5/hubel_photo1.jpeg" style="max-height:150px; border-radius:4px;">
+      <img src="figures/lecture5/hubel_photo2.jpeg" style="max-height:150px; border-radius:4px;">
+    </div>
+  </div>
+</section>
+
+<!-- SLIDE: Receptive fields -->
+<section>
+  <h2>Receptive Fields &mdash; Hubel &amp; Wiesel</h2>
+  <div style="display:flex; gap:20px; margin-top:10px;">
+    <div style="flex:1; text-align:center;">
+      <p><strong>Simple cells</strong></p>
+      <img src="figures/lecture5/receptive_fields_simple.png" class="fig-sm">
+    </div>
+    <div style="flex:1; text-align:center;">
+      <p><strong>Complex cells</strong></p>
+      <img src="figures/lecture5/receptive_fields_complex.png" class="fig-sm">
+    </div>
+  </div>
+  <div class="fragment box" style="margin-top:10px; border-left:4px solid #2980b9;">
+    <strong>Simple cells</strong> respond to oriented edges at specific positions.
+    <strong>Complex cells</strong> pool over simple cells, gaining positional invariance &mdash; a precursor to pooling layers!
+  </div>
+  <p class="credit">Credits: Hubel and Wiesel, Receptive fields, binocular interaction and functional architecture in the cat's visual cortex, 1962.</p>
+</section>
+
+<!-- SLIDE: Neocognitron -->
+<section>
+  <h2>Neocognitron &mdash; Fukushima, 1980</h2>
+  <div style="display:flex; gap:16px; margin-top:8px;">
+    <div style="flex:1;">
+      <ul>
+        <li>Fukushima proposes a direct neural network implementation of the hierarchy model of Hubel and Wiesel.</li>
+        <li class="fragment">Built upon <strong>convolutions</strong> and enables the composition of a <em>feature hierarchy</em>.</li>
+        <li class="fragment">Biologically-inspired training algorithm, which proves to be largely <strong>inefficient</strong>.</li>
+      </ul>
+      <div style="text-align:center; margin-top:12px;">
+        <img src="figures/lecture5/neocognitron_convolutions.png" class="fig-sm" style="max-height:180px;">
+      </div>
+    </div>
+    <div style="flex:1; text-align:center;">
+      <img src="figures/lecture5/neocognitron_hierarchy.png" class="fig" style="max-height:350px;">
+      <p style="text-align:center; margin-top:4px; font-size:0.85em;"><em>Feature hierarchy</em></p>
+      <img src="figures/lecture5/neocognitron_features.png" class="fig-sm" style="max-height:100px; margin-top:4px;">
+    </div>
+  </div>
+  <p class="credit">Credits: Kunihiko Fukushima, Neocognitron: A Self-organizing Neural Network Model, 1980.</p>
+</section>
+
+<!-- SLIDE: Backpropagation -->
+<section>
+  <h2>Backpropagation &mdash; Rumelhart et al. 1986</h2>
+  <div style="display:flex; gap:20px; margin-top:8px;">
+    <div style="flex:1.2;">
+      <ul>
+        <li>Rumelhart and Hinton introduce <strong>backpropagation</strong> in multi-layer networks with sigmoid non-linearities and sum of squares loss function.</li>
+        <li>They advocate for batch gradient descent in supervised learning.</li>
+        <li>Discuss online gradient descent, momentum and random initialization.</li>
+        <li>Depart from <em>biologically plausible</em> training algorithms.</li>
+      </ul>
+      <div class="box fragment" style="margin-top:10px; border-left:4px solid #e67e22;">
+        <strong>Key shift:</strong> mathematical optimisation replaces biological plausibility.
+      </div>
+    </div>
+    <div style="flex:0.8; text-align:center;">
+      <img src="figures/lecture5/backprop_paper.png" class="fig" style="max-height:350px; box-shadow: 0 2px 8px rgba(0,0,0,0.15);">
+    </div>
+  </div>
+  <p class="credit">Credits: Rumelhart et al, Learning representations by back-propagating errors, 1986.</p>
+</section>
+
+<!-- SLIDE: LeCun 1990 -->
+<section>
+  <h2>Convolutional Networks &mdash; LeCun, 1990</h2>
+  <ul>
+    <li>LeCun trains a convolutional network by backpropagation.</li>
+    <li>He advocates for <strong>end-to-end feature learning</strong> in image classification.</li>
+  </ul>
+  <div style="text-align:center; margin-top:16px;">
+    <img src="figures/lecture5/lecun1990_network.png" class="fig">
+  </div>
+  <p class="credit">Credits: LeCun et al, Handwritten Digit Recognition with a Back-Propagation Network, 1990.</p>
+</section>
+
+<!-- SLIDE: AlexNet -->
+<section>
+  <h2>AlexNet &mdash; Krizhevsky et al. 2012</h2>
+  <ul>
+    <li>Krizhevsky trains a convolutional network on ImageNet with two GPUs.</li>
+    <li>16.4% top-5 error on ILSVRC'12, outperforming all other entries by 10% or more.</li>
+    <li class="fragment">This event triggers the <span class="highlight">deep learning revolution</span>.</li>
+  </ul>
+  <div style="text-align:center; margin-top:16px;">
+    <img src="figures/lecture5/alexnet_architecture.png" class="fig">
+  </div>
+</section>
+
+</section><!-- end vertical stack: Brief History -->
+
+<!-- SLIDE: From Binary to Multi-Class Classification (1/2) -->
+<section>
+  <h2>The Classification Problem</h2>
+  <div style="display:flex; gap:24px; margin-top:16px; align-items:flex-start;">
+    <div style="flex:1;">
+      <div class="box" style="border-left:4px solid #888;">
+        <p><strong>What we had (Lecture 3):</strong></p>
+        <ul style="margin-top:6px;">
+          <li>Binary classification (2 classes)</li>
+          <li>Low-dimensional input \(\mathbf{x} \in \mathbb{R}^d\)</li>
+          <li>MLP → 1 logit → sigmoid → probability</li>
+          <li>Binary cross-entropy loss</li>
+        </ul>
+      </div>
+    </div>
+    <div class="fragment" style="flex:1;">
+      <div class="box" style="border-left:4px solid #e67e22;">
+        <p><strong>What we want now:</strong></p>
+        <ul style="margin-top:6px;">
+          <li>\(K = 10\) classes (e.g. CIFAR-10: airplane, car, bird, &hellip;)</li>
+          <li>Input: even tiny colour image \(\mathbf{x} \in \mathbb{R}^{3 \times 32 \times 32}\) &mdash; 3072 values!</li>
+          <li>Network → \(K\) logits → <strong>softmax</strong> → class probabilities</li>
+          <li>Multi-class cross-entropy loss</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+</section>
+
+<!-- SLIDE: Softmax and Cross-Entropy (2/2) -->
+<section>
+  <h2>Softmax &amp; Multi-Class Cross-Entropy</h2>
+  <div style="display:flex; gap:30px; margin-top:16px; align-items:flex-start;">
+    <div style="flex:1;">
+      <div class="box">
+        <p><strong>Softmax</strong> generalises the sigmoid to \(K\) classes:</p>
+        \[p(y = k \mid \mathbf{x}) = \frac{e^{z_k}}{\sum_{j=1}^{K} e^{z_j}}\]
+        <p style="margin-top:8px;">where \(z_1, \ldots, z_K\) are the <em>logits</em> (raw network outputs).</p>
+        <p style="margin-top:8px;">Properties: \(p_k \geq 0\) and \(\sum_k p_k = 1\).</p>
+      </div>
+    </div>
+    <div style="flex:1;">
+      <div class="box">
+        <p><strong>Multi-class cross-entropy loss:</strong></p>
+        \[E = -\frac{1}{N}\sum_{n=1}^{N} \log p(y = y_n \mid \mathbf{x}_n)\]
+        <p style="margin-top:8px;">Minimising this trains the network to assign high probability to the correct class.</p>
+      </div>
+    </div>
+  </div>
+  <div class="fragment box" style="margin-top:16px; text-align:center; border-left:4px solid #c0392b;">
+    <p><strong>The problem:</strong> an MLP on thousands or millions of flattened pixel color values has no notion of spatial structure. We need something <em>before</em> the MLP to extract features from images. That something is the <strong style="color:#e67e22;">convolutional neural network</strong>.</p>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<!-- SECTION 2: CONVOLUTION OPERATIONS                            -->
+<!-- ============================================================ -->
+<section>
+  <div style="display:flex; align-items:center; justify-content:center; height:100%;">
+    <div style="text-align:center;">
+      <h1 style="font-size:2.0em; margin-bottom:0.2em;">Convolution Operations</h1>
+      <div style="width:120px; height:4px; background: linear-gradient(90deg, #e67e22, #27ae60); margin:0 auto; border-radius:2px;"></div>
+      <p style="font-size:0.9em; color:#7f8c8d; margin-top:0.8em;">The core building block of CNNs.</p>
+    </div>
+  </div>
+</section>
+
+<!-- SLIDE: What is a digital image? -->
+<section>
+  <h2>What Is a Digital Image?</h2>
+  <p style="text-align:center; font-size:0.85em; color:#555; margin-top:-2px;">A colour image is a 3D tensor: <strong>3 channels</strong> (Red, Green, Blue) × height × width. Each channel is a grayscale intensity map.</p>
+  <div style="text-align:center; margin-top:12px;">
+    <canvas id="rgb-split-cv" width="1100" height="380"></canvas>
+  </div>
+  <p style="text-align:center; font-size:0.75em; color:#888; margin-top:6px;">
+    Shape in PyTorch: <code style="background:#e8e8e8; padding:1px 5px; border-radius:3px;">(batch, 3, H, W)</code> — e.g. a 64×64 RGB image is <code style="background:#e8e8e8; padding:1px 5px; border-radius:3px;">(1, 3, 64, 64)</code>
+  </p>
+  <script>
+  (function() {
+    const cv = document.getElementById('rgb-split-cv');
+    const ctx = cv.getContext('2d');
+    const SIZE = 64, SCALE = 4;
+    const S = SIZE * SCALE; // displayed size
+
+    // Generate the same procedural image as kernel explorer
+    const img = new Float32Array(3 * SIZE * SIZE);
+    for (let y = 0; y < SIZE; y++) {
+      for (let x = 0; x < SIZE; x++) {
+        const idx = (y * SIZE + x) * 3;
+        let r = 0.4 + 0.3 * (1 - y/SIZE);
+        let g = 0.5 + 0.3 * (1 - y/SIZE);
+        let b = 0.8 + 0.15 * (1 - y/SIZE);
+        if (y > 40) { r = 0.15 + 0.1*Math.random(); g = 0.45 + 0.15*Math.random(); b = 0.1 + 0.05*Math.random(); }
+        if (x >= 10 && x <= 24 && y >= 18 && y <= 42) { r = 0.85; g = 0.2; b = 0.15; }
+        if (x >= 14 && x <= 18 && y >= 24 && y <= 30) { r = 0.95; g = 0.9; b = 0.3; }
+        const dx = x - 45, dy = y - 50;
+        if (dx*dx + dy*dy < 64) { r = 0.15; g = 0.3; b = 0.9; }
+        if (x >= 32 && x <= 34 && y >= 10 && y <= 42) { r = 0.95; g = 0.95; b = 0.95; }
+        if (y >= 10 && y <= 18 && x >= 17 - (18-y) && x <= 17 + (18-y)) { r = 0.95; g = 0.55; b = 0.1; }
+        const fx = x - 55, fy = y - 46;
+        if (fx*fx + fy*fy < 12) { r = 0.7; g = 0.2; b = 0.8; }
+        img[idx] = r; img[idx+1] = g; img[idx+2] = b;
+      }
+    }
+
+    // Helper: render one channel view to a temp canvas, then draw scaled
+    function drawChannel(xOff, yOff, chanIdx, tint) {
+      const tmp = document.createElement('canvas');
+      tmp.width = SIZE; tmp.height = SIZE;
+      const tc = tmp.getContext('2d');
+      const id = tc.createImageData(SIZE, SIZE);
+      for (let i = 0; i < SIZE*SIZE; i++) {
+        const v = Math.round(img[i*3 + chanIdx] * 255);
+        if (tint) {
+          id.data[i*4]   = chanIdx===0 ? v : 0;
+          id.data[i*4+1] = chanIdx===1 ? v : 0;
+          id.data[i*4+2] = chanIdx===2 ? v : 0;
+        } else {
+          id.data[i*4] = v; id.data[i*4+1] = v; id.data[i*4+2] = v;
+        }
+        id.data[i*4+3] = 255;
+      }
+      tc.putImageData(id, 0, 0);
+      ctx.imageSmoothingEnabled = false;
+      ctx.drawImage(tmp, 0, 0, SIZE, SIZE, xOff, yOff, S, S);
+    }
+
+    // Helper: draw full colour image
+    function drawRGB(xOff, yOff) {
+      const tmp = document.createElement('canvas');
+      tmp.width = SIZE; tmp.height = SIZE;
+      const tc = tmp.getContext('2d');
+      const id = tc.createImageData(SIZE, SIZE);
+      for (let i = 0; i < SIZE*SIZE; i++) {
+        id.data[i*4]   = Math.round(img[i*3]*255);
+        id.data[i*4+1] = Math.round(img[i*3+1]*255);
+        id.data[i*4+2] = Math.round(img[i*3+2]*255);
+        id.data[i*4+3] = 255;
+      }
+      tc.putImageData(id, 0, 0);
+      ctx.imageSmoothingEnabled = false;
+      ctx.drawImage(tmp, 0, 0, SIZE, SIZE, xOff, yOff, S, S);
+    }
+
+    const GAP = 18;
+    const totalW = S + GAP + S*3 + GAP*2; // RGB + 3 channels
+    const startX = (cv.width - totalW) / 2;
+    const imgY = 30;
+
+    // Draw full colour
+    drawRGB(startX, imgY);
+    ctx.strokeStyle = '#555'; ctx.lineWidth = 1.5;
+    ctx.strokeRect(startX, imgY, S, S);
+
+    // Label
+    ctx.fillStyle = '#2c3e50'; ctx.font = 'bold 14px Inter, sans-serif'; ctx.textAlign = 'center';
+    ctx.fillText('RGB image', startX + S/2, imgY - 10);
+    ctx.fillStyle = '#888'; ctx.font = '12px Inter, sans-serif';
+    ctx.fillText('(3 × 64 × 64)', startX + S/2, imgY + S + 18);
+
+    // Equals sign
+    const eqX = startX + S + GAP/2;
+    ctx.fillStyle = '#888'; ctx.font = 'bold 24px Inter, sans-serif'; ctx.textAlign = 'center';
+    ctx.fillText('=', eqX + 4, imgY + S/2);
+
+    // Draw 3 channels with colour tint
+    const chStartX = startX + S + GAP + 10;
+    const chColors = ['#c0392b','#27ae60','#2980b9'];
+    const chLabels = ['Red (c=0)', 'Green (c=1)', 'Blue (c=2)'];
+
+    for (let c = 0; c < 3; c++) {
+      const cx = chStartX + c * (S + GAP);
+      drawChannel(cx, imgY, c, true);
+      ctx.strokeStyle = chColors[c]; ctx.lineWidth = 2;
+      ctx.strokeRect(cx, imgY, S, S);
+
+      ctx.fillStyle = chColors[c]; ctx.font = 'bold 13px Inter, sans-serif'; ctx.textAlign = 'center';
+      ctx.fillText(chLabels[c], cx + S/2, imgY - 10);
+      ctx.fillStyle = '#888'; ctx.font = '12px Inter, sans-serif';
+      ctx.fillText('(64 × 64)', cx + S/2, imgY + S + 18);
+    }
+
+    // Plus signs between channels
+    ctx.fillStyle = '#888'; ctx.font = 'bold 20px Inter, sans-serif'; ctx.textAlign = 'center';
+    for (let c = 0; c < 2; c++) {
+      const px = chStartX + (c+1) * (S + GAP) - GAP/2;
+      // don't draw, channels are stacked not summed
+    }
+  })();
+  </script>
+</section>
+
+<!-- SLIDE: From Colour Channels to Semantic Channels -->
+<section>
+  <h2>From Colour Channels to Semantic Channels</h2>
+  <div style="text-align:center; margin-top:6px;">
+    <canvas id="semantic-ch-cv" width="1100" height="400"></canvas>
+  </div>
+  <script>
+  (function() {
+    const cv = document.getElementById('semantic-ch-cv');
+    const ctx = cv.getContext('2d');
+    const SIZE = 64, SC_TOP = 1.8, SC_BOT = 1.4;
+    const S_TOP = Math.round(SIZE * SC_TOP);
+    const S_BOT = Math.round(SIZE * SC_BOT);
+
+    // Same procedural image
+    const img = new Float32Array(3 * SIZE * SIZE);
+    for (let y = 0; y < SIZE; y++) {
+      for (let x = 0; x < SIZE; x++) {
+        const idx = (y * SIZE + x) * 3;
+        let r = 0.4 + 0.3 * (1 - y/SIZE), g = 0.5 + 0.3 * (1 - y/SIZE), b = 0.8 + 0.15 * (1 - y/SIZE);
+        if (y > 40) { r = 0.15 + 0.1*Math.random(); g = 0.45 + 0.15*Math.random(); b = 0.1 + 0.05*Math.random(); }
+        if (x >= 10 && x <= 24 && y >= 18 && y <= 42) { r = 0.85; g = 0.2; b = 0.15; }
+        if (x >= 14 && x <= 18 && y >= 24 && y <= 30) { r = 0.95; g = 0.9; b = 0.3; }
+        const dx = x - 45, dy = y - 50;
+        if (dx*dx + dy*dy < 64) { r = 0.15; g = 0.3; b = 0.9; }
+        if (x >= 32 && x <= 34 && y >= 10 && y <= 42) { r = 0.95; g = 0.95; b = 0.95; }
+        if (y >= 10 && y <= 18 && x >= 17 - (18-y) && x <= 17 + (18-y)) { r = 0.95; g = 0.55; b = 0.1; }
+        const fx = x - 55, fy = y - 46;
+        if (fx*fx + fy*fy < 12) { r = 0.7; g = 0.2; b = 0.8; }
+        img[idx] = r; img[idx+1] = g; img[idx+2] = b;
+      }
+    }
+
+    function drawTinted(xOff, yOff, scale, chanIdx) {
+      const S = Math.round(SIZE * scale);
+      const tmp = document.createElement('canvas');
+      tmp.width = SIZE; tmp.height = SIZE;
+      const tc = tmp.getContext('2d');
+      const id = tc.createImageData(SIZE, SIZE);
+      for (let i = 0; i < SIZE*SIZE; i++) {
+        const v = Math.round(img[i*3 + chanIdx] * 255);
+        id.data[i*4] = v; id.data[i*4+1] = v; id.data[i*4+2] = v;
+        id.data[i*4+3] = 255;
+      }
+      tc.putImageData(id, 0, 0);
+      ctx.imageSmoothingEnabled = false;
+      ctx.drawImage(tmp, 0, 0, SIZE, SIZE, xOff, yOff, S, S);
+      return S;
+    }
+
+    // Generate semantic "feature maps" at 8×8 resolution
+    function makeSemantic(label) {
+      const SZ = 8;
+      const map = new Float32Array(SZ * SZ);
+      for (let y = 0; y < SZ; y++) {
+        for (let x = 0; x < SZ; x++) {
+          // Map from original 64×64 image content
+          const ox = Math.round(x * 64 / SZ + 4), oy = Math.round(y * 64 / SZ + 4);
+          let v = 0;
+          if (label === 'rectangles') {
+            // High where the building is
+            if (ox >= 10 && ox <= 24 && oy >= 18 && oy <= 42) v = 0.9;
+            else if (ox >= 14 && ox <= 18 && oy >= 24 && oy <= 30) v = 0.7;
+            else v = 0.05 + 0.1*Math.random();
+          } else if (label === 'circles') {
+            const dx = ox - 45, dy = oy - 50;
+            if (dx*dx + dy*dy < 80) v = 0.9;
+            const fx = ox - 55, fy = oy - 46;
+            if (fx*fx + fy*fy < 20) v = 0.7;
+            else if (v < 0.1) v = 0.05 + 0.1*Math.random();
+          } else if (label === 'green area') {
+            if (oy > 40) v = 0.8 + 0.15*Math.random();
+            else v = 0.05 + 0.05*Math.random();
+          } else if (label === 'sky') {
+            if (oy <= 40) v = 0.7 + 0.1*(1-oy/40);
+            else v = 0.02 + 0.03*Math.random();
+          } else if (label === 'vert. edges') {
+            // edges at building sides, pole
+            if ((ox >= 9 && ox <= 11) || (ox >= 23 && ox <= 25) || (ox >= 31 && ox <= 35)) v = 0.8;
+            else v = 0.05 + 0.1*Math.random();
+          } else if (label === 'triangles') {
+            if (oy >= 10 && oy <= 18 && ox >= 17-(18-oy) && ox <= 17+(18-oy)) v = 0.9;
+            else v = 0.05 + 0.1*Math.random();
+          }
+          map[y * SZ + x] = v;
+        }
+      }
+      return map;
+    }
+
+    function drawSemantic(map, xOff, yOff, scale, color) {
+      const SZ = 8;
+      const S = Math.round(SZ * scale);
+      const cs = scale; // cell size
+      for (let y = 0; y < SZ; y++) {
+        for (let x = 0; x < SZ; x++) {
+          const v = map[y * SZ + x];
+          const bright = Math.round(v * 255);
+          ctx.fillStyle = 'rgb('+bright+','+bright+','+bright+')';
+          ctx.fillRect(xOff + x*cs, yOff + y*cs, cs, cs);
+        }
+      }
+      ctx.strokeStyle = color; ctx.lineWidth = 1.5;
+      ctx.strokeRect(xOff, yOff, SZ*cs, SZ*cs);
+      return SZ * cs;
+    }
+
+    // Layout
+    const topY = 10;
+    const chColors = ['#c0392b','#27ae60','#2980b9'];
+    const chLabels = ['Red (c=0)', 'Green (c=1)', 'Blue (c=2)'];
+    const topGap = 14;
+    const topTotalW = 3 * S_TOP + 2 * topGap;
+    const topStartX = (cv.width - topTotalW) / 2;
+
+    // Draw top row: 3 RGB channels
+    for (let c = 0; c < 3; c++) {
+      const cx = topStartX + c * (S_TOP + topGap);
+      drawTinted(cx, topY + 16, SC_TOP, c);
+      ctx.strokeStyle = chColors[c]; ctx.lineWidth = 2;
+      ctx.strokeRect(cx, topY + 16, S_TOP, S_TOP);
+      ctx.fillStyle = chColors[c]; ctx.font = 'bold 12px Inter, sans-serif'; ctx.textAlign = 'center';
+      ctx.fillText(chLabels[c], cx + S_TOP/2, topY + 10);
+    }
+
+    // Label
+    ctx.fillStyle = '#888'; ctx.font = '12px Inter, sans-serif'; ctx.textAlign = 'center';
+    ctx.fillText('3 colour channels, 64 × 64 each', cv.width/2, topY + S_TOP + 35);
+
+    // Arrow
+    const arrowY1 = topY + S_TOP + 44;
+    const arrowY2 = arrowY1 + 60;
+    ctx.beginPath(); ctx.moveTo(cv.width/2, arrowY1); ctx.lineTo(cv.width/2, arrowY2 - 6);
+    ctx.strokeStyle = '#e67e22'; ctx.lineWidth = 2.5; ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(cv.width/2, arrowY2);
+    ctx.lineTo(cv.width/2 - 6, arrowY2 - 10); ctx.lineTo(cv.width/2 + 6, arrowY2 - 10);
+    ctx.fillStyle = '#e67e22'; ctx.fill();
+    ctx.fillStyle = '#e67e22'; ctx.font = 'bold 14px Inter, sans-serif'; ctx.textAlign = 'center';
+    ctx.fillText('CNN magic ✨', cv.width/2 + 50, arrowY1 + 32);
+
+    // Bottom row: semantic channels
+    const semLabels = ['rectangles', 'circles', 'triangles', 'vert. edges', 'green area', 'sky'];
+    const semColors = ['#c0392b', '#2980b9', '#e67e22', '#555', '#27ae60', '#5dade2'];
+    const semDisplayLabels = ['Rectangles', 'Circles', 'Triangles', 'Vert. edges', 'Green area', 'Sky'];
+    const nSem = semLabels.length;
+    const semCellSz = 11;
+    const semImgSz = 8 * semCellSz; // 104
+    const semGap = 12;
+    const botTotalW = nSem * semImgSz + (nSem-1) * semGap;
+    const botStartX = (cv.width - botTotalW) / 2;
+    const botY = arrowY2 + 20;
+
+    for (let s = 0; s < nSem; s++) {
+      const sx = botStartX + s * (semImgSz + semGap);
+      const map = makeSemantic(semLabels[s]);
+      drawSemantic(map, sx, botY, semCellSz, semColors[s]);
+      ctx.fillStyle = semColors[s]; ctx.font = 'bold 11px Inter, sans-serif'; ctx.textAlign = 'center';
+      ctx.fillText(semDisplayLabels[s], sx + semImgSz/2, botY - 6);
+    }
+
+    // Label
+    ctx.fillStyle = '#888'; ctx.font = '12px Inter, sans-serif'; ctx.textAlign = 'center';
+    ctx.fillText('many semantic channels, 8 × 8 each — lower resolution, richer meaning', cv.width/2, botY + semImgSz + 34);
+
+    // "..." between channels
+    ctx.fillStyle = '#aaa'; ctx.font = 'bold 14px Inter, sans-serif'; ctx.textAlign = 'left';
+    ctx.fillText('...', botStartX + botTotalW + 6, botY + semImgSz/2);
+  })();
+  </script>
+  <ul style="font-size:0.7em; color:#555; margin-top:8px; line-height:1.6; max-width:900px; margin-left:auto; margin-right:auto;">
+    <li>An RGB image has 3 channels that encode <em>colour</em> at high spatial resolution. Each pixel is a mix of red, green, and blue.</li>
+    <li>A CNN transforms these into <strong>many channels</strong> that encode <em>learned semantic concepts</em> (for instance edges, shapes, textures, or anything else useful) at lower resolution. This is the key idea behind convolutional neural networks.</li>
+    <li>Above we show idealised examples. In CNNs semantics is <em>distributed across many channels</em>.</li>
+  </ul>
+</section>
+
+<!-- SLIDE: 2D Convolution — Simple (1 channel, 2x2 kernel on 5x5) -->
+<section>
+  <h2>2D Convolution &mdash; The Basic Idea</h2>
+  <p style="text-align:center; font-size:0.85em; color:#555; margin-top:-2px;">A small kernel slides across the input. At each position: element-wise multiply, then sum.</p>
+  <div style="text-align:center; margin-top:10px;">
+    <canvas id="conv-simple-cv" width="900" height="420"></canvas>
+  </div>
+  <div style="text-align:center; margin-top:6px;">
+    <button id="conv-simple-next" style="padding:6px 22px; font-size:14px; font-family:Inter,sans-serif; font-weight:600; background:#2980b9; color:#fff; border:none; border-radius:5px; cursor:pointer;">Next ▶</button>
+  </div>
+  <script>
+  (function() {
+    const cv = document.getElementById('conv-simple-cv');
+    const ctx = cv.getContext('2d');
+    const btn = document.getElementById('conv-simple-next');
+
+    const input = [[2,1,0,3,1],[1,3,2,1,0],[0,1,3,2,1],[2,0,1,1,3],[1,2,0,2,1]];
+    const kernel = [[1,-1],[-1,1]];
+    const inH = 5, inW = 5, kH = 2, kW = 2;
+    const outH = inH-kH+1, outW = inW-kW+1;
+
+    const output = [];
+    for (let r = 0; r < outH; r++) {
+      output[r] = [];
+      for (let c = 0; c < outW; c++) {
+        let s = 0;
+        for (let ki = 0; ki < kH; ki++)
+          for (let kj = 0; kj < kW; kj++)
+            s += input[r+ki][c+kj] * kernel[ki][kj];
+        output[r][c] = s;
+      }
+    }
+
+    const CELL = 52, GAP = 20;
+    const inX = 60, inY = 40;
+    const kX = 370, kY = 150;
+    const outX = 600, outY = 65;
+
+    const positions = [];
+    for (let r = 0; r < outH; r++)
+      for (let c = 0; c < outW; c++)
+        positions.push([r, c]);
+    const totalPos = positions.length;
+    let step = -1, phase = 0;
+    const filled = [];
+    for (let r = 0; r < outH; r++) { filled[r] = []; for (let c = 0; c < outW; c++) filled[r][c] = false; }
+
+    function drawGrid(data, x0, y0, cs, color, hlR, hlC, hlH, hlW, showProd, kData) {
+      const rows = data.length, cols = data[0].length;
+      for (let r = 0; r < rows; r++) {
+        for (let c = 0; c < cols; c++) {
+          const cx = x0+c*cs, cy = y0+r*cs;
+          const inHl = hlR!==undefined && r>=hlR && r<hlR+hlH && c>=hlC && c<hlC+hlW;
+          ctx.fillStyle = inHl ? color+'22' : '#f9f9f9';
+          ctx.fillRect(cx,cy,cs,cs);
+          ctx.strokeStyle = inHl ? color : '#ccc';
+          ctx.lineWidth = inHl ? 2.5 : 1;
+          ctx.strokeRect(cx,cy,cs,cs);
+          ctx.fillStyle = '#2c3e50';
+          ctx.font = (inHl?'bold ':'') + '16px Space Grotesk, monospace';
+          ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+          let txt = ''+data[r][c];
+          if (inHl && showProd && kData) {
+            const prod = data[r][c] * kData[r-hlR][c-hlC];
+            txt = data[r][c]+'×'+(kData[r-hlR][c-hlC]<0?'('+kData[r-hlR][c-hlC]+')':kData[r-hlR][c-hlC]);
+            ctx.font = 'bold 13px Space Grotesk, monospace';
+            ctx.fillStyle = prod > 0 ? '#27ae60' : prod < 0 ? '#c0392b' : '#888';
+          }
+          ctx.fillText(txt, cx+cs/2, cy+cs/2);
+        }
+      }
+    }
+
+    function draw() {
+      ctx.clearRect(0,0,cv.width,cv.height);
+      let curR=-1, curC=-1, showProd=false;
+      if (step >= 0 && step < totalPos) {
+        curR = positions[step][0]; curC = positions[step][1];
+        showProd = (phase === 1);
+      }
+
+      // Labels
+      ctx.fillStyle = '#2c3e50'; ctx.font = 'bold 16px Inter, sans-serif'; ctx.textAlign = 'center';
+      ctx.fillText('Input (5×5)', inX+inW*CELL/2, inY-12);
+      ctx.fillText('Kernel (2×2)', kX+kW*CELL/2, kY-12);
+      ctx.fillText('Output (4×4)', outX+outW*CELL/2, outY-12);
+
+      // Input grid
+      drawGrid(input, inX, inY, CELL, '#e67e22', curR>=0?curR:undefined, curR>=0?curC:undefined, kH, kW, showProd, showProd?kernel:undefined);
+
+      // Kernel grid
+      for (let r = 0; r < kH; r++) {
+        for (let c = 0; c < kW; c++) {
+          const cx = kX+c*CELL, cy = kY+r*CELL;
+          ctx.fillStyle = '#fef5e7'; ctx.fillRect(cx,cy,CELL,CELL);
+          ctx.strokeStyle = '#e67e22'; ctx.lineWidth = 2; ctx.strokeRect(cx,cy,CELL,CELL);
+          ctx.fillStyle = '#2c3e50'; ctx.font = 'bold 18px Space Grotesk, monospace';
+          ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+          ctx.fillText(''+kernel[r][c], cx+CELL/2, cy+CELL/2);
+        }
+      }
+
+      // Output grid
+      for (let r = 0; r < outH; r++) {
+        for (let c = 0; c < outW; c++) {
+          const cx = outX+c*CELL, cy = outY+r*CELL;
+          const isCur = (r===curR && c===curC);
+          ctx.fillStyle = (isCur && showProd) ? '#27ae6033' : '#f0faf0';
+          ctx.fillRect(cx,cy,CELL,CELL);
+          ctx.strokeStyle = isCur ? '#27ae60' : '#ccc';
+          ctx.lineWidth = isCur ? 2.5 : 1;
+          ctx.strokeRect(cx,cy,CELL,CELL);
+          if (filled[r][c] || (isCur && showProd)) {
+            ctx.fillStyle = (isCur && showProd) ? '#27ae60' : '#2c3e50';
+            ctx.font = ((isCur&&showProd)?'bold ':'') + '16px Space Grotesk, monospace';
+            ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+            ctx.fillText(''+output[r][c], cx+CELL/2, cy+CELL/2);
+          }
+        }
+      }
+
+      // Arrow
+      ctx.beginPath(); ctx.moveTo(inX+inW*CELL+15, inY+inH*CELL/2);
+      ctx.lineTo(kX-15, kY+kH*CELL/2); ctx.strokeStyle='#aaa'; ctx.lineWidth=1.5; ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(kX+kW*CELL+15, kY+kH*CELL/2);
+      ctx.lineTo(outX-15, outY+outH*CELL/2); ctx.strokeStyle='#aaa'; ctx.lineWidth=1.5; ctx.stroke();
+
+      // Calculation text
+      if (step >= 0 && step < totalPos && showProd) {
+        let terms = [];
+        for (let ki = 0; ki < kH; ki++)
+          for (let kj = 0; kj < kW; kj++) {
+            const v = input[curR+ki][curC+kj], k = kernel[ki][kj];
+            terms.push(v+'·'+(k<0?'('+k+')':k));
+          }
+        ctx.fillStyle = '#555'; ctx.font = '14px Space Grotesk, monospace'; ctx.textAlign = 'center';
+        ctx.fillText(terms.join(' + ') + ' = ' + output[curR][curC], cv.width/2, cv.height - 20);
+      }
+
+      if (step >= totalPos) btn.textContent = 'Reset ↺';
+    }
+
+    btn.addEventListener('click', function() {
+      if (step >= totalPos) {
+        step = -1; phase = 0;
+        for (let r=0;r<outH;r++) for(let c=0;c<outW;c++) filled[r][c]=false;
+        btn.textContent = 'Next ▶'; draw(); return;
+      }
+      if (step < 0) { step = 0; phase = 0; }
+      else if (phase === 0) { phase = 1; }
+      else { filled[positions[step][0]][positions[step][1]] = true; step++; phase = 0; }
+      draw();
+    });
+
+    draw();
+  })();
+  </script>
+</section>
+
+<!-- SLIDE: 2D Convolution — Multiple Channels (3 channels, 1 kernel) -->
+<section>
+  <h2>2D Convolution &mdash; Multiple Input Channels</h2>
+  <p style="text-align:center; font-size:0.85em; color:#555; margin-top:-2px;">The kernel spans <strong>all input channels</strong>. At each position: multiply per channel, sum everything → one output value.</p>
+  <div style="text-align:center; margin-top:6px;">
+    <canvas id="conv-mc-cv" width="1050" height="400"></canvas>
+  </div>
+  <div style="text-align:center; margin-top:4px; min-height:22px;">
+    <span id="conv-mc-eq" style="font-size:0.82em; color:#555;">&nbsp;</span>
+  </div>
+  <div style="text-align:center; margin-top:4px;">
+    <button id="conv-mc-next" style="padding:6px 22px; font-size:14px; font-family:Inter,sans-serif; font-weight:600; background:#2980b9; color:#fff; border:none; border-radius:5px; cursor:pointer;">Next ▶</button>
+  </div>
+  <script>
+  (function() {
+    const cv = document.getElementById('conv-mc-cv');
+    const ctx = cv.getContext('2d');
+    const btn = document.getElementById('conv-mc-next');
+    const eqSpan = document.getElementById('conv-mc-eq');
+
+    const C = 3;
+    const input = [
+      [[2,1,0,3],[1,3,2,1],[0,1,3,2],[2,0,1,1]],
+      [[1,0,2,1],[3,1,0,2],[1,2,1,0],[0,3,2,1]],
+      [[0,2,1,1],[1,0,3,1],[2,1,0,3],[1,2,1,0]]
+    ];
+    const kernel = [
+      [[1,0],[-1,1]],
+      [[0,1],[1,-1]],
+      [[-1,0],[0,1]]
+    ];
+    const inH = 4, inW = 4, kH = 2, kW = 2;
+    const outH = inH-kH+1, outW = inW-kW+1;
+    const chColors = ['#c0392b','#27ae60','#2980b9'];
+    const chBg = ['#fdecea','#eafaf1','#ebf5fb'];
+    const chNames = ['c=0','c=1','c=2'];
+
+    const output = [];
+    for (let r = 0; r < outH; r++) {
+      output[r] = [];
+      for (let col = 0; col < outW; col++) {
+        let s = 0;
+        for (let c = 0; c < C; c++)
+          for (let ki = 0; ki < kH; ki++)
+            for (let kj = 0; kj < kW; kj++)
+              s += input[c][r+ki][col+kj] * kernel[c][ki][kj];
+        output[r][col] = s;
+      }
+    }
+
+    const CELL = 40, KCELL = 36, GAP = 12;
+    const inStartX = 30, inY = 50;
+    const kStartX = 30, kY = 260;
+    const outX = 820, outY = 120;
+
+    const positions = [];
+    for (let r = 0; r < outH; r++)
+      for (let c = 0; c < outW; c++)
+        positions.push([r, c]);
+    const totalPos = positions.length;
+    let step = -1, phase = 0;
+    const filled = [];
+    for (let r = 0; r < outH; r++) { filled[r] = []; for (let c = 0; c < outW; c++) filled[r][c] = false; }
+
+    function drawGrid(data, x0, y0, cs, color, bg, label, hlR, hlC, hlH, hlW, showProd, kData) {
+      const rows = data.length, cols = data[0].length;
+      for (let r = 0; r < rows; r++) {
+        for (let c = 0; c < cols; c++) {
+          const cx = x0+c*cs, cy = y0+r*cs;
+          const inHl = hlR!==undefined && r>=hlR && r<hlR+hlH && c>=hlC && c<hlC+hlW;
+          ctx.fillStyle = inHl ? color+'22' : bg;
+          ctx.fillRect(cx,cy,cs,cs);
+          ctx.strokeStyle = inHl ? color : color+'66';
+          ctx.lineWidth = inHl ? 2 : 0.8;
+          ctx.strokeRect(cx,cy,cs,cs);
+          ctx.fillStyle = inHl ? '#2c3e50' : '#666';
+          ctx.font = (inHl?'bold ':'') + '13px Space Grotesk, monospace';
+          ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+          let txt = ''+data[r][c];
+          if (inHl && showProd && kData) {
+            const prod = data[r][c] * kData[r-hlR][c-hlC];
+            ctx.fillStyle = prod > 0 ? '#27ae60' : prod < 0 ? '#c0392b' : '#888';
+            ctx.font = 'bold 12px Space Grotesk, monospace';
+            txt = (prod >= 0 ? '+' : '') + prod;
+          }
+          ctx.fillText(txt, cx+cs/2, cy+cs/2);
+        }
+      }
+      if (label) {
+        ctx.fillStyle = color; ctx.font = 'bold 11px Inter, sans-serif';
+        ctx.textAlign = 'center'; ctx.fillText(label, x0+cols*cs/2, y0-8);
+      }
+    }
+
+    function draw() {
+      ctx.clearRect(0,0,cv.width,cv.height);
+      let curR=-1, curC=-1, showProd=false;
+      if (step >= 0 && step < totalPos) {
+        curR = positions[step][0]; curC = positions[step][1];
+        showProd = (phase === 1);
+      }
+
+      // Section labels
+      ctx.fillStyle = '#2c3e50'; ctx.font = 'bold 13px Inter, sans-serif'; ctx.textAlign = 'left';
+      ctx.fillText('Input (3 × 4 × 4)', inStartX, inY - 20);
+      ctx.fillText('Kernel (3 × 2 × 2)', kStartX, kY - 20);
+
+      // Input channels
+      for (let c = 0; c < C; c++) {
+        const x0 = inStartX + c*(inW*CELL+GAP);
+        drawGrid(input[c], x0, inY, CELL, chColors[c], chBg[c], chNames[c],
+                 curR>=0?curR:undefined, curR>=0?curC:undefined, kH, kW,
+                 showProd, showProd?kernel[c]:undefined);
+      }
+
+      // Kernel channels
+      for (let c = 0; c < C; c++) {
+        const x0 = kStartX + c*(kW*KCELL+GAP);
+        drawGrid(kernel[c], x0, kY, KCELL, chColors[c], chBg[c], chNames[c]);
+      }
+
+      // Output
+      ctx.fillStyle = '#2c3e50'; ctx.font = 'bold 13px Inter, sans-serif'; ctx.textAlign = 'center';
+      ctx.fillText('Output (3 × 3)', outX+outW*CELL/2, outY-20);
+      for (let r = 0; r < outH; r++) {
+        for (let c = 0; c < outW; c++) {
+          const cx = outX+c*CELL, cy = outY+r*CELL;
+          const isCur = (r===curR && c===curC);
+          ctx.fillStyle = (isCur && showProd) ? '#e67e2233' : '#fef9f0';
+          ctx.fillRect(cx,cy,CELL,CELL);
+          ctx.strokeStyle = isCur ? '#e67e22' : '#ddd';
+          ctx.lineWidth = isCur ? 2.5 : 1;
+          ctx.strokeRect(cx,cy,CELL,CELL);
+          if (filled[r][c] || (isCur && showProd)) {
+            ctx.fillStyle = (isCur && showProd) ? '#e67e22' : '#2c3e50';
+            ctx.font = ((isCur&&showProd)?'bold ':'') + '14px Space Grotesk, monospace';
+            ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+            ctx.fillText(''+output[r][c], cx+CELL/2, cy+CELL/2);
+          }
+        }
+      }
+
+      // Arrow
+      const arrowY = (inY+inH*CELL+kY)/2;
+      ctx.beginPath();
+      ctx.moveTo(inStartX+C*(inW*CELL+GAP)+20, (inY+inH*CELL/2+outY+outH*CELL/2)/2);
+      ctx.lineTo(outX-20, outY+outH*CELL/2);
+      ctx.strokeStyle = '#aaa'; ctx.lineWidth = 1.5; ctx.stroke();
+      // Σ
+      ctx.fillStyle = '#666'; ctx.font = 'bold 16px serif'; ctx.textAlign = 'center';
+      const midAx = (inStartX+C*(inW*CELL+GAP)+20+outX-20)/2;
+      const midAy = (inY+inH*CELL/2+outY+outH*CELL/2)/2 - 10;
+      ctx.fillText('Σ over C', midAx, midAy);
+
+      // Equation
+      if (step >= 0 && step < totalPos && showProd) {
+        let chanSums = [];
+        for (let c = 0; c < C; c++) {
+          let cs = 0;
+          for (let ki = 0; ki < kH; ki++)
+            for (let kj = 0; kj < kW; kj++)
+              cs += input[c][curR+ki][curC+kj] * kernel[c][ki][kj];
+          chanSums.push(cs);
+        }
+        eqSpan.textContent = 'c=0: '+chanSums[0]+' + c=1: '+chanSums[1]+' + c=2: '+chanSums[2]+' = '+output[curR][curC];
+      } else {
+        eqSpan.textContent = '';
+      }
+
+      if (step >= totalPos) btn.textContent = 'Reset ↺';
+    }
+
+    btn.addEventListener('click', function() {
+      if (step >= totalPos) {
+        step = -1; phase = 0;
+        for (let r=0;r<outH;r++) for(let c=0;c<outW;c++) filled[r][c]=false;
+        btn.textContent = 'Next ▶'; draw(); return;
+      }
+      if (step < 0) { step = 0; phase = 0; }
+      else if (phase === 0) { phase = 1; }
+      else { filled[positions[step][0]][positions[step][1]] = true; step++; phase = 0; }
+      draw();
+    });
+
+    draw();
+  })();
+  </script>
+</section>
+
+<!-- SLIDE: 2D Convolution — Mathematical Definition -->
+<section>
+  <h2>2D Convolution &mdash; Mathematical Definition</h2>
+  <div class="box" style="text-align:center; font-size:1.05em; padding:20px; margin-top:30px;">
+    \[\mathbf{o}_{b,d,j,i} = \sum_{c=0}^{C-1} \sum_{n=0}^{h-1} \sum_{m=0}^{w-1} \mathbf{x}_{b,c,\,j+n,\,i+m} \cdot \mathbf{u}_{d,c,n,m}\]
+  </div>
+  <div style="text-align:center; margin-top:16px; font-size:0.9em; color:#555;">
+    <p>\(\mathbf{x} \in \mathbb{R}^{B \times C \times H \times W}\) (input), \(\mathbf{u} \in \mathbb{R}^{D \times C \times h \times w}\) (kernels), \(\mathbf{o} \in \mathbb{R}^{B \times D \times H' \times W'}\) (output)</p>
+    <p style="margin-top:10px;">\(B\) batch, \(C\) input channels, \(D\) output channels (number of kernels), \(h \times w\) kernel size</p>
+    <p style="margin-top:10px;">\(H' = H - h + 1\), \(W' = W - w + 1\) (without padding)</p>
+  </div>
+  <p style="text-align:center; margin-top:20px; font-size:0.85em; color:#888;">In PyTorch: <code style="background:#e8e8e8; padding:1px 6px; border-radius:3px;">nn.Conv2d(in_channels=C, out_channels=D, kernel_size=(h, w))</code></p>
+</section>
+
+<!-- SLIDE: 2D Convolutions — Full Picture (animated with Next button) -->
+<section>
+  <h2>2D Convolutions &mdash; Full Picture</h2>
+  <div style="display:flex; gap:12px; margin-top:4px; align-items:flex-start;">
+    <div style="flex:1; position:relative;">
+      <canvas id="conv-full-canvas" width="700" height="520" style="display:block; max-width:100%;"></canvas>
+    </div>
+    <div style="flex:0; min-width:450px; display:flex; flex-direction:column; gap:8px; margin-top:20px;">
+      <div style="padding:10px 14px; font-size:0.82em;">\[\mathbf{o}_{b,d,j,i} = \sum_{c=0}^{C-1} \sum_{n=0}^{h-1} \sum_{m=0}^{w-1} \mathbf{x}_{b,c,\,j+n,\,i+m} \cdot \mathbf{u}_{d,c,n,m}\]
+      <p style="font-size:0.85em; color:#666; margin-top:4px; text-align:center;">\(\mathbf{x} \in \mathbb{R}^{B \times C \times H \times W}\), \(\mathbf{u} \in \mathbb{R}^{D \times C \times h \times w}\), \(\mathbf{o} \in \mathbb{R}^{B \times D \times H' \times W'}\)</p></div>
+      <div id="conv-full-eq" style="padding:14px 16px; background:#f8f9fa; border-radius:6px; border:1px solid #e0e0e0; font-size:0.82em; color:#2c3e50; display:flex; flex-direction:column; justify-content:center; height:130px; overflow:hidden;"></div>
+      <div style="text-align:right;">
+        <button id="conv-full-next" onclick="convFullNext()" style="padding:6px 22px; font-size:14px; font-family:Inter,sans-serif; font-weight:600; background:#2980b9; color:#fff; border:none; border-radius:5px; cursor:pointer; box-shadow:0 2px 6px rgba(0,0,0,0.15);">Next ▶</button>
+      </div>
+    </div>
+  </div>
+  <p style="text-align:center; font-size:0.68em; color:#999; margin-top:6px;">Here: \(B\) batch size, \(C{=}3\) input channels, \(D{=}2\) output channels / number of kernels, \(H{=}4, W{=}5\) input image size, \(h{=}w{=}3\) kernel size, \(H'{=}H{-}h{+}1{=}2, \; W'{=}W{-}w{+}1{=}3\) output image size</p>
+  <p style="text-align:center; font-size:0.68em; color:#999; margin-top:2px;">In PyTorch: <code style="background:#e8e8e8; padding:1px 6px; border-radius:3px; color:#555;">conv = nn.Conv2d(in_channels=3, out_channels=2, kernel_size=3)</code></p>
+  <script>
+  var convFullNext; // global for onclick
+  (function() {
+    const cv = document.getElementById('conv-full-canvas');
+    const ctx = cv.getContext('2d');
+
+    // --- Data ---
+    const C = 3, inH = 4, inW = 5, kH = 3, kW = 3;
+    const outH = inH - kH + 1, outW = inW - kW + 1;
+    const D = 2;
+
+    const input = [
+      [[2,1,0,3,1],[1,3,2,1,0],[0,1,3,2,1],[2,0,1,1,3]],
+      [[1,0,2,1,3],[3,1,0,2,1],[1,2,1,0,2],[0,3,2,1,0]],
+      [[0,2,1,1,0],[1,0,3,1,2],[2,1,0,3,1],[1,2,1,0,2]]
+    ];
+    const kernels = [
+      [[[1,0,-1],[1,0,-1],[1,0,-1]], [[0,1,0],[-1,0,1],[0,-1,0]], [[-1,1,0],[0,-1,1],[1,0,-1]]],
+      [[[0,1,1],[0,0,0],[0,-1,-1]],  [[1,0,0],[0,1,0],[0,0,1]],  [[1,-1,0],[-1,1,0],[0,0,0]]]
+    ];
+
+    const outputs = [];
+    for (let d = 0; d < D; d++) {
+      outputs[d] = [];
+      for (let r = 0; r < outH; r++) {
+        outputs[d][r] = [];
+        for (let col = 0; col < outW; col++) {
+          let s = 0;
+          for (let c = 0; c < C; c++)
+            for (let ki = 0; ki < kH; ki++)
+              for (let kj = 0; kj < kW; kj++)
+                s += input[c][r+ki][col+kj] * kernels[d][c][ki][kj];
+          outputs[d][r][col] = s;
+        }
+      }
+    }
+
+    const chColors = ['#c0392b','#27ae60','#2980b9'];
+    const chBg    = ['#fdecea','#eafaf1','#ebf5fb'];
+    const chNames = ['c=0','c=1','c=2'];
+    const kColors = ['#e67e22','#8e44ad'];
+    const kBg     = ['#fef5e7','#f5eef8'];
+    const oColors = ['#e67e22','#8e44ad'];
+    const oBg     = ['#fef9f0','#faf0fa'];
+
+    const CELL = 26, GCELL = 22, GAP = 10;
+    const labelX = 8, gridStartX = 140;
+    const inputRowY = 46, kernelRowY = 200, outputRowY = 390;
+    const KBLOCK = C*(kW*GCELL+GAP) + 46;
+
+    const eqEl = document.getElementById('conv-full-eq');
+    const btnEl = document.getElementById('conv-full-next');
+
+    // --- Animation state ---
+    // Steps: for each kernel d, for each position (pr,pc): show highlight, then show sum
+    // Total steps: D * outH * outW * 2  (highlight + result), plus step 0 = initial
+    const totalPositions = D * outH * outW;
+    let step = -1; // -1 = initial (just structure), then 0..totalPositions-1 each has sub-phases
+    let phase = 0; // 0 = highlight kernel region, 1 = show multiplication + result
+
+    function stepToPos(s) {
+      const d = Math.floor(s / (outH * outW));
+      const rem = s % (outH * outW);
+      const pr = Math.floor(rem / outW);
+      const pc = rem % outW;
+      return {d, pr, pc};
+    }
+
+    // Track which output cells are filled
+    const filled = [];
+    for (let d = 0; d < D; d++) {
+      filled[d] = [];
+      for (let r = 0; r < outH; r++) {
+        filled[d][r] = [];
+        for (let c = 0; c < outW; c++) filled[d][r][c] = false;
+      }
+    }
+
+    function drawGrid(data, x0, y0, cellSz, color, bg, label, hlR, hlC, hlH, hlW, showMul, kData) {
+      const rows = data.length, cols = data[0].length;
+      ctx.fillStyle = bg;
+      ctx.fillRect(x0, y0, cols*cellSz, rows*cellSz);
+      for (let r = 0; r < rows; r++) {
+        for (let c = 0; c < cols; c++) {
+          const cx = x0 + c*cellSz, cy = y0 + r*cellSz;
+          const inHl = hlR !== undefined && r >= hlR && r < hlR+hlH && c >= hlC && c < hlC+hlW;
+          ctx.strokeStyle = color;
+          ctx.lineWidth = inHl ? 2.5 : 0.8;
+          ctx.strokeRect(cx, cy, cellSz, cellSz);
+          if (inHl) { ctx.fillStyle = color+'22'; ctx.fillRect(cx,cy,cellSz,cellSz); }
+          ctx.fillStyle = inHl ? '#2c3e50' : '#555';
+          ctx.font = (inHl?'bold ':'') + (cellSz > 25 ? '11' : '10') + 'px Space Grotesk, monospace';
+          ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+          let txt = ''+data[r][c];
+          if (inHl && showMul && kData) {
+            const ki = r-hlR, kj = c-hlC;
+            const prod = data[r][c] * kData[ki][kj];
+            txt = prod >= 0 ? '+'+prod : ''+prod;
+            ctx.fillStyle = prod > 0 ? '#27ae60' : prod < 0 ? '#c0392b' : '#999';
+            ctx.font = 'bold ' + (cellSz > 25 ? '11' : '10') + 'px Space Grotesk, monospace';
+          }
+          ctx.fillText(txt, cx+cellSz/2, cy+cellSz/2);
+        }
+      }
+      if (label) {
+        ctx.fillStyle = color; ctx.font = 'bold 11px Inter, sans-serif';
+        ctx.textAlign = 'center'; ctx.fillText(label, x0+cols*cellSz/2, y0-7);
+      }
+    }
+
+    function drawOutputGrid(d, x0, y0, currentR, currentC, showValue) {
+      ctx.fillStyle = oBg[d];
+      ctx.fillRect(x0, y0, outW*CELL, outH*CELL);
+      for (let r = 0; r < outH; r++) {
+        for (let c = 0; c < outW; c++) {
+          const cx = x0+c*CELL, cy = y0+r*CELL;
+          const isCurrent = (r===currentR && c===currentC);
+          ctx.strokeStyle = oColors[d];
+          ctx.lineWidth = isCurrent ? 2.5 : 0.8;
+          ctx.strokeRect(cx, cy, CELL, CELL);
+          if (isCurrent && showValue) {
+            ctx.fillStyle = oColors[d]+'33'; ctx.fillRect(cx,cy,CELL,CELL);
+          }
+          if (filled[d][r][c] || (isCurrent && showValue)) {
+            ctx.fillStyle = (isCurrent && showValue) ? oColors[d] : '#2c3e50';
+            ctx.font = ((isCurrent&&showValue)?'bold ':'') + '12px Space Grotesk, monospace';
+            ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+            ctx.fillText(''+outputs[d][r][c], cx+CELL/2, cy+CELL/2);
+          }
+        }
+      }
+      ctx.fillStyle = oColors[d]; ctx.font = 'bold 11px Inter, sans-serif';
+      ctx.textAlign = 'center'; ctx.fillText('d='+d, x0+outW*CELL/2, y0-7);
+    }
+
+    function drawArrowDown(x, y1, y2, active) {
+      ctx.beginPath(); ctx.moveTo(x,y1); ctx.lineTo(x,y2-6);
+      ctx.strokeStyle = active?'#e67e22':'#ccc'; ctx.lineWidth = active?2:1.2; ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(x,y2); ctx.lineTo(x-4,y2-8); ctx.lineTo(x+4,y2-8);
+      ctx.fillStyle = active?'#e67e22':'#ccc'; ctx.fill();
+    }
+
+    function draw() {
+      ctx.clearRect(0, 0, cv.width, cv.height);
+
+      let curD = -1, curR = -1, curC = -1, showMul = false;
+      if (step >= 0) {
+        const p = stepToPos(step);
+        curD = p.d; curR = p.pr; curC = p.pc;
+        showMul = (phase === 1);
+      }
+
+      // --- Row labels ---
+      ctx.fillStyle = '#2c3e50'; ctx.font = 'bold 14px Inter, sans-serif'; ctx.textAlign = 'left';
+      ctx.fillText('Input', labelX, inputRowY + inH*CELL/2 - 8);
+      ctx.font = '12px Inter, sans-serif'; ctx.fillStyle = '#888';
+      ctx.fillText('x ∈ ℝ^{B×C×H×W}', labelX, inputRowY + inH*CELL/2 + 10);
+      ctx.fillText('(B × 3 × 4 × 5)', labelX, inputRowY + inH*CELL/2 + 26);
+
+      ctx.fillStyle = '#2c3e50'; ctx.font = 'bold 14px Inter, sans-serif';
+      const kMidY = kernelRowY + kH*GCELL/2;
+      ctx.fillText('Kernels', labelX, kMidY - 16);
+      ctx.font = '12px Inter, sans-serif'; ctx.fillStyle = '#888';
+      ctx.fillText('u ∈ ℝ^{D×C×h×w}', labelX, kMidY + 2);
+      ctx.fillText('(2 × 3 × 3 × 3)', labelX, kMidY + 18);
+
+      ctx.fillStyle = '#2c3e50'; ctx.font = 'bold 14px Inter, sans-serif';
+      const oMidY = outputRowY + outH*CELL/2;
+      ctx.fillText('Output', labelX, oMidY - 8);
+      ctx.font = '12px Inter, sans-serif'; ctx.fillStyle = '#888';
+      ctx.fillText('o ∈ ℝ^{B×D×H\'×W\'}', labelX, oMidY + 10);
+      ctx.fillText('(B × 2 × 2 × 3)', labelX, oMidY + 26);
+
+      // --- Input grids with highlight ---
+      for (let c = 0; c < C; c++) {
+        const x0 = gridStartX + c*(inW*CELL+GAP);
+        const hlR = (curD >= 0) ? curR : undefined;
+        const hlC = (curD >= 0) ? curC : undefined;
+        const kData = (curD >= 0 && showMul) ? kernels[curD][c] : undefined;
+        drawGrid(input[c], x0, inputRowY, CELL, chColors[c], chBg[c], chNames[c],
+                 hlR, hlC, kH, kW, showMul, kData);
+      }
+
+      // Channel brace
+      const inLeft = gridStartX, inRight = gridStartX + C*(inW*CELL+GAP) - GAP;
+      ctx.beginPath();
+      ctx.moveTo(inLeft, inputRowY-18); ctx.lineTo(inLeft, inputRowY-22);
+      ctx.lineTo((inLeft+inRight)/2, inputRowY-22);
+      ctx.moveTo(inRight, inputRowY-18); ctx.lineTo(inRight, inputRowY-22);
+      ctx.lineTo((inLeft+inRight)/2, inputRowY-22); ctx.lineTo((inLeft+inRight)/2, inputRowY-28);
+      ctx.strokeStyle = '#999'; ctx.lineWidth = 1; ctx.stroke();
+      ctx.fillStyle = '#666'; ctx.font = '11px Inter, sans-serif'; ctx.textAlign = 'center';
+      ctx.fillText('C = 3 channels', (inLeft+inRight)/2, inputRowY-32);
+
+      // --- Kernel grids ---
+      for (let d = 0; d < D; d++) {
+        const blockX = gridStartX + d*KBLOCK;
+        const isActive = (d === curD);
+        ctx.fillStyle = isActive ? kColors[d] : '#999';
+        ctx.font = 'bold 12px Inter, sans-serif'; ctx.textAlign = 'left';
+        ctx.fillText('Kernel d='+d, blockX, kernelRowY-26);
+
+        for (let c = 0; c < C; c++) {
+          const x0 = blockX + c*(kW*GCELL+GAP-4);
+          const col = isActive ? kColors[d] : '#bbb';
+          const bg = isActive ? kBg[d] : '#f5f5f5';
+          drawGrid(kernels[d][c], x0, kernelRowY, GCELL, col, bg, chNames[c]);
+        }
+
+        const arrowX = blockX + C*(kW*GCELL+GAP-4)/2;
+        drawArrowDown(arrowX, kernelRowY+kH*GCELL+20, outputRowY-22, isActive && showMul);
+        ctx.fillStyle = isActive ? '#e67e22' : '#ccc';
+        ctx.font = '13px serif'; ctx.textAlign = 'center';
+        ctx.fillText('Σ', arrowX+14, kernelRowY+kH*GCELL+50);
+      }
+
+      // Separator
+      const sepX = gridStartX + KBLOCK - 28;
+      ctx.setLineDash([4,4]); ctx.beginPath();
+      ctx.moveTo(sepX, kernelRowY-20); ctx.lineTo(sepX, kernelRowY+kH*GCELL+10);
+      ctx.strokeStyle = '#ddd'; ctx.lineWidth = 1; ctx.stroke(); ctx.setLineDash([]);
+
+      // --- Output grids ---
+      for (let d = 0; d < D; d++) {
+        const blockX = gridStartX + d*KBLOCK;
+        const oX = blockX + (C*(kW*GCELL+GAP-4) - outW*CELL)/2;
+        const isCurKernel = (d === curD);
+        drawOutputGrid(d, oX, outputRowY,
+          isCurKernel ? curR : -1, isCurKernel ? curC : -1, isCurKernel && showMul);
+      }
+
+      // Output brace
+      const o1X = gridStartX + (C*(kW*GCELL+GAP-4)-outW*CELL)/2;
+      const o2R = gridStartX + KBLOCK + (C*(kW*GCELL+GAP-4)-outW*CELL)/2 + outW*CELL;
+      const oBot = outputRowY + outH*CELL + 8;
+      ctx.beginPath();
+      ctx.moveTo(o1X,oBot); ctx.lineTo(o1X,oBot+4); ctx.lineTo((o1X+o2R)/2,oBot+4);
+      ctx.moveTo(o2R,oBot); ctx.lineTo(o2R,oBot+4); ctx.lineTo((o1X+o2R)/2,oBot+4);
+      ctx.lineTo((o1X+o2R)/2,oBot+10);
+      ctx.strokeStyle = '#999'; ctx.lineWidth = 1; ctx.stroke();
+      ctx.fillStyle = '#666'; ctx.font = '11px Inter, sans-serif'; ctx.textAlign = 'center';
+      ctx.fillText('D = 2 output channels', (o1X+o2R)/2, oBot+22);
+
+      // Equation display
+      if (step < 0) {
+        eqEl.innerHTML = '<span style="color:#999;">Click <b>Next</b> to step through the convolution.</span>';
+      } else if (step >= totalPositions) {
+        eqEl.innerHTML = '<span style="color:#27ae60; font-weight:600;">✓ Done — all output values computed.</span>';
+        btnEl.textContent = 'Reset ↺';
+      } else {
+        const p = stepToPos(step);
+        const d = p.d, pr = p.pr, pc = p.pc;
+        if (phase === 0) {
+          // Show the general formula with current indices substituted
+          const latex = '\\mathbf{o}_{' + d + ',' + pr + ',' + pc + '} = '
+            + '\\sum_{c=0}^{2} \\sum_{n=0}^{2} \\sum_{m=0}^{2} '
+            + '\\mathbf{x}_{c,\\,' + pr + '+n,\\,' + pc + '+m} \\;\\cdot\\; '
+            + '\\mathbf{u}_{' + d + ',\\,c,\\,n,\\,m}';
+          katex.render(latex, eqEl, {displayMode: true, throwOnError: false});
+        } else {
+          // Build the explicit sum with actual numbers per channel
+          let parts = [];
+          let totalSum = 0;
+          for (let c = 0; c < C; c++) {
+            let chanTerms = [];
+            let chanSum = 0;
+            for (let ki = 0; ki < kH; ki++) {
+              for (let kj = 0; kj < kW; kj++) {
+                const v = input[c][pr+ki][pc+kj];
+                const k = kernels[d][c][ki][kj];
+                const prod = v * k;
+                chanSum += prod;
+              }
+            }
+            totalSum += chanSum;
+            const color = chColors[c];
+            parts.push('\\textcolor{' + color + '}{' + chanSum + '}');
+          }
+          const latex = '\\mathbf{o}_{' + d + ',' + pr + ',' + pc + '} = '
+            + '\\underbrace{' + parts[0] + '}_{c=0} + '
+            + '\\underbrace{' + parts[1] + '}_{c=1} + '
+            + '\\underbrace{' + parts[2] + '}_{c=2} = '
+            + '\\boxed{' + totalSum + '}';
+          katex.render(latex, eqEl, {displayMode: true, throwOnError: false});
+        }
+      }
+    }
+
+    convFullNext = function() {
+      if (step >= totalPositions) {
+        // Reset
+        step = -1; phase = 0;
+        for (let d=0;d<D;d++) for(let r=0;r<outH;r++) for(let c=0;c<outW;c++) filled[d][r][c]=false;
+        btnEl.textContent = 'Next ▶';
+        draw(); return;
+      }
+      if (step < 0) { step = 0; phase = 0; }
+      else if (phase === 0) { phase = 1; }
+      else {
+        // Mark current cell as filled
+        const p = stepToPos(step);
+        filled[p.d][p.pr][p.pc] = true;
+        step++; phase = 0;
+      }
+      draw();
+    };
+
+    draw();
+  })();
+  </script>
+</section>
+
+<!-- SLIDE: Interactive Kernel Explorer -->
+<section>
+  <h2>2D Convolutions &mdash; Kernel Explorer</h2>
+  <div style="display:flex; gap:16px; margin-top:6px; align-items:flex-start;">
+    <!-- Left: original image -->
+    <div style="text-align:center;">
+      <div style="font-size:0.75em; color:#666; margin-bottom:4px; font-weight:600;">Input image (64×64×3)</div>
+      <canvas id="ke-input" width="192" height="192" style="border:1px solid #ddd; border-radius:4px; image-rendering:pixelated;"></canvas>
+    </div>
+    <!-- Middle: 3 editable kernels -->
+    <div style="text-align:center;">
+      <div style="font-size:0.75em; color:#666; margin-bottom:4px; font-weight:600;">Kernel (3×3 per channel) — click cells to edit</div>
+      <div id="ke-kernels" style="display:flex; flex-direction:column; gap:6px; align-items:center;"></div>
+      <div style="margin-top:8px; display:flex; gap:4px; flex-wrap:wrap; justify-content:center;" id="ke-presets"></div>
+    </div>
+    <!-- Right: output image -->
+    <div style="text-align:center;">
+      <div id="ke-output-label" style="font-size:0.75em; color:#666; margin-bottom:4px; font-weight:600;">Output (64×64×1)
+        <button id="ke-relu-btn" style="margin-left:8px; padding:2px 8px; font-size:11px; font-family:Inter,sans-serif; border:1px solid #ccc; border-radius:4px; cursor:pointer; background:#fff; color:#888;">ReLU: off</button>
+        <button id="ke-pool-btn" style="margin-left:4px; padding:2px 8px; font-size:11px; font-family:Inter,sans-serif; border:1px solid #ccc; border-radius:4px; cursor:pointer; background:#fff; color:#888;">MaxPool: off</button>
+      </div>
+      <div style="display:flex; gap:6px; align-items:stretch;">
+        <canvas id="ke-output" width="192" height="192" style="border:1px solid #ddd; border-radius:4px; image-rendering:pixelated;"></canvas>
+        <canvas id="ke-colorbar" width="40" height="192"></canvas>
+      </div>
+      <div id="ke-info" style="font-size:0.65em; color:#999; margin-top:4px;"></div>
+    </div>
+  </div>
+  <ul style="font-size:0.65em; color:#666; margin-top:8px; columns:2; column-gap:40px; line-height:1.6;">
+    <li>Each kernel has \(C \times h \times w\) parameters and produces <strong>one</strong> output channel — a <em>feature map</em>. Here \(C{=}h{=}w{=}3\).</li>
+    <li>The kernel sums over all input channels → one scalar per position.</li>
+    <li>ReLU(\(x\)) = max(0, \(x\)) discards negative responses — try it with a gradient kernel to select one edge direction.</li>
+    <li>MaxPool 2×2 coarse-grains spatial information: keeps the strongest response in each 2×2 block, halving the resolution.</li>
+    <li>The kernels here are just examples. In a CNN, kernels are <strong>learned</strong> — not hand-crafted.</li>
+  </ul>
+  <script>
+  (function() {
+    const SIZE = 64, KSIZE = 3, SCALE = 3;
+    const inCv = document.getElementById('ke-input');
+    const outCv = document.getElementById('ke-output');
+    const cbCv = document.getElementById('ke-colorbar');
+    const cbCtx = cbCv.getContext('2d');
+    const inCtx = inCv.getContext('2d');
+    const outCtx = outCv.getContext('2d');
+    const kernelsDiv = document.getElementById('ke-kernels');
+    const presetsDiv = document.getElementById('ke-presets');
+    const infoDiv = document.getElementById('ke-info');
+    const reluBtn = document.getElementById('ke-relu-btn');
+    const poolBtn = document.getElementById('ke-pool-btn');
+    const outputLabel = document.getElementById('ke-output-label');
+    let useRelu = false, usePool = false;
+    reluBtn.addEventListener('click', function() {
+      useRelu = !useRelu;
+      reluBtn.textContent = useRelu ? 'ReLU: on' : 'ReLU: off';
+      reluBtn.style.background = useRelu ? '#27ae60' : '#fff';
+      reluBtn.style.color = useRelu ? '#fff' : '#888';
+      reluBtn.style.borderColor = useRelu ? '#27ae60' : '#ccc';
+      convolve();
+    });
+    poolBtn.addEventListener('click', function() {
+      usePool = !usePool;
+      poolBtn.textContent = usePool ? 'MaxPool: on' : 'MaxPool: off';
+      poolBtn.style.background = usePool ? '#2980b9' : '#fff';
+      poolBtn.style.color = usePool ? '#fff' : '#888';
+      poolBtn.style.borderColor = usePool ? '#2980b9' : '#ccc';
+      convolve();
+    });
+
+    // --- Generate a colourful procedural image ---
+    const img = new Float32Array(3 * SIZE * SIZE);
+    for (let y = 0; y < SIZE; y++) {
+      for (let x = 0; x < SIZE; x++) {
+        const idx = (y * SIZE + x) * 3;
+        // Sky gradient
+        let r = 0.4 + 0.3 * (1 - y/SIZE);
+        let g = 0.5 + 0.3 * (1 - y/SIZE);
+        let b = 0.8 + 0.15 * (1 - y/SIZE);
+        // Green ground
+        if (y > 40) { r = 0.15 + 0.1*Math.random(); g = 0.45 + 0.15*Math.random(); b = 0.1 + 0.05*Math.random(); }
+        // Red rectangle (building)
+        if (x >= 10 && x <= 24 && y >= 18 && y <= 42) { r = 0.85; g = 0.2; b = 0.15; }
+        // Yellow window
+        if (x >= 14 && x <= 18 && y >= 24 && y <= 30) { r = 0.95; g = 0.9; b = 0.3; }
+        // Blue circle (ball on grass)
+        const dx = x - 45, dy = y - 50;
+        if (dx*dx + dy*dy < 64) { r = 0.15; g = 0.3; b = 0.9; }
+        // White vertical pole
+        if (x >= 32 && x <= 34 && y >= 10 && y <= 42) { r = 0.95; g = 0.95; b = 0.95; }
+        // Orange triangle (roof)
+        if (y >= 10 && y <= 18 && x >= 17 - (18-y) && x <= 17 + (18-y)) { r = 0.95; g = 0.55; b = 0.1; }
+        // Purple flower
+        const fx = x - 55, fy = y - 46;
+        if (fx*fx + fy*fy < 12) { r = 0.7; g = 0.2; b = 0.8; }
+        img[idx] = r; img[idx+1] = g; img[idx+2] = b;
+      }
+    }
+
+    // Draw input image
+    function drawInput() {
+      const id = inCtx.createImageData(SIZE, SIZE);
+      for (let i = 0; i < SIZE*SIZE; i++) {
+        id.data[i*4]   = Math.round(img[i*3]*255);
+        id.data[i*4+1] = Math.round(img[i*3+1]*255);
+        id.data[i*4+2] = Math.round(img[i*3+2]*255);
+        id.data[i*4+3] = 255;
+      }
+      inCtx.putImageData(id, 0, 0);
+      inCtx.imageSmoothingEnabled = false;
+      inCtx.drawImage(inCv, 0, 0, SIZE, SIZE, 0, 0, SIZE*SCALE, SIZE*SCALE);
+    }
+
+    // --- Kernel state: 3 channels, each 3x3 ---
+    const kernel = [
+      [[0,0,0],[0,0,0],[0,0,0]],
+      [[0,0,0],[0,0,0],[0,0,0]],
+      [[0,0,0],[0,0,0],[0,0,0]]
+    ];
+    const chColors = ['#c0392b','#27ae60','#2980b9'];
+    const chLabels = ['c=0','c=1','c=2'];
+
+    // Build kernel editor tables
+    const tables = [];
+    for (let c = 0; c < 3; c++) {
+      const row = document.createElement('div');
+      row.style.cssText = 'display:flex; align-items:center; gap:14px;';
+      const label = document.createElement('span');
+      label.style.cssText = 'font-size:0.7em; font-weight:600; width:28px; color:' + chColors[c];
+      label.textContent = chLabels[c];
+      row.appendChild(label);
+      const tbl = document.createElement('table');
+      tbl.style.cssText = 'border-collapse:collapse;';
+      tables[c] = [];
+      for (let ki = 0; ki < 3; ki++) {
+        const tr = document.createElement('tr');
+        tables[c][ki] = [];
+        for (let kj = 0; kj < 3; kj++) {
+          const td = document.createElement('td');
+          td.style.cssText = 'width:28px;height:28px;text-align:center;font-size:12px;font-weight:bold;'
+            + 'font-family:Space Grotesk,monospace;cursor:pointer;border:1.5px solid ' + chColors[c] + '40;'
+            + 'border-radius:2px;user-select:none;transition:background 0.1s;';
+          td.textContent = '0';
+          td.dataset.c = c; td.dataset.i = ki; td.dataset.j = kj;
+          td.addEventListener('click', function() {
+            const cc = +this.dataset.c, ii = +this.dataset.i, jj = +this.dataset.j;
+            // Cycle: 0 → 1 → -1 → 0
+            const v = kernel[cc][ii][jj];
+            kernel[cc][ii][jj] = v === 0 ? 1 : v === 1 ? -1 : 0;
+            updateKernelDisplay();
+            convolve();
+          });
+          tr.appendChild(td);
+          tables[c][ki][kj] = td;
+        }
+        tbl.appendChild(tr);
+      }
+      row.appendChild(tbl);
+      kernelsDiv.appendChild(row);
+    }
+
+    function updateKernelDisplay() {
+      for (let c = 0; c < 3; c++) {
+        for (let ki = 0; ki < 3; ki++) {
+          for (let kj = 0; kj < 3; kj++) {
+            const v = kernel[c][ki][kj];
+            const td = tables[c][ki][kj];
+            td.textContent = v === 0 ? '0' : v === 1 ? '1' : '−1';
+            td.style.background = v === 1 ? chColors[c] + '20' : v === -1 ? chColors[c] + '10' : '#fff';
+            td.style.color = v === 0 ? '#ccc' : '#2c3e50';
+          }
+        }
+      }
+    }
+
+    // --- Convolution ---
+    function convolve() {
+      const out = new Float32Array(SIZE * SIZE);
+      let minV = Infinity, maxV = -Infinity;
+      const pad = 1; // zero-padding
+      for (let y = 0; y < SIZE; y++) {
+        for (let x = 0; x < SIZE; x++) {
+          let sum = 0;
+          for (let c = 0; c < 3; c++) {
+            for (let ki = 0; ki < KSIZE; ki++) {
+              for (let kj = 0; kj < KSIZE; kj++) {
+                const iy = y + ki - pad, ix = x + kj - pad;
+                if (iy >= 0 && iy < SIZE && ix >= 0 && ix < SIZE) {
+                  sum += img[(iy * SIZE + ix) * 3 + c] * kernel[c][ki][kj];
+                }
+              }
+            }
+          }
+          const val = useRelu ? Math.max(0, sum) : sum;
+          out[y * SIZE + x] = val;
+          if (val < minV) minV = val;
+          if (val > maxV) maxV = val;
+        }
+      }
+      // Optional: MaxPool 2×2
+      let renderData = out, renderSize = SIZE;
+      if (usePool) {
+        const PS = SIZE / 2;
+        const pooled = new Float32Array(PS * PS);
+        minV = Infinity; maxV = -Infinity;
+        for (let py = 0; py < PS; py++) {
+          for (let px = 0; px < PS; px++) {
+            const a = out[(py*2)*SIZE + px*2];
+            const b = out[(py*2)*SIZE + px*2+1];
+            const c = out[(py*2+1)*SIZE + px*2];
+            const d = out[(py*2+1)*SIZE + px*2+1];
+            const m = Math.max(a, b, c, d);
+            pooled[py * PS + px] = m;
+            if (m < minV) minV = m;
+            if (m > maxV) maxV = m;
+          }
+        }
+        renderData = pooled;
+        renderSize = PS;
+      }
+
+      // Render: normalize to 0-255
+      const range = maxV - minV || 1;
+      const id = outCtx.createImageData(renderSize, renderSize);
+      for (let i = 0; i < renderSize * renderSize; i++) {
+        const v = Math.round(255 * (renderData[i] - minV) / range);
+        id.data[i*4] = v; id.data[i*4+1] = v; id.data[i*4+2] = v; id.data[i*4+3] = 255;
+      }
+      outCtx.clearRect(0, 0, outCv.width, outCv.height);
+      outCtx.putImageData(id, 0, 0);
+      outCtx.imageSmoothingEnabled = false;
+      outCtx.drawImage(outCv, 0, 0, renderSize, renderSize, 0, 0, SIZE*SCALE, SIZE*SCALE);
+
+      // Update label
+      const outSz = usePool ? '32×32×1' : '64×64×1';
+      outputLabel.childNodes[0].textContent = 'Output (' + outSz + ') ';
+      // Draw colorbar
+      const cbW = cbCv.width, cbH = cbCv.height;
+      cbCtx.clearRect(0, 0, cbW, cbH);
+      const barX = 0, barW = 12, barTop = 12, barBot = cbH - 12;
+      const barH = barBot - barTop;
+      for (let py = 0; py < barH; py++) {
+        const v = Math.round(255 * (1 - py / barH));
+        cbCtx.fillStyle = 'rgb('+v+','+v+','+v+')';
+        cbCtx.fillRect(barX, barTop + py, barW, 1);
+      }
+      cbCtx.strokeStyle = '#aaa'; cbCtx.lineWidth = 1;
+      cbCtx.strokeRect(barX, barTop, barW, barH);
+      cbCtx.fillStyle = '#666'; cbCtx.font = '9px Inter, sans-serif'; cbCtx.textAlign = 'left';
+      cbCtx.fillText(maxV.toFixed(1), barW + 2, barTop + 4);
+      cbCtx.fillText(minV.toFixed(1), barW + 2, barBot + 2);
+      cbCtx.fillText(((minV+maxV)/2).toFixed(1), barW + 2, (barTop+barBot)/2 + 2);
+      infoDiv.textContent = '';
+    }
+
+    // --- Presets ---
+    const presets = [
+      {name: 'Identity', k: [[[0,0,0],[0,1,0],[0,0,0]], [[0,0,0],[0,1,0],[0,0,0]], [[0,0,0],[0,1,0],[0,0,0]]]},
+      {name: 'Red only', k: [[[0,0,0],[0,1,0],[0,0,0]], [[0,0,0],[0,0,0],[0,0,0]], [[0,0,0],[0,0,0],[0,0,0]]]},
+      {name: 'Blue only', k: [[[0,0,0],[0,0,0],[0,0,0]], [[0,0,0],[0,0,0],[0,0,0]], [[0,0,0],[0,1,0],[0,0,0]]]},
+      {name: '+ horiz. gradient', k: [[[-1,0,1],[-1,0,1],[-1,0,1]], [[-1,0,1],[-1,0,1],[-1,0,1]], [[-1,0,1],[-1,0,1],[-1,0,1]]]},
+      {name: '− horiz. gradient', k: [[[1,0,-1],[1,0,-1],[1,0,-1]], [[1,0,-1],[1,0,-1],[1,0,-1]], [[1,0,-1],[1,0,-1],[1,0,-1]]]},
+      {name: '+ vert. gradient', k: [[[-1,-1,-1],[0,0,0],[1,1,1]], [[-1,-1,-1],[0,0,0],[1,1,1]], [[-1,-1,-1],[0,0,0],[1,1,1]]]},
+      {name: '− vert. gradient', k: [[[1,1,1],[0,0,0],[-1,-1,-1]], [[1,1,1],[0,0,0],[-1,-1,-1]], [[1,1,1],[0,0,0],[-1,-1,-1]]]},
+      {name: 'Green edges', k: [[[0,0,0],[0,0,0],[0,0,0]], [[-1,0,1],[-1,0,1],[-1,0,1]], [[0,0,0],[0,0,0],[0,0,0]]]},
+      {name: 'Blue horiz.', k: [[[0,0,0],[0,0,0],[0,0,0]], [[0,0,0],[0,0,0],[0,0,0]], [[-1,-1,-1],[0,0,0],[1,1,1]]]},
+      {name: 'Diagonal ↘', k: [[[0,0,1],[0,-1,0],[-1,0,0]], [[0,0,1],[0,-1,0],[-1,0,0]], [[0,0,1],[0,-1,0],[-1,0,0]]]},
+      {name: 'Laplacian', k: [[[0,-1,0],[-1,1,-1],[0,-1,0]], [[0,-1,0],[-1,1,-1],[0,-1,0]], [[0,-1,0],[-1,1,-1],[0,-1,0]]]},
+      {name: 'Blur', k: [[[1,1,1],[1,1,1],[1,1,1]], [[1,1,1],[1,1,1],[1,1,1]], [[1,1,1],[1,1,1],[1,1,1]]]},
+    ];
+
+    let presetIdx = 0;
+    presets.forEach(function(p, idx) {
+      const btn = document.createElement('button');
+      btn.textContent = p.name;
+      btn.style.cssText = 'padding:3px 8px;font-size:11px;font-family:Inter,sans-serif;border:1px solid #ccc;'
+        + 'border-radius:4px;cursor:pointer;background:#fff;color:#444;transition:all 0.15s;';
+      btn.addEventListener('mouseenter', function(){ this.style.background='#2980b9'; this.style.color='#fff'; });
+      btn.addEventListener('mouseleave', function(){ this.style.background='#fff'; this.style.color='#444'; });
+      btn.addEventListener('click', function() {
+        for (let c = 0; c < 3; c++)
+          for (let ki = 0; ki < 3; ki++)
+            for (let kj = 0; kj < 3; kj++)
+              kernel[c][ki][kj] = p.k[c][ki][kj];
+        updateKernelDisplay();
+        convolve();
+      });
+      presetsDiv.appendChild(btn);
+    });
+
+    // --- Init ---
+    drawInput();
+    // Start with identity
+    for (let c = 0; c < 3; c++) kernel[c][1][1] = 1;
+    updateKernelDisplay();
+    convolve();
+  })();
+  </script>
+</section>
+
+<!-- SLIDE: Why ReLU? -->
+<section>
+  <h2>Why ReLU?</h2>
+  <div style="display:flex; gap:30px; margin-top:12px; align-items:flex-start;">
+    <div style="flex:1;">
+      <canvas id="relu-explain-cv" width="500" height="320"></canvas>
+      <script>
+      (function() {
+        const cv = document.getElementById('relu-explain-cv');
+        const ctx = cv.getContext('2d');
+
+        // Draw a simple bar chart: conv output values, then ReLU'd values
+        const values = [-3, 2, -1, 4, -2, 1, -4, 3, 0, -1];
+        const barW = 30, gap = 6, baseY = 150, scale = 18;
+        const startX = 30;
+
+        function drawBars(vals, x0, y0, label, showRelu) {
+          ctx.fillStyle = '#2c3e50'; ctx.font = 'bold 13px Inter, sans-serif'; ctx.textAlign = 'center';
+          ctx.fillText(label, x0 + vals.length*(barW+gap)/2, y0 - 135);
+
+          for (let i = 0; i < vals.length; i++) {
+            const x = x0 + i*(barW+gap);
+            const v = showRelu ? Math.max(0, vals[i]) : vals[i];
+            const h = v * scale;
+            if (v >= 0) {
+              ctx.fillStyle = '#27ae60';
+              ctx.fillRect(x, y0 - h, barW, h);
+            } else {
+              ctx.fillStyle = '#c0392b44';
+              ctx.fillRect(x, y0, barW, -h);
+              // Strikethrough
+              ctx.strokeStyle = '#c0392b'; ctx.lineWidth = 2;
+              if (showRelu) {
+                ctx.beginPath(); ctx.moveTo(x, y0+2); ctx.lineTo(x+barW, y0+2);
+                ctx.stroke();
+              }
+            }
+            ctx.strokeStyle = '#ddd'; ctx.lineWidth = 0.5;
+            ctx.strokeRect(x, v>=0 ? y0-h : y0, barW, Math.abs(h));
+            // Value label
+            ctx.fillStyle = '#555'; ctx.font = '10px Space Grotesk, monospace';
+            ctx.textAlign = 'center';
+            const labelY = v >= 0 ? y0 - h - 5 : y0 - h + (showRelu && v < 0 ? 12 : -5);
+            ctx.fillText(showRelu ? ''+Math.max(0,v) : ''+v, x+barW/2, v >= 0 ? y0-h-5 : y0-h-5);
+          }
+          // Zero line
+          ctx.strokeStyle = '#888'; ctx.lineWidth = 1;
+          ctx.beginPath(); ctx.moveTo(x0-5, y0); ctx.lineTo(x0+vals.length*(barW+gap), y0); ctx.stroke();
+          ctx.fillStyle = '#888'; ctx.font = '10px Inter, sans-serif'; ctx.textAlign = 'right';
+          ctx.fillText('0', x0-8, y0+4);
+        }
+
+        drawBars(values, startX, baseY, 'Conv output', false);
+        drawBars(values, startX, baseY + 170, 'After ReLU', true);
+
+        // Arrow between
+        ctx.beginPath(); ctx.moveTo(startX + values.length*(barW+gap)/2, baseY+25);
+        ctx.lineTo(startX + values.length*(barW+gap)/2, baseY+45);
+        ctx.strokeStyle = '#e67e22'; ctx.lineWidth = 2; ctx.stroke();
+        ctx.beginPath();
+        const ax = startX + values.length*(barW+gap)/2;
+        ctx.moveTo(ax, baseY+50); ctx.lineTo(ax-5, baseY+42); ctx.lineTo(ax+5, baseY+42);
+        ctx.fillStyle = '#e67e22'; ctx.fill();
+        ctx.fillStyle = '#e67e22'; ctx.font = 'bold 12px Inter, sans-serif'; ctx.textAlign = 'left';
+        ctx.fillText('ReLU(x) = max(0, x)', ax+10, baseY+42);
+      })();
+      </script>
+    </div>
+    <div style="flex:0.9; font-size:0.78em; color:#2c3e50;">
+      <div class="box" style="border-left:3px solid #e67e22; margin-bottom:12px;">
+        <p><strong>What it does:</strong> ReLU(x) = max(0, x) — keeps positive values, sets negative to zero.</p>
+        <p style="margin-top:6px;">Each conv kernel responds positively <em>and</em> negatively. ReLU keeps only the positive activations → the kernel becomes a <strong>feature detector</strong> that fires when its pattern is present.</p>
+      </div>
+      <div class="box" style="border-left:3px solid #c0392b; margin-bottom:12px;">
+        <p><strong>Why we need it:</strong> A convolution is a linear operation. Stacking linear layers gives another linear layer — no gain in expressiveness.</p>
+        <p style="margin-top:6px;">ReLU breaks the linearity. With nonlinearity between layers, deeper networks can represent <strong>increasingly complex features</strong>.</p>
+      </div>
+      <div class="box" style="border-left:3px solid #2980b9;">
+        <p><strong>The building block:</strong> Conv → ReLU → Pool is the standard unit. Conv extracts, ReLU selects, Pool coarsens.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- SLIDE: MaxPool 2×2 — Step by Step -->
+<section>
+  <h2>Max Pooling &mdash; Coarse-Graining Spatial Information</h2>
+  <p style="text-align:center; font-size:0.85em; color:#555; margin-top:-2px;">MaxPool 2×2 takes the maximum in each 2×2 block. Applied <strong>independently per channel</strong>. No learned parameters.</p>
+  <div style="text-align:center; margin-top:8px;">
+    <canvas id="maxpool-cv" width="1000" height="380"></canvas>
+  </div>
+  <div style="text-align:center; margin-top:4px; min-height:22px;">
+    <span id="maxpool-eq" style="font-size:0.82em; color:#555;">&nbsp;</span>
+  </div>
+  <div style="text-align:center; margin-top:4px;">
+    <button id="maxpool-next" style="padding:6px 22px; font-size:14px; font-family:Inter,sans-serif; font-weight:600; background:#2980b9; color:#fff; border:none; border-radius:5px; cursor:pointer;">Next ▶</button>
+  </div>
+  <div style="text-align:center; margin-top:8px; font-size:0.78em; color:#555;">
+    \(\displaystyle \mathbf{o}_{b,c,j,i} = \max_{n < p,\, m < q} \mathbf{x}_{b,c,\,pj+n,\,qi+m}\) &nbsp;&mdash;&nbsp; here \(p = q = 2\). In PyTorch: <code style="background:#e8e8e8; padding:1px 5px; border-radius:3px;">nn.MaxPool2d(2)</code>
+  </div>
+  <script>
+  (function() {
+    const cv = document.getElementById('maxpool-cv');
+    const ctx = cv.getContext('2d');
+    const btn = document.getElementById('maxpool-next');
+    const eqSpan = document.getElementById('maxpool-eq');
+
+    // 2 channels, each 4×4 → 2×2 after MaxPool 2×2
+    const C = 2;
+    const input = [
+      [[3,1,2,0],[1,4,0,3],[2,1,3,1],[0,2,1,4]],
+      [[1,0,3,2],[2,3,1,0],[0,1,2,3],[3,2,0,1]]
+    ];
+    const inH = 4, inW = 4, poolH = 2, poolW = 2;
+    const outH = inH/poolH, outW = inW/poolW;
+
+    const output = [];
+    for (let c = 0; c < C; c++) {
+      output[c] = [];
+      for (let r = 0; r < outH; r++) {
+        output[c][r] = [];
+        for (let col = 0; col < outW; col++) {
+          let m = -Infinity;
+          for (let pi = 0; pi < poolH; pi++)
+            for (let pj = 0; pj < poolW; pj++)
+              m = Math.max(m, input[c][r*poolH+pi][col*poolW+pj]);
+          output[c][r][col] = m;
+        }
+      }
+    }
+
+    const chColors = ['#e67e22','#8e44ad'];
+    const chBg = ['#fef5e7','#f5eef8'];
+    const chNames = ['d=0','d=1'];
+
+    const CELL = 48, GAP = 30;
+    const inStartX = 60, inY = 60;
+    const outStartX = 680, outY = 100;
+
+    // Step through: for each channel, for each 2×2 block
+    const positions = [];
+    for (let c = 0; c < C; c++)
+      for (let r = 0; r < outH; r++)
+        for (let col = 0; col < outW; col++)
+          positions.push([c, r, col]);
+    const totalPos = positions.length;
+    let step = -1, phase = 0;
+    const filled = [];
+    for (let c = 0; c < C; c++) {
+      filled[c] = [];
+      for (let r = 0; r < outH; r++) {
+        filled[c][r] = [];
+        for (let col = 0; col < outW; col++) filled[c][r][col] = false;
+      }
+    }
+
+    function draw() {
+      ctx.clearRect(0,0,cv.width,cv.height);
+      let curCh=-1, curR=-1, curC=-1, showMax=false;
+      if (step >= 0 && step < totalPos) {
+        curCh = positions[step][0]; curR = positions[step][1]; curC = positions[step][2];
+        showMax = (phase === 1);
+      }
+
+      // Input grids
+      ctx.fillStyle = '#2c3e50'; ctx.font = 'bold 14px Inter, sans-serif'; ctx.textAlign = 'left';
+      ctx.fillText('Input (' + C + ' × ' + inH + ' × ' + inW + ')', inStartX, inY - 25);
+
+      for (let ch = 0; ch < C; ch++) {
+        const x0 = inStartX + ch * (inW*CELL + GAP);
+        const isActive = (ch === curCh);
+        // Channel label
+        ctx.fillStyle = chColors[ch]; ctx.font = 'bold 12px Inter, sans-serif'; ctx.textAlign = 'center';
+        ctx.fillText(chNames[ch], x0 + inW*CELL/2, inY - 8);
+
+        for (let r = 0; r < inH; r++) {
+          for (let c = 0; c < inW; c++) {
+            const cx = x0+c*CELL, cy = inY+r*CELL;
+            // Highlight the current 2×2 block
+            const inBlock = isActive && curR >= 0 &&
+              r >= curR*poolH && r < curR*poolH+poolH &&
+              c >= curC*poolW && c < curC*poolW+poolW;
+            const isMax = inBlock && input[ch][r][c] === output[ch][curR][curC];
+
+            ctx.fillStyle = isMax && showMax ? chColors[ch]+'44' : inBlock ? chColors[ch]+'18' : chBg[ch];
+            ctx.fillRect(cx,cy,CELL,CELL);
+            ctx.strokeStyle = inBlock ? chColors[ch] : chColors[ch]+'44';
+            ctx.lineWidth = inBlock ? 2.5 : 0.8;
+            ctx.strokeRect(cx,cy,CELL,CELL);
+            ctx.fillStyle = isMax && showMax ? chColors[ch] : '#2c3e50';
+            ctx.font = (isMax && showMax ? 'bold 18px' : '15px') + ' Space Grotesk, monospace';
+            ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+            ctx.fillText(''+input[ch][r][c], cx+CELL/2, cy+CELL/2);
+          }
+        }
+      }
+
+      // Arrow
+      const arrowX1 = inStartX + C*(inW*CELL+GAP) - GAP + 30;
+      const arrowX2 = outStartX - 30;
+      const arrowY = inY + inH*CELL/2;
+      ctx.beginPath(); ctx.moveTo(arrowX1, arrowY); ctx.lineTo(arrowX2, arrowY);
+      ctx.strokeStyle = '#aaa'; ctx.lineWidth = 1.5; ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(arrowX2+6,arrowY); ctx.lineTo(arrowX2-4,arrowY-5); ctx.lineTo(arrowX2-4,arrowY+5);
+      ctx.fillStyle = '#aaa'; ctx.fill();
+      ctx.fillStyle = '#555'; ctx.font = 'bold 13px Inter, sans-serif'; ctx.textAlign = 'center';
+      ctx.fillText('MaxPool 2×2', (arrowX1+arrowX2)/2, arrowY - 14);
+
+      // Output grids
+      ctx.fillStyle = '#2c3e50'; ctx.font = 'bold 14px Inter, sans-serif'; ctx.textAlign = 'left';
+      ctx.fillText('Output (' + C + ' × ' + outH + ' × ' + outW + ')', outStartX, outY - 25);
+
+      for (let ch = 0; ch < C; ch++) {
+        const x0 = outStartX + ch * (outW*CELL + GAP);
+        ctx.fillStyle = chColors[ch]; ctx.font = 'bold 12px Inter, sans-serif'; ctx.textAlign = 'center';
+        ctx.fillText(chNames[ch], x0 + outW*CELL/2, outY - 8);
+
+        for (let r = 0; r < outH; r++) {
+          for (let c = 0; c < outW; c++) {
+            const cx = x0+c*CELL, cy = outY+r*CELL;
+            const isCur = (ch===curCh && r===curR && c===curC);
+            ctx.fillStyle = (isCur && showMax) ? chColors[ch]+'33' : chBg[ch];
+            ctx.fillRect(cx,cy,CELL,CELL);
+            ctx.strokeStyle = isCur ? chColors[ch] : chColors[ch]+'44';
+            ctx.lineWidth = isCur ? 2.5 : 0.8;
+            ctx.strokeRect(cx,cy,CELL,CELL);
+            if (filled[ch][r][c] || (isCur && showMax)) {
+              ctx.fillStyle = (isCur && showMax) ? chColors[ch] : '#2c3e50';
+              ctx.font = ((isCur&&showMax)?'bold 18px':'15px') + ' Space Grotesk, monospace';
+              ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+              ctx.fillText(''+output[ch][r][c], cx+CELL/2, cy+CELL/2);
+            }
+          }
+        }
+      }
+
+      // Equation
+      if (step >= 0 && step < totalPos && showMax) {
+        const ch = curCh, r = curR, c = curC;
+        const vals = [];
+        for (let pi = 0; pi < poolH; pi++)
+          for (let pj = 0; pj < poolW; pj++)
+            vals.push(input[ch][r*poolH+pi][c*poolW+pj]);
+        eqSpan.textContent = 'max(' + vals.join(', ') + ') = ' + output[ch][r][c];
+      } else {
+        eqSpan.textContent = '';
+      }
+
+      if (step >= totalPos) btn.textContent = 'Reset ↺';
+    }
+
+    btn.addEventListener('click', function() {
+      if (step >= totalPos) {
+        step = -1; phase = 0;
+        for (let c=0;c<C;c++) for(let r=0;r<outH;r++) for(let col=0;col<outW;col++) filled[c][r][col]=false;
+        btn.textContent = 'Next ▶'; draw(); return;
+      }
+      if (step < 0) { step = 0; phase = 0; }
+      else if (phase === 0) { phase = 1; }
+      else { filled[positions[step][0]][positions[step][1]][positions[step][2]] = true; step++; phase = 0; }
+      draw();
+    });
+
+    draw();
+  })();
+  </script>
+</section>
+
+<!-- SLIDE: CNN Conceptual Overview — From Pixels to Semantics -->
+<section>
+  <h2>From Pixels to Semantics</h2>
+  <p style="text-align:center; font-size:0.85em; color:#555; margin-top:-2px; margin-bottom:8px; font-style:italic;">CNNs trade spatial resolution for semantic richness: resolution goes down, abstraction goes up.</p>
+  <div style="display:flex; gap:30px; margin-top:4px; align-items:flex-start;">
+    <!-- Left: architecture diagram -->
+    <div style="flex:0 0 auto; display:flex; align-items:center; justify-content:center;">
+      <svg viewBox="20 0 300 520" width="300" height="520" xmlns="http://www.w3.org/2000/svg" font-family="Inter, sans-serif">
+        <!-- === Layer 0: Input 3 × 32 × 32 === -->
+        <!-- 3 channels, wide boxes with vertical grid lines -->
+        <rect x="40" y="10" width="160" height="18" rx="2" fill="#fdecea" stroke="#c0392b" stroke-width="1.2"/>
+        <rect x="40" y="30" width="160" height="18" rx="2" fill="#eafaf1" stroke="#27ae60" stroke-width="1.2"/>
+        <rect x="40" y="50" width="160" height="18" rx="2" fill="#ebf5fb" stroke="#2980b9" stroke-width="1.2"/>
+        <!-- grid lines to suggest spatial resolution -->
+        <g stroke="#ccc" stroke-width="0.4" opacity="0.5">
+          <line x1="55" y1="10" x2="55" y2="68"/><line x1="70" y1="10" x2="70" y2="68"/>
+          <line x1="85" y1="10" x2="85" y2="68"/><line x1="100" y1="10" x2="100" y2="68"/>
+          <line x1="115" y1="10" x2="115" y2="68"/><line x1="130" y1="10" x2="130" y2="68"/>
+          <line x1="145" y1="10" x2="145" y2="68"/><line x1="160" y1="10" x2="160" y2="68"/>
+          <line x1="175" y1="10" x2="175" y2="68"/><line x1="190" y1="10" x2="190" y2="68"/>
+        </g>
+        <text x="215" y="42" font-size="10" fill="#888">3 × 32 × 32</text>
+
+        <!-- Arrow + label -->
+        <line x1="120" y1="72" x2="120" y2="110" stroke="#888" stroke-width="1.5"/>
+        <polygon points="120,114 116,106 124,106" fill="#888"/>
+        <text x="135" y="96" font-size="9" fill="#e67e22" font-weight="600">Conv + ReLU + Pool</text>
+
+        <!-- === Layer 1: 16 × 16 × 16 === -->
+        <g>
+          <rect x="60" y="120" width="120" height="10" rx="1.5" fill="#fef5e7" stroke="#e67e22" stroke-width="0.8"/>
+          <rect x="60" y="131" width="120" height="10" rx="1.5" fill="#fef5e7" stroke="#e67e22" stroke-width="0.8"/>
+          <rect x="60" y="142" width="120" height="10" rx="1.5" fill="#fef5e7" stroke="#e67e22" stroke-width="0.8"/>
+          <rect x="60" y="153" width="120" height="10" rx="1.5" fill="#fef5e7" stroke="#e67e22" stroke-width="0.8"/>
+          <rect x="60" y="164" width="120" height="10" rx="1.5" fill="#fef5e7" stroke="#e67e22" stroke-width="0.8"/>
+          <rect x="60" y="175" width="120" height="10" rx="1.5" fill="#fef5e7" stroke="#e67e22" stroke-width="0.8"/>
+          <text x="58" y="177" font-size="8" fill="#bbb" text-anchor="end">⋮</text>
+          <!-- grid lines (fewer = lower resolution) -->
+          <g stroke="#e0c89a" stroke-width="0.3" opacity="0.5">
+            <line x1="80" y1="120" x2="80" y2="186"/><line x1="100" y1="120" x2="100" y2="186"/>
+            <line x1="120" y1="120" x2="120" y2="186"/><line x1="140" y1="120" x2="140" y2="186"/>
+            <line x1="160" y1="120" x2="160" y2="186"/>
+          </g>
+        </g>
+        <text x="195" y="155" font-size="10" fill="#888">16 × 16 × 16</text>
+
+        <!-- Arrow + label -->
+        <line x1="120" y1="190" x2="120" y2="228" stroke="#888" stroke-width="1.5"/>
+        <polygon points="120,232 116,224 124,224" fill="#888"/>
+        <text x="135" y="214" font-size="9" fill="#e67e22" font-weight="600">Conv + ReLU + Pool</text>
+
+        <!-- === Layer 2: 32 × 8 × 8 === -->
+        <g>
+          <rect x="80" y="238" width="80" height="7" rx="1" fill="#f5eef8" stroke="#8e44ad" stroke-width="0.7"/>
+          <rect x="80" y="246" width="80" height="7" rx="1" fill="#f5eef8" stroke="#8e44ad" stroke-width="0.7"/>
+          <rect x="80" y="254" width="80" height="7" rx="1" fill="#f5eef8" stroke="#8e44ad" stroke-width="0.7"/>
+          <rect x="80" y="262" width="80" height="7" rx="1" fill="#f5eef8" stroke="#8e44ad" stroke-width="0.7"/>
+          <rect x="80" y="270" width="80" height="7" rx="1" fill="#f5eef8" stroke="#8e44ad" stroke-width="0.7"/>
+          <rect x="80" y="278" width="80" height="7" rx="1" fill="#f5eef8" stroke="#8e44ad" stroke-width="0.7"/>
+          <rect x="80" y="286" width="80" height="7" rx="1" fill="#f5eef8" stroke="#8e44ad" stroke-width="0.7"/>
+          <rect x="80" y="294" width="80" height="7" rx="1" fill="#f5eef8" stroke="#8e44ad" stroke-width="0.7"/>
+          <text x="78" y="298" font-size="8" fill="#bbb" text-anchor="end">⋮</text>
+          <!-- grid lines (even fewer) -->
+          <g stroke="#c9b3d9" stroke-width="0.3" opacity="0.5">
+            <line x1="100" y1="238" x2="100" y2="302"/><line x1="120" y1="238" x2="120" y2="302"/>
+            <line x1="140" y1="238" x2="140" y2="302"/>
+          </g>
+        </g>
+        <text x="175" y="273" font-size="10" fill="#888">32 × 8 × 8</text>
+
+        <!-- Arrow + label: Flatten -->
+        <line x1="120" y1="306" x2="120" y2="344" stroke="#888" stroke-width="1.5"/>
+        <polygon points="120,348 116,340 124,340" fill="#888"/>
+        <text x="135" y="330" font-size="9" fill="#555" font-weight="600">Flatten</text>
+
+        <!-- === Flattened: 2048 === -->
+        <rect x="80" y="354" width="80" height="14" rx="3" fill="#f0f0f0" stroke="#888" stroke-width="1"/>
+        <text x="120" y="364" font-size="9" fill="#555" text-anchor="middle">2048</text>
+
+        <!-- Arrow + label: FC layers -->
+        <line x1="120" y1="372" x2="120" y2="408" stroke="#888" stroke-width="1.5"/>
+        <polygon points="120,412 116,404 124,404" fill="#888"/>
+        <text x="135" y="394" font-size="9" fill="#555" font-weight="600">Linear + ReLU</text>
+
+        <!-- === FC hidden: 128 === -->
+        <rect x="90" y="418" width="60" height="14" rx="3" fill="#f0f0f0" stroke="#888" stroke-width="1"/>
+        <text x="120" y="428" font-size="9" fill="#555" text-anchor="middle">128</text>
+
+        <!-- Arrow -->
+        <line x1="120" y1="436" x2="120" y2="468" stroke="#888" stroke-width="1.5"/>
+        <polygon points="120,472 116,464 124,464" fill="#888"/>
+        <text x="135" y="456" font-size="9" fill="#555" font-weight="600">Linear</text>
+
+        <!-- === Output: 10 classes === -->
+        <g>
+          <rect x="88" y="478" width="12" height="14" rx="2" fill="#eaf7ea" stroke="#27ae60" stroke-width="1"/>
+          <rect x="101" y="478" width="12" height="14" rx="2" fill="#eaf7ea" stroke="#27ae60" stroke-width="1"/>
+          <rect x="114" y="478" width="12" height="14" rx="2" fill="#eaf7ea" stroke="#27ae60" stroke-width="1"/>
+          <rect x="127" y="478" width="12" height="14" rx="2" fill="#eaf7ea" stroke="#27ae60" stroke-width="1"/>
+          <rect x="140" y="478" width="12" height="14" rx="2" fill="#eaf7ea" stroke="#27ae60" stroke-width="1"/>
+          <text x="156" y="488" font-size="8" fill="#aaa">...</text>
+        </g>
+        <text x="120" y="508" font-size="10" fill="#27ae60" text-anchor="middle" font-weight="600">10 classes</text>
+      </svg>
+    </div>
+
+    <!-- Right: feature vector interpretations -->
+    <div style="flex:1; font-size:0.70em; color:#2c3e50; padding-top:4px;">
+      <!-- Input level -->
+      <div style="margin-bottom:10px;">
+        <div style="font-weight:700; font-size:1.1em; margin-bottom:4px;">Input: raw pixel values</div>
+        <div style="background:#f8f8f8; padding:8px 12px; border-radius:5px; border-left:3px solid #c0392b;">
+          \[\mathbf{v}_{i,j}^{(0)} = \alpha_r \,\mathbf{e}_{\text{red}} + \alpha_g \,\mathbf{e}_{\text{green}} + \alpha_b \,\mathbf{e}_{\text{blue}}\]
+          <p style="font-size:0.85em; color:#888; margin-top:2px;">Each pixel is a 3-vector of colour intensities.</p>
+        </div>
+      </div>
+
+      <!-- After first conv block -->
+      <div style="margin-bottom:10px;">
+        <div style="font-weight:700; font-size:1.1em; margin-bottom:4px;">After Conv+ReLU+Pool: low-level features</div>
+        <div style="background:#f8f8f8; padding:8px 12px; border-radius:5px; border-left:3px solid #e67e22;">
+          \[\mathbf{v}_{i,j}^{(1)} = \alpha_1 \,\mathbf{e}_{\text{vert. edge}} + \alpha_2 \,\mathbf{e}_{\text{green area}} + \alpha_3 \,\mathbf{e}_{\text{horiz. gradient}} + \cdots\]
+          <p style="font-size:0.85em; color:#888; margin-top:2px;">16 learned feature channels — edges, colour gradients, textures.</p>
+        </div>
+      </div>
+
+      <!-- After second conv block -->
+      <div style="margin-bottom:10px;">
+        <div style="font-weight:700; font-size:1.1em; margin-bottom:4px;">Deeper layers: higher-level features</div>
+        <div style="background:#f8f8f8; padding:8px 12px; border-radius:5px; border-left:3px solid #8e44ad;">
+          \[\mathbf{v}_{i,j}^{(2)} = \alpha_1 \,\mathbf{e}_{\text{circle}} + \alpha_2 \,\mathbf{e}_{\text{corner}} + \alpha_3 \,\mathbf{e}_{\text{stripe pattern}} + \cdots\]
+          <p style="font-size:0.85em; color:#888; margin-top:2px;">32 channels — compositions of edges become shapes and textures.</p>
+        </div>
+      </div>
+
+      <!-- Output -->
+      <div>
+        <div style="font-weight:700; font-size:1.1em; margin-bottom:4px;">Output: class scores</div>
+        <div style="background:#f8f8f8; padding:8px 12px; border-radius:5px; border-left:3px solid #27ae60;">
+          \[\mathbf{o} = (s_{\text{airplane}},\; s_{\text{car}},\; s_{\text{bird}},\; \ldots,\; s_{\text{truck}})\]
+          <p style="font-size:0.85em; color:#888; margin-top:2px;">MLP maps the 2048-dim feature vector to 10 class scores.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ============================================================ -->
+<!-- SLIDE: Anatomy of a CNN — LeNet-5 breakdown                  -->
+<!-- ============================================================ -->
+<section>
+<section>
+  <h2>Anatomy of a CNN: LeNet-5</h2>
+  <div style="display:flex; gap:6px; margin-bottom:6px;">
+    <button id="lenet-toggle-code" style="padding:3px 14px; cursor:pointer; border-radius:4px; border:2px solid #2980b9; background:#ebf5fb; font-size:0.7em; font-weight:600;">PyTorch Code</button>
+    <button id="lenet-toggle-math" style="padding:3px 14px; cursor:pointer; border-radius:4px; border:2px solid #bdc3c7; background:#fff; font-size:0.7em; color:#7f8c8d;">Math Definition</button>
+    <button id="lenet-toggle-diagram" style="padding:3px 14px; cursor:pointer; border-radius:4px; border:2px solid #bdc3c7; background:#fff; font-size:0.7em; color:#7f8c8d;">Architecture Diagram</button>
+  </div>
+  <div style="display:flex; gap:10px; font-size:0.68em;">
+    <!-- Left: Interactive code -->
+    <div id="lenet-code-wrap" style="flex:1.3;">
+      <div id="lenet-code" style="background:#2c3e50; color:#ecf0f1; padding:10px 12px; border-radius:10px; font-family:monospace; font-size:0.92em; line-height:1.5; text-align:left; overflow:hidden;">
+        <div style="color:#7f8c8d; margin-bottom:2px;">import torch.nn as nn, torch.nn.functional as F</div>
+        <div class="cline" data-group="module" style="cursor:pointer;"><span style="color:#7f8c8d;">class</span> <span style="color:#e67e22;">LeNet5</span>(nn.Module):</div>
+        <div style="color:#7f8c8d; padding-left:1.5em;">def __init__(self):</div>
+        <div class="cline" data-group="super" style="padding-left:3em; cursor:pointer; color:#7f8c8d;">super().__init__()</div>
+        <div class="cline" data-group="conv1" style="padding-left:3em; cursor:pointer;">self.conv1 = nn.Conv2d(1, 6, 5)   <span style="color:#7f8c8d;"># W: 6&times;1&times;5&times;5</span></div>
+        <div class="cline" data-group="conv2" style="padding-left:3em; cursor:pointer;">self.conv2 = nn.Conv2d(6, 16, 5)  <span style="color:#7f8c8d;"># W: 16&times;6&times;5&times;5</span></div>
+        <div class="cline" data-group="fc" style="padding-left:3em; cursor:pointer;">self.fc1 = nn.Linear(16*4*4, 120) <span style="color:#7f8c8d;"># W: 120&times;256</span></div>
+        <div class="cline" data-group="fc" style="padding-left:3em; cursor:pointer;">self.fc2 = nn.Linear(120, 84)     <span style="color:#7f8c8d;"># W: 84&times;120</span></div>
+        <div class="cline" data-group="fc" style="padding-left:3em; cursor:pointer;">self.fc3 = nn.Linear(84, 10)      <span style="color:#7f8c8d;"># W: 10&times;84</span></div>
+        <div style="height:4px;"></div>
+        <div class="cline" data-group="forward" style="padding-left:1.5em; cursor:pointer; color:#7f8c8d;">def forward(self, x): <span style="color:#555;">&ensp;# x: 1&times;28&times;28</span></div>
+        <div class="cline" data-group="conv1" style="padding-left:3em; cursor:pointer;">x = F.relu(self.conv1(x)) <span style="color:#7f8c8d;"># &rarr; 6&times;24&times;24</span></div>
+        <div class="cline" data-group="pool1" style="padding-left:3em; cursor:pointer;">x = F.max_pool2d(x, 2)    <span style="color:#7f8c8d;"># &rarr; 6&times;12&times;12</span></div>
+        <div class="cline" data-group="conv2" style="padding-left:3em; cursor:pointer;">x = F.relu(self.conv2(x)) <span style="color:#7f8c8d;"># &rarr; 16&times;8&times;8</span></div>
+        <div class="cline" data-group="pool2" style="padding-left:3em; cursor:pointer;">x = F.max_pool2d(x, 2)    <span style="color:#7f8c8d;"># &rarr; 16&times;4&times;4</span></div>
+        <div class="cline" data-group="flatten" style="padding-left:3em; cursor:pointer;">x = x.flatten(1)          <span style="color:#7f8c8d;"># &rarr; 256</span></div>
+        <div class="cline" data-group="fc" style="padding-left:3em; cursor:pointer;">x = F.relu(self.fc1(x))   <span style="color:#7f8c8d;"># &rarr; 120</span></div>
+        <div class="cline" data-group="fc" style="padding-left:3em; cursor:pointer;">x = F.relu(self.fc2(x))   <span style="color:#7f8c8d;"># &rarr; 84</span></div>
+        <div class="cline" data-group="fc" style="padding-left:3em; cursor:pointer;">x = self.fc3(x)           <span style="color:#7f8c8d;"># &rarr; 10</span></div>
+        <div style="padding-left:3em; color:#7f8c8d;">return x</div>
+      </div>
+    </div>
+    <!-- Left: Math view (hidden by default) -->
+    <div id="lenet-math-wrap" style="flex:1.3; display:none;">
+      <div style="background:#fdf6ec; border:2px solid #e67e22; border-radius:10px; padding:12px 14px; font-size:0.92em; line-height:1.9; text-align:left;">
+        <div style="font-weight:600; color:#e67e22; margin-bottom:6px;">LeNet-5: Mathematical Definition</div>
+        <div style="font-size:0.95em;">
+          <strong>Feature extraction:</strong><br>
+          \(\quad h^{(1)}_{c} = \text{ReLU}\!\Big(\sum_{c'} W^{(1)}_{c,c'} * X_{c'} + b^{(1)}_c\Big) \in \mathbb{R}^{24 \times 24}\) <span style="color:#7f8c8d;">&ensp; \(W^{(1)} \in \mathbb{R}^{6 \times 1 \times 5 \times 5},\; \mathbf{b}^{(1)} \in \mathbb{R}^{6}\)</span><br>
+          \(\quad p^{(1)}_{c} = \text{MaxPool}_{2\times2}\!\big(h^{(1)}_c\big) \in \mathbb{R}^{12 \times 12}\)<br>
+          \(\quad h^{(2)}_{c} = \text{ReLU}\!\Big(\sum_{c'} W^{(2)}_{c,c'} * p^{(1)}_{c'} + b^{(2)}_c\Big) \in \mathbb{R}^{8 \times 8}\) <span style="color:#7f8c8d;">&ensp; \(W^{(2)} \in \mathbb{R}^{16 \times 6 \times 5 \times 5},\; \mathbf{b}^{(2)} \in \mathbb{R}^{16}\)</span><br>
+          \(\quad p^{(2)}_{c} = \text{MaxPool}_{2\times2}\!\big(h^{(2)}_c\big) \in \mathbb{R}^{4 \times 4}\) <span style="color:#7f8c8d;">&ensp; \(c = 1,\ldots,16\)</span><br>
+          <div style="height:4px;"></div>
+          <strong>Flatten:</strong><br>
+          \(\quad \mathbf{z} = \text{vec}\!\big(p^{(2)}_1,\ldots,p^{(2)}_{16}\big) \in \mathbb{R}^{16 \times 4 \times 4\,=\,256}\)<br>
+          <div style="height:4px;"></div>
+          <strong>Classification head (MLP):</strong><br>
+          \(\quad \mathbf{a}_1 = \text{ReLU}\!\big(W_1\,\mathbf{z} + \mathbf{b}_1\big) \in \mathbb{R}^{120}\) <span style="color:#7f8c8d;">&ensp; \(W_1 \in \mathbb{R}^{120 \times 256},\; \mathbf{b}_1 \in \mathbb{R}^{120}\)</span><br>
+          \(\quad \mathbf{a}_2 = \text{ReLU}\!\big(W_2\,\mathbf{a}_1 + \mathbf{b}_2\big) \in \mathbb{R}^{84}\) <span style="color:#7f8c8d;">&ensp; \(W_2 \in \mathbb{R}^{84 \times 120},\; \mathbf{b}_2 \in \mathbb{R}^{84}\)</span><br>
+          \(\quad \mathbf{y} = W_3\,\mathbf{a}_2 + \mathbf{b}_3 \in \mathbb{R}^{10}\) <span style="color:#7f8c8d;">&ensp; \(W_3 \in \mathbb{R}^{10 \times 84},\; \mathbf{b}_3 \in \mathbb{R}^{10}\) &ensp;(logits)</span>
+        </div>
+        <div style="margin-top:8px; font-size:0.85em; color:#7f8c8d;">
+          \(*\) denotes 2D convolution.
+        </div>
+      </div>
+    </div>
+    <!-- Left: Diagram view (hidden by default) -->
+    <div id="lenet-diagram-wrap" style="flex:1.3; display:none; text-align:center;">
+      <div style="background:#f9f9f9; border:2px solid #27ae60; border-radius:10px; padding:16px; display:flex; flex-direction:column; align-items:center; justify-content:center; min-height:400px;">
+        <div style="font-weight:600; color:#27ae60; margin-bottom:10px;">LeNet-5 Architecture (LeCun et al., 1998)</div>
+        <img src="figures/lecture5/lenet5_architecture.png" style="max-height:260px; border-radius:6px;">
+        <p class="credit" style="margin:10px 0 0;">Credits: Dive Into Deep Learning, 2020.</p>
+        <div style="margin-top:10px; font-size:0.85em; color:#7f8c8d; max-width:500px;">
+          Input (1&times;28&times;28) &rarr; Conv &rarr; Pool &rarr; Conv &rarr; Pool &rarr; FC &rarr; FC &rarr; FC &rarr; Output (10 classes).<br>
+          Note: original paper used 32&times;32 input; here we use 28&times;28 (MNIST).<br>
+          Spatial dimensions shrink while the number of channels grows.
+        </div>
+      </div>
+    </div>
+    <!-- Right: Info panel -->
+    <div style="flex:0.9; display:flex; flex-direction:column; gap:4px;">
+      <div id="lenet-info" style="background:#ecf0f1; border-radius:8px; padding:10px; min-height:180px; max-height:320px; overflow-y:auto; font-size:0.95em; line-height:1.5; transition: all 0.2s;">
+        <div id="lenet-info-title" style="font-weight:600; color:#2c3e50; margin-bottom:4px;">Click a code line to explore</div>
+        <div id="lenet-info-body" style="color:#555;">
+          Each line maps to a specific mathematical operation. Click any highlighted line on the left to see what it does, the math behind it, and how many parameters it has.
+        </div>
+        <div id="lenet-info-sub" style="margin-top:6px;"></div>
+      </div>
+    </div>
+  </div>
+</section>
+<section style="font-size:0.50em;">
+  <h2>LeNet-5 &mdash; Details</h2>
+  <ul style="line-height:1.8;">
+    <li><strong>Architecture:</strong> two convolution+pooling stages for feature extraction, followed by a 3-layer MLP for classification. Input: 1&times;28&times;28 grayscale image. Output: 10 class scores (digits 0&ndash;9).</li>
+    <li><strong>Dimension flow:</strong> 1&times;28&times;28 &rarr; Conv(5) &rarr; 6&times;24&times;24 &rarr; Pool(2) &rarr; 6&times;12&times;12 &rarr; Conv(5) &rarr; 16&times;8&times;8 &rarr; Pool(2) &rarr; 16&times;4&times;4 &rarr; flatten &rarr; 256 &rarr; FC &rarr; 120 &rarr; FC &rarr; 84 &rarr; FC &rarr; 10. The spatial dimensions shrink while the number of channels grows.</li>
+    <li><strong>Parameter count per layer:</strong> conv1: 156, conv2: 2,416, fc1: 30,840, fc2: 10,164, fc3: 850. Total: ~44k. Note that the vast majority of parameters are in the fully connected layers, not the convolutions.</li>
+    <li><strong>Why convolutions?</strong> A fully connected first layer on a 28&times;28 image would need 784&times;n parameters. Conv2d(1,6,5) achieves the same spatial coverage with only 156 parameters by exploiting <em>weight sharing</em> and <em>locality</em>.</li>
+    <li><strong>Historical note:</strong> LeNet-5 was designed for handwritten digit recognition (MNIST). It was one of the first successful deep CNNs and established the conv&rarr;pool&rarr;fc pattern still used today.</li>
+    <li><strong>Reference:</strong> <a href="http://yann.lecun.com/exdb/publis/pdf/lecun-98.pdf" style="color:#7f8c8d;">LeCun et al., <em>Gradient-Based Learning Applied to Document Recognition</em>, Proc. IEEE 1998</a>.</li>
+  </ul>
+</section>
+</section>
+
+<!-- SLIDE: Modified convolution operations (vertical stack) -->
+<section>
+
+<!-- Summary slide (horizontal) -->
+<section>
+  <h2>Modified Convolution Operations</h2>
+  <p style="margin-top:20px;">Convolution operations can be modified in a few ways that are important for deep learning:</p>
+  <div class="box" style="margin-top:16px;">
+    <ul>
+      <li style="margin:8px 0;">The <strong>padding</strong> specifies the size of a zeroed frame added around the input. Useful to preserve spatial dimensions.</li>
+      <li style="margin:8px 0;">The <strong>stride</strong> specifies a step size when moving the kernel. Useful to reduce spatial dimensions.</li>
+      <li style="margin:8px 0;">The <strong>dilation</strong> expands the kernel support by inserting zeros between coefficients. Increases the receptive field without adding parameters.</li>
+    </ul>
+  </div>
+  <p style="font-size:0.85em; color:#888; margin-top:12px; font-style:italic; text-align:center;">↓ Scroll down for details on each.</p>
+  <p class="credit" style="margin-top:8px;">Credits: Francois Fleuret, EE559 Deep Learning, EPFL; Dumoulin and Visin, 2016.</p>
+</section>
+
+<!-- SLIDE: Padding (vertical) -->
+<section>
+  <h2>Padding</h2>
+  <p>Padding is useful to control the spatial dimension of the feature map, for example to keep it constant across layers.</p>
+  <div style="display:flex; gap:20px; margin-top:10px; align-items:center; justify-content:center;">
+    <div style="text-align:center;">
+      <img src="figures/lecture5/padding_no.png" class="fig" style="max-height:300px;">
+      <p style="font-size:0.8em; color:#7f8c8d;">No padding</p>
+    </div>
+    <div style="text-align:center;">
+      <img src="figures/lecture5/padding_yes.png" class="fig" style="max-height:300px;">
+      <p style="font-size:0.8em; color:#7f8c8d;">With padding</p>
+    </div>
+    <div style="text-align:center;">
+      <img src="figures/lecture5/anim_padding.gif" class="fig" style="max-height:250px;">
+      <p style="font-size:0.8em; color:#7f8c8d;">Same padding, no strides</p>
+    </div>
+  </div>
+  <p class="credit">Credits: Dumoulin and Visin, A guide to convolution arithmetic for deep learning, 2016.</p>
+</section>
+
+<!-- SLIDE: Stride (vertical) -->
+<section>
+  <h2>Stride</h2>
+  <p>Stride is useful to reduce the spatial dimension of the feature map by a constant factor.</p>
+  <div style="display:flex; gap:30px; margin-top:14px; align-items:center; justify-content:center;">
+    <div style="text-align:center;">
+      <img src="figures/lecture5/stride_fig.png" class="fig" style="max-height:320px;">
+    </div>
+    <div style="text-align:center;">
+      <img src="figures/lecture5/anim_stride.gif" class="fig" style="max-height:250px;">
+      <p style="font-size:0.8em; color:#7f8c8d;">No padding, strides</p>
+    </div>
+  </div>
+  <p class="credit">Credits: Dumoulin and Visin, A guide to convolution arithmetic for deep learning, 2016.</p>
+</section>
+
+<!-- SLIDE: Dilation (vertical) -->
+<section>
+  <h2>Dilation</h2>
+  <p>The dilation modulates the expansion of the kernel support by adding rows and columns of zeros between coefficients.</p>
+  <div style="text-align:center; margin-top:14px;">
+    <img src="figures/lecture5/dilation_fig.png" class="fig" style="max-height:380px;">
+  </div>
+  <p style="text-align:center; margin-top:8px;">Having a dilation coefficient greater than one increases the unit's receptive field size without increasing the number of parameters.</p>
+</section>
+
+</section><!-- end vertical stack: Modified operations -->
+
+<!-- SLIDE: Equivariance -->
+<section>
+  <h2>Equivariance of Convolution Operations</h2>
+  <div class="box" style="text-align:center; padding:10px 14px; margin-top:8px;">
+    <p>A function \(f\) is <strong>equivariant</strong> to \(g\) if \(f(g(\mathbf{x})) = g(f(\mathbf{x}))\).</p>
+  </div>
+  <p style="margin-top:10px;">Parameter sharing used in a convolutional layer causes the layer to be equivariant to translation. If an object moves in the input image, its representation will move the same amount in the output.</p>
+  <div style="text-align:center; margin-top:14px;">
+    <img src="figures/lecture5/lenet5_equivariance.png" class="fig" style="max-height:280px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+  </div>
+  <p class="credit">Credits: LeCun et al, Gradient-based learning applied to document recognition, 1998.</p>
+</section>
+
+<!-- SLIDE: Discussion moment -->
+<section>
+  <h2 style="margin-bottom:0.3em;">☕ Discussion</h2>
+  <p style="text-align:center; color:#888; font-size:0.85em; margin-bottom:20px;">1 min think — 3 min discuss with neighbours — share with the group</p>
+  <div style="display:flex; gap:20px; margin-top:10px;">
+    <div class="box" style="flex:1; border-left:4px solid #e67e22;">
+      <p style="font-size:1.0em;"><strong>1.</strong> In the demo, the CNN learned edge detectors in the first layer — without being told to. <em>Why</em> does this happen? What "forces" the network to learn edges rather than something else?</p>
+    </div>
+    <div class="box" style="flex:1; border-left:4px solid #2980b9;">
+      <p style="font-size:1.0em;"><strong>2.</strong> Our LeNet-5 has ~44k parameters. A modern ResNet has ~25 million. What do you think the extra parameters buy you? When would LeNet-5 be enough?</p>
+    </div>
+  </div>
+  <div class="fragment box" style="margin-top:20px; border-left:4px solid #27ae60; text-align:center;">
+    <p style="font-size:1.0em;"><strong>Bonus:</strong> We added noise with σ = 0.5 to the training images. Would the CNN still work if we trained on clean images but tested on noisy ones? Why or why not?</p>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<!-- SECTION 3: BUILDING CNNs                                     -->
+<!-- ============================================================ -->
+<section>
+  <div style="display:flex; align-items:center; justify-content:center; height:100%;">
+    <div style="text-align:center;">
+      <h1 style="font-size:2.0em; margin-bottom:0.2em;">Building Convolutional Neural Networks</h1>
+      <div style="width:120px; height:4px; background: linear-gradient(90deg, #27ae60, #8e44ad); margin:0 auto; border-radius:2px;"></div>
+      <p style="font-size:0.9em; color:#7f8c8d; margin-top:0.8em;">Architectures, depth, and interpretation.</p>
+    </div>
+  </div>
+</section>
+
+<!-- SLIDE: CNN composition -->
+<section>
+  <h2>Putting It Together &mdash; Convolutional Neural Networks</h2>
+  <p>A <strong>convolutional network</strong> is generically defined as a composition of convolutional layers (CONV), pooling layers (POOL), linear rectifiers (RELU) and fully connected layers (FC).</p>
+  <div style="text-align:center; margin-top:14px;">
+    <img src="figures/lecture5/cnn_composition.png" class="fig-lg" style="max-width:70%;">
+  </div>
+</section>
+
+<!-- SLIDE: CNN Architectures pattern -->
+<section>
+  <h2>CNN Architectures</h2>
+  <div class="box" style="margin-top:16px; text-align:center; font-size:1.05em; padding:14px;">
+    <p>The most common convolutional network architecture follows the pattern</p>
+    <p style="margin-top:10px; font-family:monospace; font-size:1.1em;">INPUT &rarr; [[CONV &rarr; RELU]*N &rarr; POOL?]*M &rarr; [FC &rarr; RELU]*K &rarr; FC</p>
+  </div>
+  <div style="margin-top:14px;">
+    <ul>
+      <li><code>*</code> indicates repetition, <code>POOL?</code> indicates an optional pooling layer, <code>FC</code> is a fully connected (<code>nn.Linear</code>) layer</li>
+      <li>\(N \geq 0\) (usually \(N \leq 3\)), \(M \geq 0\), \(K \geq 0\) (usually \(K \leq 2\))</li>
+      <li>the last fully connected layer holds the output (e.g., the class scores)</li>
+    </ul>
+  </div>
+  <div class="fragment box" style="margin-top:12px; border-left:4px solid #e67e22;">
+    <p><strong>Examples:</strong></p>
+    <ul style="font-family:monospace; font-size:0.9em;">
+      <li>INPUT &rarr; FC &ensp; (linear classifier, \(N\!=\!M\!=\!K\!=\!0\))</li>
+      <li>INPUT &rarr; [FC &rarr; RELU]*K &rarr; FC &ensp; (K-layer MLP)</li>
+      <li>INPUT &rarr; [CONV &rarr; RELU &rarr; POOL]*2 &rarr; FC &rarr; RELU &rarr; FC</li>
+      <li>INPUT &rarr; [[CONV &rarr; RELU]*2 &rarr; POOL]*3 &rarr; [FC &rarr; RELU]*2 &rarr; FC</li>
+    </ul>
+  </div>
+</section>
+
+<!-- SLIDE: ResNet -->
+<section>
+  <h2>ResNet &mdash; He et al., 2015</h2>
+  <div style="display:flex; gap:30px; margin-top:10px; align-items:flex-start;">
+    <div style="flex:0.6; text-align:center;">
+      <img src="figures/lecture5/resnet_block_simple.png" class="fig" style="max-height:420px;">
+      <p style="font-size:0.8em; color:#7f8c8d; margin-top:4px;">A residual block with skip connection.</p>
+    </div>
+    <div style="flex:1;">
+      <p>Very deep networks (up to <strong>152 layers</strong>) made possible by <strong>residual blocks</strong>.</p>
+      <div class="box" style="margin-top:12px; border-left:4px solid #27ae60;">
+        <p>The <strong>skip connection</strong> adds the input directly to the output: \(f(\mathbf{x}) = \mathbf{x} + g(\mathbf{x})\).</p>
+        <p style="margin-top:8px;">The network only needs to learn the <em>residual</em> \(g(\mathbf{x})\). If \(g \approx 0\), the block acts as identity &mdash; adding more layers can never hurt.</p>
+      </div>
+      <div class="box" style="margin-top:12px; border-left:4px solid #2980b9;">
+        <p><strong>Why it matters:</strong> without skip connections, very deep networks suffer from vanishing gradients. The skip path lets gradients flow directly through, enabling training of 100+ layer networks.</p>
+      </div>
+    </div>
+  </div>
+  <p class="credit">Credits: Dive Into Deep Learning, 2020.</p>
+</section>
+
+<!-- Architecture zoo (vertical stack) -->
+<section>
+
+<!-- Summary slide -->
+<section>
+  <h2>Architecture Zoo &mdash; Historical Evolution</h2>
+  <div style="text-align:center; margin-top:14px;">
+    <img src="figures/lecture5/depth_benefits_chart.png" class="fig-lg" style="max-width:70%;">
+  </div>
+  <p style="text-align:center; margin-top:8px;">Top-5 error on ImageNet vs time and network depth. Deeper networks with skip connections dominate.</p>
+  <p style="font-size:0.85em; color:#888; margin-top:8px; font-style:italic; text-align:center;">↓ Scroll down for individual architectures.</p>
+</section>
+
+<!-- AlexNet (vertical) -->
+<section>
+  <h2>AlexNet &mdash; Krizhevsky et al., 2012</h2>
+  <p>Composition of 8-layer CNN (with kernel sizes up to 11) with a 3-layer MLP. The number of parameters in AlexNet is <em>1000 times larger</em> than in LeNet.</p>
+  <div style="text-align:center; margin-top:10px;">
+    <img src="figures/lecture5/alexnet_detail.png" class="fig-lg">
+  </div>
+  <p class="credit">Credits: Dive Into Deep Learning, 2020.</p>
+</section>
+
+<!-- VGG (vertical) -->
+<section>
+  <h2>VGG &mdash; Simonyan and Zisserman, 2014</h2>
+  <p>Composition of 5 VGG blocks consisting of CONV + POOL layers, followed by fully connected layers. Network depth increased up to 19 layers, <em>while the kernel sizes reduced to 3</em>.</p>
+  <div style="text-align:center; margin-top:10px;">
+    <img src="figures/lecture5/vgg_architecture.png" class="fig-lg">
+  </div>
+  <p class="credit">Credits: Dive Into Deep Learning, 2020.</p>
+</section>
+
+<!-- Effective receptive field (vertical) -->
+<section>
+  <h2>Effective Receptive Field</h2>
+  <div style="text-align:center; margin-top:10px;">
+    <img src="figures/lecture5/effective_receptive_field.png" class="fig" style="max-height:370px;">
+  </div>
+  <div class="box" style="margin-top:10px;">
+    <p>The <strong>effective receptive field</strong> is the part of the visual input that affects a given unit indirectly through previous convolutional layers. It grows linearly with depth.</p>
+    <p class="fragment" style="margin-top:6px;">E.g., a stack of two \(3 \times 3\) kernels of stride 1 has the same effective receptive field as a single \(5 \times 5\) kernel, but fewer parameters.</p>
+  </div>
+</section>
+
+</section><!-- end vertical stack: Architecture zoo -->
+
+<!-- ============================================================ -->
+<!-- SECTION 4: INTERPRETING CNNs                                 -->
+<!-- ============================================================ -->
+<section>
+  <div style="display:flex; align-items:center; justify-content:center; height:100%;">
+    <div style="text-align:center;">
+      <h1 style="font-size:2.0em; margin-bottom:0.2em;">Interpreting CNNs</h1>
+      <div style="width:120px; height:4px; background: linear-gradient(90deg, #8e44ad, #e74c3c); margin:0 auto; border-radius:2px;"></div>
+      <p style="font-size:0.9em; color:#7f8c8d; margin-top:0.8em;">What do convolutional networks learn?</p>
+    </div>
+  </div>
+</section>
+
+<!-- SLIDE: Under the hood -->
+<section>
+  <h2>Under the Hood &mdash; Overview</h2>
+  <div class="box" style="margin-top:16px;">
+    <p>Understanding what is happening in deep neural networks after training is complex and the tools we have are limited.</p>
+    <p style="margin-top:10px;">In the case of convolutional neural networks, we can look at:</p>
+    <ul style="margin-top:8px;">
+      <li><strong>the network's kernels as images</strong></li>
+      <li>internal activations on a single sample as images</li>
+      <li>distributions of activations on a population of samples</li>
+      <li>derivatives of the response with respect to the input</li>
+      <li><strong>maximum-response synthetic samples</strong></li>
+    </ul>
+  </div>
+  <p class="credit" style="margin-top:10px;">Credits: Francois Fleuret, EE559 Deep Learning, EPFL.</p>
+</section>
+
+<!-- SLIDE: Kernels -->
+<section>
+  <h2>Visualising Kernels</h2>
+  <div style="margin-top:10px;">
+    <p><strong>LeNet, Layer 1</strong> &mdash; first convolutional layer, all filters:</p>
+    <div style="text-align:center; margin-top:8px;">
+      <img src="figures/lecture5/kernels_lenet_layer1.png" class="fig" style="max-width:600px;">
+    </div>
+  </div>
+  <div style="margin-top:16px;">
+    <p><strong>LeNet, Layer 2</strong> &mdash; second convolutional layer, first 32 filters:</p>
+    <div style="text-align:center; margin-top:8px;">
+      <img src="figures/lecture5/kernels_lenet_layer2.png" class="fig" style="max-width:160px;">
+    </div>
+  </div>
+  <div style="margin-top:16px;">
+    <p><strong>AlexNet, Layer 1</strong> &mdash; first convolutional layer, first 20 filters:</p>
+    <div style="text-align:center; margin-top:8px;">
+      <img src="figures/lecture5/kernels_alexnet_layer1.png" class="fig" style="max-width:600px;">
+    </div>
+  </div>
+  <p class="credit">Credits: Francois Fleuret, EE559 Deep Learning, EPFL.</p>
+</section>
+
+<!-- SLIDE: Maximum response signals -->
+<section>
+  <h2>Maximum Response Signals &mdash; What Does a Neuron "Want to See"?</h2>
+  <div style="display:flex; gap:24px; margin-top:10px; align-items:flex-start;">
+    <div style="flex:1;">
+      <p style="font-size:0.9em;"><strong>Goal:</strong> find the input image \(\mathbf{x}\) that makes a specific neuron (at layer \(\ell\), channel \(d\)) fire as strongly as possible.</p>
+      <div class="box" style="margin-top:10px; font-size:0.9em;">
+        <p><strong>Step 1:</strong> Start from random noise:<br>
+        \(\quad \mathbf{x}_0 \sim U[0, 1]^{C \times H \times W}\)</p>
+        <p style="margin-top:8px;"><strong>Step 2:</strong> Define objective &mdash; how strongly does neuron \((\ell, d)\) respond?<br>
+        \(\quad \mathcal{L}_{\ell,d}(\mathbf{x}) = ||\mathbf{h}_{\ell,d}(\mathbf{x})||_2\)</p>
+        <p style="margin-top:8px;"><strong>Step 3:</strong> Gradient ascent <em>on the image</em> (not the weights!):<br>
+        \(\quad \mathbf{x}_{t+1} = \mathbf{x}_t + \gamma \,\nabla_{\mathbf{x}} \mathcal{L}_{\ell,d}(\mathbf{x}_t)\)</p>
+      </div>
+      <p class="fragment" style="font-size:0.85em; margin-top:10px; color:#555;">After many iterations, \(\mathbf{x}\) converges to a synthetic image showing <em>what that neuron has learned to detect</em>.</p>
+    </div>
+    <div style="flex:0.7;">
+      <div class="box" style="border-left:4px solid #e67e22; font-size:0.85em;">
+        <p><strong>Key insight:</strong> during training we optimise <em>weights</em> to minimise loss. Here we freeze the weights and optimise the <em>input image</em> to maximise activation.</p>
+      </div>
+      <div class="fragment box" style="border-left:4px solid #8e44ad; margin-top:10px; font-size:0.85em;">
+        <p><strong>What we expect:</strong></p>
+        <ul style="margin-top:4px;">
+          <li>Early layers &rarr; edges, colours, gradients</li>
+          <li>Middle layers &rarr; textures, patterns</li>
+          <li>Deep layers &rarr; object parts, shapes</li>
+        </ul>
+        <p style="margin-top:6px;">Confirms the "pixels to semantics" story!</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- SLIDE: Feature hierarchy -->
+<section>
+  <h2>Hierarchical Composition of Features</h2>
+  <ul>
+    <li>The first layers appear to encode direction and colour.</li>
+    <li>The direction and colour filters get combined into grid and spot textures.</li>
+    <li>These textures gradually get combined into increasingly complex patterns.</li>
+  </ul>
+  <p style="text-align:center; margin-top:8px;"><strong>The network appears to learn a hierarchical composition of patterns.</strong></p>
+  <div style="text-align:center; margin-top:8px;">
+    <img src="figures/lecture5/feature_hierarchy.png" class="fig-lg" style="max-width:50%;">
+  </div>
+  <p class="credit">Credits: Zeiler &amp; Fergus 2013.</p>
+</section>
+
+<!-- SLIDE: DeepDream -->
+<section>
+  <h2>DeepDream &mdash; Pushing It to the Extreme</h2>
+  <p style="text-align:center; font-size:0.85em; color:#555; margin-top:-2px;">The same gradient ascent technique, applied to maximise activations across an entire network on a real image.</p>
+  <div style="text-align:center; margin-top:12px;">
+    <iframe width="800" height="450" src="https://www.youtube-nocookie.com/embed/dbQh1I_uvjo" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen style="border-radius:8px; box-shadow:0 4px 12px rgba(0,0,0,0.15);"></iframe>
+  </div>
+  <p style="text-align:center; font-size:0.75em; color:#888; margin-top:8px;">The network hallucinates the features it has learned &mdash; eyes, faces, animal parts &mdash; into the image.</p>
+</section>
+
+<!-- SLIDE: Summary -->
+<section>
+  <h2>Summary</h2>
+  <div style="display:flex; gap:10px; margin-top:16px;">
+    <div class="sec-btn" style="border-color:#2980b9; flex:1;">
+      <strong style="color:#2980b9;">Motivation</strong><br><br>
+      Images = 3 colour channels.<br>CNNs turn these into many<br>semantic channels.
+    </div>
+    <div class="sec-btn" style="border-color:#e67e22; flex:1;">
+      <strong style="color:#e67e22;">Convolutions</strong><br><br>
+      Learned kernels slide across<br>all channels. Conv &rarr; ReLU &rarr;<br>MaxPool is the building block.
+    </div>
+    <div class="sec-btn" style="border-color:#27ae60; flex:1;">
+      <strong style="color:#27ae60;">Architectures</strong><br><br>
+      LeNet-5: the basic pattern.<br>ResNet: skip connections<br>enable very deep networks.
+    </div>
+    <div class="sec-btn" style="border-color:#8e44ad; flex:1;">
+      <strong style="color:#8e44ad;">Interpretation</strong><br><br>
+      Early layers: edges, colours.<br>Deep layers: shapes, objects.<br>Pixels &rarr; semantics, confirmed.
+    </div>
+  </div>
+  <div class="box" style="margin-top:16px; text-align:center; border-left:4px solid #e74c3c;">
+    <strong>Key takeaway:</strong> CNNs trade spatial resolution for semantic richness &mdash; resolution goes down, abstraction goes up.
+  </div>
+  <p style="text-align:center; font-size:0.85em; color:#888; margin-top:10px;">Next: hands-on &mdash; build a CNN from scratch in PyTorch (Exercise Sheet 3).</p>
+</section>
+
+</div><!-- /.slides -->
+</div><!-- /.reveal -->
+
+<script src="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reveal.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js"></script>
+<script>
+Reveal.initialize({
+  hash: true,
+  center: false,
+  slideNumber: true,
+  width: 1214,
+  height: 700,
+  margin: 0.04,
+  minScale: 0.2,
+  maxScale: 2.0,
+  transition: 'fade',
+  transitionSpeed: 'fast'
+}).then(() => {
+  renderMathInElement(document.body, {
+    delimiters: [
+      {left: '\\[', right: '\\]', display: true},
+      {left: '\\(', right: '\\)', display: false}
+    ],
+    throwOnError: false
+  });
+});
+</script>
+
+<!-- LeNet-5 interactive code explorer -->
+<script>
+(function() {
+  var groups = {
+    super: {
+      title: 'super().__init__() — Parent Initialization',
+      body: 'Calls the __init__ method of nn.Module. This is required boilerplate — without it, PyTorch cannot register the layers you define below.',
+      subs: [
+        { label: 'What it does', detail: 'Sets up internal bookkeeping in nn.Module: parameter registries, hooks, training-mode flag, etc. Any nn.Conv2d or nn.Linear you assign as self.xxx after this call gets automatically registered.' },
+        { label: 'What happens without it?', detail: 'model.parameters() returns nothing — the optimizer has no parameters to update, and training silently does nothing.' }
+      ]
+    },
+    module: {
+      title: 'nn.Module — Base Class',
+      body: 'All PyTorch neural networks inherit from nn.Module. This base class provides the infrastructure for training.',
+      subs: [
+        { label: '.parameters()', detail: 'Automatically collects all learnable parameters (weights and biases) from layers defined in __init__. This is what optimisers iterate over: optimizer = Adam(model.parameters(), lr=1e-3).' },
+        { label: '.forward()', detail: 'You define the computation graph here. Calling model(x) invokes forward(x) and also hooks for gradient tracking.' },
+        { label: '.train() / .eval()', detail: 'Switches layers like Dropout and BatchNorm between training and evaluation mode. Important for inference.' },
+        { label: '.to(device)', detail: 'Moves all parameters to GPU or CPU: model.to("cuda"). Works because nn.Module tracks all registered parameters.' }
+      ]
+    },
+    forward: {
+      title: 'forward(self, x) — The Forward Pass',
+      body: 'Defines the computation graph: how input x flows through the layers to produce output. You never call forward() directly.',
+      subs: [
+        { label: 'How it is called', detail: 'PyTorch\'s nn.Module implements __call__, so you write: model = LeNet5() then y = model(x). This calls forward(x) internally, but also handles gradient hooks and other bookkeeping.' },
+        { label: 'Why not call forward() directly?', detail: 'Calling model(x) instead of model.forward(x) ensures that registered hooks (e.g. for gradient clipping or logging) are executed. Always use model(x).' }
+      ]
+    },
+    conv1: {
+      title: 'Conv2d(1, 6, 5) — First Convolution',
+      body: '6 learnable 5×5 filters slide across the single-channel 28×28 input image, producing 6 feature maps of size 24×24.',
+      subs: [
+        { label: 'Math', detail: '\\(Y_c = \\sum_{c\'} W_{c,c\'} * X_{c\'} + b_c\\) — each output channel is a sum of convolutions over input channels, plus a bias.' },
+        { label: 'Parameters', detail: '\\(6 \\times (1 \\times 5 \\times 5 + 1) = 156\\) learnable parameters (150 weights + 6 biases).' },
+        { label: 'Output size', detail: 'Input 28 − kernel 5 + 1 = 24. So: 1×28×28 → 6×24×24.' },
+        { label: 'ReLU', detail: '\\(\\text{ReLU}(x) = \\max(0, x)\\) applied element-wise. Introduces non-linearity after the linear convolution.' }
+      ]
+    },
+    pool1: {
+      title: 'MaxPool2d(2) — First Pooling',
+      body: 'Takes the maximum value in each non-overlapping 2×2 window, halving the spatial dimensions.',
+      subs: [
+        { label: 'Math', detail: '\\(y_{i,j} = \\max(x_{2i,2j},\\; x_{2i+1,2j},\\; x_{2i,2j+1},\\; x_{2i+1,2j+1})\\)' },
+        { label: 'Output size', detail: '6×24×24 → 6×12×12. No learnable parameters.' },
+        { label: 'Why pool?', detail: 'Reduces computation, provides a small degree of translation invariance, and increases the effective receptive field of subsequent layers.' }
+      ]
+    },
+    conv2: {
+      title: 'Conv2d(6, 16, 5) — Second Convolution',
+      body: '16 filters, each spanning all 6 input channels with a 5×5 kernel. Detects more complex patterns by combining features from the first layer.',
+      subs: [
+        { label: 'Math', detail: 'Same as conv1: \\(Y_c = \\sum_{c\'=1}^{6} W_{c,c\'} * X_{c\'} + b_c\\), now summing over 6 input channels.' },
+        { label: 'Parameters', detail: '\\(16 \\times (6 \\times 5 \\times 5 + 1) = 2{,}416\\).' },
+        { label: 'Output size', detail: '6×12×12 → 16×8×8 (then pooled to 16×4×4).' }
+      ]
+    },
+    pool2: {
+      title: 'MaxPool2d(2) — Second Pooling',
+      body: 'Same 2×2 max pooling. Spatial size is now just 4×4 per channel.',
+      subs: [
+        { label: 'Output size', detail: '16×8×8 → 16×4×4 = 256 values total. Ready for the classifier.' }
+      ]
+    },
+    flatten: {
+      title: 'Flatten — Reshape to Vector',
+      body: 'Collapses the 16×4×4 spatial feature maps into a single 256-element vector, bridging the convolutional and fully connected parts.',
+      subs: [
+        { label: 'Why flatten?', detail: 'Fully connected layers expect a 1D input. Flattening preserves all information but discards spatial layout — the FC layers treat all 256 features equally.' }
+      ]
+    },
+    fc: {
+      title: 'Linear Layers — Classification Head',
+      body: 'A 3-layer MLP (256→120→84→10) that maps the learned features to class scores. This is identical to the MLPs from Lecture 3.',
+      subs: [
+        { label: 'Math', detail: '\\(y = Wx + b\\) — standard affine transformation at each layer, with ReLU between layers.' },
+        { label: 'Parameters', detail: 'fc1: 256×120+120 = 30,840. fc2: 120×84+84 = 10,164. fc3: 84×10+10 = 850. Total: 41,854.' },
+        { label: 'Output', detail: '10 raw scores (logits), one per digit class. Softmax + cross-entropy loss is applied during training.' }
+      ]
+    }
+  };
+
+  var clines = document.querySelectorAll('#lenet-code .cline');
+  var infoTitle = document.getElementById('lenet-info-title');
+  var infoBody = document.getElementById('lenet-info-body');
+  var infoSub = document.getElementById('lenet-info-sub');
+  var activeGroup = null;
+
+  function renderGroup(gid) {
+    if (activeGroup === gid) { clearAll(); return; }
+    activeGroup = gid;
+    var g = groups[gid];
+    // highlight code lines
+    clines.forEach(function(el) {
+      el.classList.toggle('active', el.dataset.group === gid);
+      el.classList.toggle('cline-hl', false);
+    });
+    // update info panel
+    infoTitle.textContent = g.title;
+    infoBody.textContent = g.body;
+    // build sub-items
+    var html = '';
+    g.subs.forEach(function(s, i) {
+      html += '<div class="sub-item" data-idx="' + i + '">▸ ' + s.label + '</div>';
+      html += '<div class="sub-detail" id="sub-d-' + i + '">' + s.detail + '</div>';
+    });
+    infoSub.innerHTML = html;
+    // re-render math in the info panel
+    if (window.renderMathInElement) {
+      renderMathInElement(document.getElementById('lenet-info'), {
+        delimiters: [{left:'\\(',right:'\\)',display:false},{left:'\\[',right:'\\]',display:true}],
+        throwOnError: false
+      });
+    }
+    // sub-item click handlers
+    infoSub.querySelectorAll('.sub-item').forEach(function(el) {
+      el.addEventListener('click', function(e) {
+        e.stopPropagation();
+        var det = document.getElementById('sub-d-' + el.dataset.idx);
+        var open = det.style.display === 'block';
+        det.style.display = open ? 'none' : 'block';
+        el.textContent = (open ? '▸ ' : '▾ ') + g.subs[parseInt(el.dataset.idx)].label;
+        if (!open && window.renderMathInElement) {
+          renderMathInElement(det, {
+            delimiters: [{left:'\\(',right:'\\)',display:false},{left:'\\[',right:'\\]',display:true}],
+            throwOnError: false
+          });
+        }
+      });
+    });
+  }
+
+  function clearAll() {
+    activeGroup = null;
+    clines.forEach(function(el) { el.classList.remove('active','cline-hl'); });
+    infoTitle.textContent = 'Click a code line to explore';
+    infoBody.textContent = 'Each line maps to a specific mathematical operation. Click any highlighted line on the left to see what it does, the math behind it, and how many parameters it has.';
+    infoSub.innerHTML = '';
+  }
+
+  clines.forEach(function(el) {
+    el.addEventListener('click', function(e) {
+      e.preventDefault(); e.stopPropagation();
+      renderGroup(el.dataset.group);
+    });
+  });
+
+  // Toggle between code, math, and diagram views
+  var codeWrap = document.getElementById('lenet-code-wrap');
+  var mathWrap = document.getElementById('lenet-math-wrap');
+  var diagWrap = document.getElementById('lenet-diagram-wrap');
+  var btnCode = document.getElementById('lenet-toggle-code');
+  var btnMath = document.getElementById('lenet-toggle-math');
+  var btnDiag = document.getElementById('lenet-toggle-diagram');
+  var allBtns = [btnCode, btnMath, btnDiag];
+  var allWraps = [codeWrap, mathWrap, diagWrap];
+
+  function setActive(idx) {
+    var colors = [['#2980b9','#ebf5fb'],['#e67e22','#fdf6ec'],['#27ae60','#eafaf1']];
+    allWraps.forEach(function(w,i) { w.style.display = i === idx ? '' : 'none'; });
+    allBtns.forEach(function(b,i) {
+      if (i === idx) { b.style.borderColor = colors[i][0]; b.style.background = colors[i][1]; b.style.color = '#2c3e50'; b.style.fontWeight = '600'; }
+      else { b.style.borderColor = '#bdc3c7'; b.style.background = '#fff'; b.style.color = '#7f8c8d'; b.style.fontWeight = ''; }
+    });
+    if (idx === 1 && window.renderMathInElement) {
+      renderMathInElement(mathWrap, {
+        delimiters: [{left:'\\(',right:'\\)',display:false},{left:'\\[',right:'\\]',display:true}],
+        throwOnError: false
+      });
+    }
+  }
+  btnCode.addEventListener('click', function(e) { e.preventDefault(); e.stopPropagation(); setActive(0); });
+  btnMath.addEventListener('click', function(e) { e.preventDefault(); e.stopPropagation(); setActive(1); });
+  btnDiag.addEventListener('click', function(e) { e.preventDefault(); e.stopPropagation(); setActive(2); });
+})();
+</script>
+</body>
+</html>

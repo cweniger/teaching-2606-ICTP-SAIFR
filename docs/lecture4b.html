@@ -1,0 +1,615 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Lecture 4b: Regularisation &amp; What Networks Learn</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reveal.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/theme/white.css">
+<style>
+  #bg-canvas { display: none; }
+  .reveal .slides section {
+    background: #ffffff;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+    padding: 30px 40px;
+    box-sizing: border-box;
+    height: 700px !important;
+  }
+  .reveal { font-family: 'Inter', sans-serif; font-weight: 400; }
+  .reveal h1, .reveal h2, .reveal h3 { color: #2c3e50; font-family: 'Space Grotesk', sans-serif; font-weight: 700; }
+  .reveal h2 { font-size: 1.2em; margin-bottom: 0.3em; text-align: left; }
+  .reveal .subtitle { font-size: 0.6em; color: #7f8c8d; margin-top: 0.5em; }
+  .reveal section { font-size: 0.66em; }
+  .reveal p { margin: 0.3em 0; }
+  .reveal ul { text-align: left; margin: 0.3em 0; }
+  .reveal li { margin: 0.15em 0; }
+  .reveal .highlight { color: #e74c3c; font-weight: bold; }
+  .reveal .MathJax { font-size: 0.95em; }
+  .reveal .box {
+    background: #ecf0f1; border-radius: 10px; padding: 12px 16px;
+    margin: 10px 0; text-align: left;
+  }
+  .slide-footer {
+    position: absolute;
+    bottom: 8px;
+    left: 40px;
+    right: 40px;
+    font-size: 10px;
+    color: #bdc3c7;
+    display: flex;
+    justify-content: space-between;
+    pointer-events: none;
+  }
+  .sec-btn {
+    flex: 1; padding: 12px; border: 2px solid #ecf0f1; border-radius: 8px;
+    background: #f8f9fa; cursor: default; font-size: 1em; text-align: center;
+  }
+</style>
+</head>
+<body>
+<canvas id="bg-canvas"></canvas>
+<div class="reveal">
+<div class="slides">
+
+<!-- ============================================================ -->
+<!-- SLIDE 1: Title -->
+<!-- ============================================================ -->
+<section>
+  <h1 style="font-size:1.5em;">Machine Learning for<br>Physics &amp; Astronomy 2026</h1>
+  <h3>Lecture 4b: Regularisation &amp; What Networks Learn</h3>
+  <p class="subtitle">Christoph Weniger &mdash; University of Amsterdam (GRAPPA)</p>
+</section>
+
+<!-- ============================================================ -->
+<!-- SLIDE 2: Roadmap -->
+<!-- ============================================================ -->
+<section>
+  <h2>Today's Roadmap</h2>
+  <div style="display:flex; gap:8px; margin-top:20px;">
+    <div class="sec-btn" style="border-color:#27ae60;">
+      <strong style="color:#27ae60;">1</strong><br>
+      Shaping the training trajectory<br><span style="font-size:0.85em;">Weight decay, dropout, batch normalization</span>
+    </div>
+    <div style="align-self:center; font-size:1.4em; color:#bdc3c7;">&rarr;</div>
+    <div class="sec-btn" style="border-color:#8e44ad;">
+      <strong style="color:#8e44ad;">2</strong><br>
+      What do networks learn?<br><span style="font-size:0.85em;">Hidden representations</span>
+    </div>
+  </div>
+  <div class="box fragment" style="margin-top:25px; text-align:center; font-size:1.0em;">
+    <strong>Continuing from Lecture 4:</strong> We saw that networks learn simple features first.<br>
+    Now we look at <strong style="color:#e74c3c;">regularisation techniques</strong> that shape this trajectory, and <strong style="color:#8e44ad;">what hidden layers actually learn</strong>.
+  </div>
+</section>
+
+<!-- SLIDE: Shaping the Training Trajectory -->
+<section>
+  <h2>Shaping the Training Trajectory</h2>
+  <p>We can <strong>bias the trajectory toward generalizable features</strong> using regularization techniques:</p>
+  <div style="margin-top:15px;">
+    <div style="display:flex; gap:10px; margin-bottom:8px;">
+      <div class="box" style="flex:1; padding:10px; border-left:4px solid #2980b9;">
+        <strong style="color:#2980b9;">Weight decay</strong><br>
+        <span style="font-size:0.9em;">Penalize large weights &rarr; prefer simpler functions</span>
+      </div>
+      <div class="box" style="flex:1; padding:10px; border-left:4px solid #8e44ad;">
+        <strong style="color:#8e44ad;">Dropout</strong><br>
+        <span style="font-size:0.9em;">Randomly drop neurons &rarr; force redundant representations</span>
+      </div>
+      <div class="box" style="flex:1; padding:10px; border-left:4px solid #e67e22;">
+        <strong style="color:#e67e22;">Batch normalization</strong><br>
+        <span style="font-size:0.9em;">Stabilize activations &rarr; smoother optimization landscape</span>
+      </div>
+    </div>
+    <div style="display:flex; gap:10px;">
+      <div class="box fragment" style="flex:1; padding:10px; border-left:4px solid #27ae60;">
+        <strong style="color:#27ae60;">Early stopping</strong><br>
+        <span style="font-size:0.9em;">Stop before noise is memorized (see previous slide)</span>
+      </div>
+      <div class="box fragment" style="flex:1; padding:10px; border-left:4px solid #95a5a6;">
+        <strong style="color:#95a5a6;">Data augmentation</strong><br>
+        <span style="font-size:0.9em;">Artificially increase training set &rarr; harder to memorize</span>
+      </div>
+      <div class="box fragment" style="flex:1; padding:10px; border-left:4px solid #95a5a6;">
+        <strong style="color:#95a5a6;">And more...</strong><br>
+        <span style="font-size:0.9em;">Label smoothing, mixup, spectral normalization, ...</span>
+      </div>
+    </div>
+  </div>
+  <div class="box fragment" style="text-align:center; padding:8px; margin-top:10px; font-size:0.92em;">
+    Let's look at the first three in detail.
+  </div>
+</section>
+
+<!-- SLIDE: Weight Decay -->
+<section>
+  <h2>Weight Decay (L2 Regularization)</h2>
+  <p>Callback to Lecture 1: a Gaussian prior on weights gives a penalty \(\lambda\|\mathbf{w}\|^2\).</p>
+  <div class="box" style="text-align:center; font-size:1.05em; padding:12px; margin-top:10px;">
+    \[E_{\text{reg}} = E_{\text{data}} + \frac{\lambda}{2}\sum_i w_i^2\]
+    In practice: add \(\lambda\,w_i\) to every gradient &nbsp; \(\Longrightarrow\) &nbsp; weights shrink toward zero.
+  </div>
+  <div style="display:flex; gap:12px; margin-top:12px;">
+    <div class="box" style="flex:1;">
+      <strong>Effect:</strong> prevents any single weight from growing too large. Encourages <strong>simpler functions</strong>.
+    </div>
+    <div class="box" style="flex:1;">
+      <strong>Probabilistic view:</strong> same as MAP estimation with a Gaussian prior. Ridge regression for neural networks.
+    </div>
+  </div>
+  <p class="fragment" style="text-align:center; margin-top:10px; font-size:0.9em; color:#7f8c8d;">
+    Typical values: \(\lambda \in [10^{-5}, 10^{-2}]\). Too large &rarr; underfitting.
+  </p>
+</section>
+
+<!-- SLIDE: Dropout -->
+<section>
+  <h2>Dropout</h2>
+  <p>During training, <strong>randomly set each neuron's output to zero</strong> with probability \(p\) (typically 0.5).</p>
+  <div style="display:flex; gap:12px; margin-top:10px;">
+    <div style="flex:1;">
+      <div style="display:flex; gap:6px; justify-content:center; margin-bottom:8px;">
+        <div style="display:flex; flex-direction:column; gap:6px; align-items:center;">
+          <div style="width:32px; height:32px; border-radius:50%; background:#2980b9; display:flex; align-items:center; justify-content:center; color:white; font-size:0.8em;">h1</div>
+          <div style="width:32px; height:32px; border-radius:50%; background:#bdc3c7; display:flex; align-items:center; justify-content:center; color:white; font-size:0.8em; text-decoration:line-through;">h2</div>
+          <div style="width:32px; height:32px; border-radius:50%; background:#2980b9; display:flex; align-items:center; justify-content:center; color:white; font-size:0.8em;">h3</div>
+          <div style="width:32px; height:32px; border-radius:50%; background:#bdc3c7; display:flex; align-items:center; justify-content:center; color:white; font-size:0.8em; text-decoration:line-through;">h4</div>
+        </div>
+        <div style="display:flex; align-items:center; font-size:1.5em; color:#bdc3c7;">&rarr;</div>
+        <div style="display:flex; flex-direction:column; gap:6px; align-items:center;">
+          <div style="width:32px; height:32px; border-radius:50%; background:#2980b9; display:flex; align-items:center; justify-content:center; color:white; font-size:0.8em;">h1</div>
+          <div style="width:32px; height:32px; border-radius:50%; background:#e74c3c; display:flex; align-items:center; justify-content:center; color:white; font-size:0.8em;">0</div>
+          <div style="width:32px; height:32px; border-radius:50%; background:#2980b9; display:flex; align-items:center; justify-content:center; color:white; font-size:0.8em;">h3</div>
+          <div style="width:32px; height:32px; border-radius:50%; background:#e74c3c; display:flex; align-items:center; justify-content:center; color:white; font-size:0.8em;">0</div>
+        </div>
+      </div>
+      <p style="text-align:center; font-size:0.85em; color:#7f8c8d;">Each training step uses a different random mask.</p>
+    </div>
+    <div style="flex:1;">
+      <ul style="font-size:0.92em;">
+        <li>Forces the network to learn <strong>redundant representations</strong></li>
+        <li class="fragment">No single neuron can be a point of failure</li>
+        <li class="fragment"><strong>At test time:</strong> use all neurons, scale by \((1-p)\)</li>
+        <li class="fragment"><strong>Ensemble view:</strong> averaging over \(2^H\) subnetworks</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- SLIDE: Batch Normalization -->
+<section>
+  <h2>Batch Normalization</h2>
+  <p>Normalize activations within each mini-batch, then scale and shift with learnable \(\gamma, \beta\):</p>
+  <div class="box" style="text-align:center; font-size:1.05em; padding:12px; margin-top:8px;">
+    \[\hat{z}_i = \frac{z_i - \mu_B}{\sqrt{\sigma_B^2 + \epsilon}} \qquad y_i = \gamma\,\hat{z}_i + \beta\]
+  </div>
+  <div style="display:flex; gap:10px; margin-top:12px;">
+    <div class="box" style="flex:1;">
+      <strong>Why it helps:</strong>
+      <ul style="font-size:0.9em; margin-top:4px;">
+        <li>Stabilizes each layer's input distribution</li>
+        <li>Allows <strong>higher learning rates</strong></li>
+        <li>Mild regularizing effect</li>
+      </ul>
+    </div>
+    <div class="box" style="flex:1;">
+      <strong>In practice:</strong>
+      <ul style="font-size:0.9em; margin-top:4px;">
+        <li>Place between linear &amp; activation: \(z \to \text{BN} \to g()\)</li>
+        <li>At test time: use <strong>running averages</strong> of \(\mu, \sigma\)</li>
+        <li>Nearly universal in CNNs</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<!-- SECTION 2: WHAT DO NETWORKS LEARN?                           -->
+<!-- ============================================================ -->
+
+<section>
+  <div style="display:flex; align-items:center; justify-content:center; height:100%;">
+    <div style="text-align:center;">
+      <div style="width:200px; height:4px; background:linear-gradient(90deg,#8e44ad,#2980b9); margin:0 auto 25px;"></div>
+      <h1 style="font-size:2em; margin:0;">What Do Networks Learn?</h1>
+      <p style="font-size:1.1em; color:#7f8c8d; margin-top:15px;">Hidden representations and what they reveal.</p>
+      <div style="width:200px; height:4px; background:linear-gradient(90deg,#8e44ad,#2980b9); margin:25px auto 0;"></div>
+    </div>
+  </div>
+</section>
+
+<!-- SLIDE: DEMO Hidden Layer Representations -->
+<section>
+  <h2>Demo: Hidden Layer Representations</h2>
+  <p style="font-size:0.82em; margin:2px 0;">4-layer MLP [2, w, w, w, w, 1]. Each layer transforms the data &mdash; the network learns to make classes <strong>linearly separable</strong>. Right plot shows top-2 PCA of hidden activations.</p>
+  <div style="display:flex; gap:6px; align-items:center; margin-top:2px; font-size:0.82em;">
+    <span>Dataset:</span>
+    <select id="hr-dataset" style="font-size:0.95em; padding:2px;">
+      <option value="spirals">Spirals</option>
+      <option value="circles">Circles</option>
+      <option value="moons">Moons</option>
+    </select>
+    <span>Width=<span id="hr-width-val">2</span></span>
+    <input id="hr-width-slider" type="range" min="0" max="6" step="1" value="1" style="width:80px; vertical-align:middle;">
+    <span>Layer:</span>
+    <button class="hr-layer-btn" data-layer="0" style="padding:2px 8px; cursor:pointer; font-size:0.95em; border:2px solid #2980b9; border-radius:4px; background:#ebf5fb;">1</button>
+    <button class="hr-layer-btn" data-layer="1" style="padding:2px 8px; cursor:pointer; font-size:0.95em; border:2px solid #bdc3c7; border-radius:4px; background:white;">2</button>
+    <button class="hr-layer-btn" data-layer="2" style="padding:2px 8px; cursor:pointer; font-size:0.95em; border:2px solid #bdc3c7; border-radius:4px; background:white;">3</button>
+    <button class="hr-layer-btn" data-layer="3" style="padding:2px 8px; cursor:pointer; font-size:0.95em; border:2px solid #bdc3c7; border-radius:4px; background:white;">4</button>
+    <span>&eta;=<span id="hr-lr-val">0.005</span></span>
+    <input id="hr-lr" type="range" min="-3" max="-1" step="0.1" value="-2.3" style="width:70px; vertical-align:middle;">
+    <button id="hr-train-btn" style="padding:3px 12px; cursor:pointer; border-radius:4px; border:2px solid #27ae60; background:#eafaf1;">Train</button>
+    <button id="hr-reset-btn" style="padding:3px 12px; cursor:pointer; border-radius:4px; border:2px solid #e74c3c; background:#fdedec;">Reset</button>
+    <span id="hr-epoch-label" style="color:#7f8c8d;"></span>
+  </div>
+  <div style="display:flex; gap:10px; margin-top:6px;">
+    <div id="hr-input-plot" style="flex:1; height:340px;"></div>
+    <div id="hr-hidden-plot" style="flex:1; height:340px;"></div>
+  </div>
+</section>
+
+<!-- SLIDE: What Hidden Layers Learn -->
+<section>
+  <h2>What the Hidden Layers Learn</h2>
+  <p>Each layer applies a nonlinear transformation. The composition <strong>progressively disentangles</strong> the data.</p>
+  <div style="display:flex; gap:10px; margin-top:15px; align-items:center;">
+    <div class="box" style="flex:1; text-align:center; padding:15px;">
+      <strong style="color:#e74c3c;">Input space</strong><br>
+      <span style="font-size:2.5em;">&#x1F500;</span><br>
+      <span style="font-size:0.85em;">Data intertwined</span>
+    </div>
+    <div style="font-size:1.8em; color:#bdc3c7;">&rarr;</div>
+    <div class="box" style="flex:1; text-align:center; padding:15px;">
+      <strong style="color:#e67e22;">Hidden layer 1</strong><br>
+      <span style="font-size:2.5em;">&#x1F504;</span><br>
+      <span style="font-size:0.85em;">Partially separated</span>
+    </div>
+    <div style="font-size:1.8em; color:#bdc3c7;">&rarr;</div>
+    <div class="box" style="flex:1; text-align:center; padding:15px;">
+      <strong style="color:#27ae60;">Last hidden layer</strong><br>
+      <span style="font-size:2.5em;">&#x2705;</span><br>
+      <span style="font-size:0.85em;">Linearly separable</span>
+    </div>
+  </div>
+  <div class="box fragment" style="text-align:center; margin-top:12px; padding:10px;">
+    The final linear head just draws a hyperplane in the learned space.<br>
+    <span style="color:#7f8c8d;">Like choosing the right coordinate system &mdash; the network finds coordinates where the problem becomes trivial.</span>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<!-- Key Takeaways -->
+<!-- ============================================================ -->
+<section>
+  <h2>Key Takeaways</h2>
+  <ul style="font-size:0.92em; line-height:1.6;">
+    <li class="fragment"><strong>Shaping the trajectory:</strong> regularisation (weight decay, dropout, early stopping, batch norm) biases training toward features that generalise.</li>
+    <li class="fragment"><strong>Weight decay</strong> = L2 penalty = Gaussian prior on weights. Encourages simpler functions.</li>
+    <li class="fragment"><strong>Dropout</strong> randomly zeros neurons during training, forcing redundant representations. At test time, scale by \((1-p)\).</li>
+    <li class="fragment"><strong>Batch normalisation</strong> stabilises layer inputs, enables higher learning rates, and acts as mild regularisation.</li>
+    <li class="fragment"><strong>What networks learn:</strong> hidden layers progressively transform data into representations where the task becomes easy (linearly separable).</li>
+  </ul>
+</section>
+
+</div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/plotly.js@2.35.0/dist/plotly.min.js"></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js-plugins@latest/chalkboard/style.css">
+<script src="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reveal.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/plugin/math/math.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/reveal.js-plugins@latest/chalkboard/plugin.js"></script>
+<script>
+// ── Seeded PRNG (mulberry32) ──
+function createRNG(seed) {
+  return function() {
+    seed |= 0; seed = seed + 0x6D2B79F5 | 0;
+    var t = Math.imul(seed ^ seed >>> 15, 1 | seed);
+    t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+    return ((t ^ t >>> 14) >>> 0) / 4294967296;
+  };
+}
+function boxMuller(rng) {
+  var u; do { u = rng(); } while (u === 0);
+  return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * rng());
+}
+
+Reveal.initialize({
+  hash: true, center: false, transition: 'fade', slideNumber: true,
+  width: 1214, height: 700, margin: 0.04, minScale: 0.2, maxScale: 2.0,
+  plugins: [ RevealMath.MathJax3, RevealChalkboard ]
+});
+
+document.querySelectorAll('.reveal .slides > section').forEach(function(slide) {
+  var footer = document.createElement('div');
+  footer.className = 'slide-footer';
+  footer.innerHTML = '<a href="index.html" style="color:#bdc3c7; text-decoration:none; pointer-events:auto;">&larr; Index</a><span>ML4PhA 2026 &mdash; Lecture 4b</span><span>Christoph Weniger &mdash; GRAPPA / UvA</span>';
+  slide.appendChild(footer);
+});
+
+// ── Plotly defaults ──
+var pCfg = {displayModeBar: false};
+var pBg = {paper_bgcolor:'rgba(0,0,0,0)', plot_bgcolor:'rgba(0,0,0,0)'};
+
+// ================================================================
+// Data generation (reuse from L3)
+// ================================================================
+function genClassData(type, n) {
+  var rng = createRNG(42), X = [], Y = [];
+  for (var i = 0; i < n; i++) {
+    var x1, x2, label;
+    if (type === 'circles') {
+      var r = rng() < 0.5 ? 0.3+0.15*rng() : 0.7+0.15*rng();
+      var a = 2*Math.PI*rng(); x1 = r*Math.cos(a); x2 = r*Math.sin(a); label = r<0.5?0:1;
+    } else if (type === 'spirals') {
+      label = i<n/2?0:1; var t = 1.5*Math.PI*(1+2*rng());
+      if (label===0) { x1=t*Math.cos(t)/10+0.1*boxMuller(rng); x2=t*Math.sin(t)/10+0.1*boxMuller(rng); }
+      else { x1=-t*Math.cos(t)/10+0.1*boxMuller(rng); x2=-t*Math.sin(t)/10+0.1*boxMuller(rng); }
+    } else {
+      label = i<n/2?0:1; var a = Math.PI*rng();
+      if (label===0) { x1=Math.cos(a)+0.1*boxMuller(rng); x2=Math.sin(a)+0.1*boxMuller(rng); }
+      else { x1=1-Math.cos(a)+0.1*boxMuller(rng); x2=0.5-Math.sin(a)+0.1*boxMuller(rng); }
+    }
+    X.push([x1,x2]); Y.push(label);
+  }
+  return {X:X, Y:Y};
+}
+
+// ================================================================
+// MLP for classification with extractHidden
+// ================================================================
+function MLPNetL4(layerSizes, rngSeed) {
+  this.W = []; this.b = [];
+  var rng = createRNG(rngSeed || 12345);
+  for (var l = 0; l < layerSizes.length - 1; l++) {
+    var rows = layerSizes[l+1], cols = layerSizes[l];
+    var scale = Math.sqrt(2.0/cols);
+    var wl = [];
+    for (var i = 0; i < rows; i++) { var row = []; for (var j = 0; j < cols; j++) row.push(scale*boxMuller(rng)); wl.push(row); }
+    this.W.push(wl);
+    var bl = []; for (var i = 0; i < rows; i++) bl.push(0);
+    this.b.push(bl);
+  }
+}
+MLPNetL4.prototype.forward = function(x) {
+  this.acts = [x.slice()]; this.pres = [];
+  var h = x.slice();
+  for (var l = 0; l < this.W.length; l++) {
+    var z = [];
+    for (var i = 0; i < this.W[l].length; i++) {
+      var s = this.b[l][i];
+      for (var j = 0; j < h.length; j++) s += this.W[l][i][j]*h[j];
+      z.push(s);
+    }
+    this.pres.push(z);
+    if (l < this.W.length - 1) {
+      h = z.map(function(v) { return Math.max(0, v); }); // ReLU
+    } else {
+      h = [1/(1+Math.exp(-z[0]))]; // sigmoid output
+    }
+    this.acts.push(h.slice());
+  }
+  return h[0];
+};
+MLPNetL4.prototype.backward = function(target, lr) {
+  var L = this.W.length;
+  var dz = this.acts[L][0] - target;
+  for (var l = L-1; l >= 0; l--) {
+    var a_prev = this.acts[l];
+    var dzArr;
+    if (l === L-1) { dzArr = [dz]; }
+    else { dzArr = this.pres[l].map(function(v,i) { return v > 0 ? dzNext[i] : 0; }); }
+    if (l > 0) {
+      var dzN = [];
+      for (var j = 0; j < this.W[l][0].length; j++) { var s = 0; for (var i = 0; i < dzArr.length; i++) s += this.W[l][i][j]*dzArr[i]; dzN.push(s); }
+    }
+    for (var i = 0; i < this.W[l].length; i++) {
+      for (var j = 0; j < this.W[l][i].length; j++) this.W[l][i][j] -= lr*dzArr[i]*a_prev[j];
+      this.b[l][i] -= lr*dzArr[i];
+    }
+    if (l > 0) var dzNext = dzN;
+  }
+};
+MLPNetL4.prototype.extractHidden = function(x) {
+  // Return last hidden layer activations
+  var h = x.slice();
+  for (var l = 0; l < this.W.length - 1; l++) {
+    var z = [];
+    for (var i = 0; i < this.W[l].length; i++) {
+      var s = this.b[l][i];
+      for (var j = 0; j < h.length; j++) s += this.W[l][i][j]*h[j];
+      z.push(s);
+    }
+    h = z.map(function(v) { return Math.max(0, v); });
+  }
+  return h;
+};
+MLPNetL4.prototype.extractAllHidden = function(x) {
+  // Return activations for all hidden layers (list of arrays)
+  var h = x.slice();
+  var allH = [];
+  for (var l = 0; l < this.W.length - 1; l++) {
+    var z = [];
+    for (var i = 0; i < this.W[l].length; i++) {
+      var s = this.b[l][i];
+      for (var j = 0; j < h.length; j++) s += this.W[l][i][j]*h[j];
+      z.push(s);
+    }
+    h = z.map(function(v) { return Math.max(0, v); });
+    allH.push(h.slice());
+  }
+  return allH;
+};
+
+// ================================================================
+// DEMO: Hidden Layer Representations
+// ================================================================
+(function() {
+  var net = null, data = null, lossHist = [], epoch = 0, animId = null;
+  var selectedLayer = 0;
+
+  function buildNet() {
+    var w = Math.pow(2, parseInt(document.getElementById('hr-width-slider').value));
+    return new MLPNetL4([2, w, w, w, w, 1], 7777);
+  }
+
+  function updateLayerBtns() {
+    var btns = document.querySelectorAll('.hr-layer-btn');
+    for (var i = 0; i < btns.length; i++) {
+      if (parseInt(btns[i].getAttribute('data-layer')) === selectedLayer) {
+        btns[i].style.borderColor = '#2980b9'; btns[i].style.background = '#ebf5fb';
+      } else {
+        btns[i].style.borderColor = '#bdc3c7'; btns[i].style.background = 'white';
+      }
+    }
+  }
+
+  function reset() {
+    if (animId) { cancelAnimationFrame(animId); animId = null; }
+    data = genClassData(document.getElementById('hr-dataset').value, 200);
+    net = buildNet(); lossHist = []; epoch = 0;
+    document.getElementById('hr-epoch-label').textContent = '';
+    renderAll();
+  }
+
+  // Simple 2D PCA: given N×D matrix (array of arrays), return N×2 projections
+  function pca2d(rows) {
+    var N = rows.length, D = rows[0].length;
+    if (D <= 2) {
+      // No PCA needed, just pad with zeros if D=1
+      return rows.map(function(r) { return [r[0], r.length > 1 ? r[1] : 0]; });
+    }
+    // Compute mean
+    var mu = new Array(D);
+    for (var j = 0; j < D; j++) { var s = 0; for (var i = 0; i < N; i++) s += rows[i][j]; mu[j] = s / N; }
+    // Center
+    var C = rows.map(function(r) { var c = []; for (var j = 0; j < D; j++) c.push(r[j] - mu[j]); return c; });
+    // Covariance (D×D) — but we only need top 2 eigenvectors
+    // Use power iteration for top 2
+    var cov = [];
+    for (var a = 0; a < D; a++) { var row = []; for (var b = 0; b < D; b++) {
+      var s = 0; for (var i = 0; i < N; i++) s += C[i][a] * C[i][b]; row.push(s / N);
+    } cov.push(row); }
+    function matVec(M, v) { var r = []; for (var i = 0; i < M.length; i++) { var s = 0; for (var j = 0; j < v.length; j++) s += M[i][j]*v[j]; r.push(s); } return r; }
+    function normalize(v) { var n = 0; for (var i = 0; i < v.length; i++) n += v[i]*v[i]; n = Math.sqrt(n)||1; return v.map(function(x){return x/n;}); }
+    function dot(a,b) { var s=0; for(var i=0;i<a.length;i++) s+=a[i]*b[i]; return s; }
+    // Power iteration for eigenvector 1
+    var rng = createRNG(42);
+    var v1 = []; for (var j = 0; j < D; j++) v1.push(boxMuller(rng));
+    v1 = normalize(v1);
+    for (var it = 0; it < 50; it++) v1 = normalize(matVec(cov, v1));
+    // Deflate for eigenvector 2
+    var lam1 = dot(matVec(cov, v1), v1);
+    var cov2 = [];
+    for (var a = 0; a < D; a++) { var row = []; for (var b = 0; b < D; b++) row.push(cov[a][b] - lam1*v1[a]*v1[b]); cov2.push(row); }
+    var v2 = []; for (var j = 0; j < D; j++) v2.push(boxMuller(rng));
+    v2 = normalize(v2);
+    for (var it = 0; it < 50; it++) v2 = normalize(matVec(cov2, v2));
+    // Project
+    return C.map(function(r) { return [dot(r, v1), dot(r, v2)]; });
+  }
+
+  function renderAll() {
+    var type = document.getElementById('hr-dataset').value;
+    var res = 40;
+    var xMin=-2, xMax=2, yMin=-2, yMax=2;
+    if (type==='moons') { xMin=-1; xMax=2.5; yMin=-1; yMax=1.5; }
+    var xg=[], yg=[], zg=[];
+    for (var i = 0; i < res; i++) {
+      var row = []; var yi = yMin+(yMax-yMin)*i/(res-1); yg.push(yi);
+      for (var j = 0; j < res; j++) {
+        var xi = xMin+(xMax-xMin)*j/(res-1); if (i===0) xg.push(xi);
+        row.push(net.forward([xi,yi]));
+      }
+      zg.push(row);
+    }
+    var x0=[],y0=[],x1=[],y1=[];
+    for (var i = 0; i < data.X.length; i++) {
+      if (data.Y[i]===0) { x0.push(data.X[i][0]); y0.push(data.X[i][1]); }
+      else { x1.push(data.X[i][0]); y1.push(data.X[i][1]); }
+    }
+    Plotly.react('hr-input-plot', [
+      {x:xg,y:yg,z:zg,type:'contour',colorscale:[[0,'#3498db'],[0.5,'#ecf0f1'],[1,'#e74c3c']],showscale:false,ncontours:10,opacity:0.6,line:{width:1}},
+      {x:x0,y:y0,mode:'markers',name:'Class 0',marker:{size:5,color:'#3498db',opacity:0.8}},
+      {x:x1,y:y1,mode:'markers',name:'Class 1',marker:{size:5,color:'#e74c3c',opacity:0.8}}
+    ], Object.assign({xaxis:{title:'x\u2081',range:[xg[0],xg[xg.length-1]]},yaxis:{title:'x\u2082',range:[yg[0],yg[yg.length-1]],scaleanchor:'x'},margin:{t:5,r:10,b:35,l:45},font:{size:12},legend:{x:0.02,y:0.98},title:{text:'Input Space',font:{size:13},x:0.5}},pBg),pCfg);
+
+    // Extract hidden activations for selected layer, then PCA to 2D
+    var hiddenAll = [];
+    for (var i = 0; i < data.X.length; i++) {
+      var layers = net.extractAllHidden(data.X[i]);
+      hiddenAll.push(layers[selectedLayer]);
+    }
+    var proj = pca2d(hiddenAll);
+    var p0x=[], p0y=[], p1x=[], p1y=[];
+    for (var i = 0; i < data.X.length; i++) {
+      if (data.Y[i]===0) { p0x.push(proj[i][0]); p0y.push(proj[i][1]); }
+      else { p1x.push(proj[i][0]); p1y.push(proj[i][1]); }
+    }
+    Plotly.react('hr-hidden-plot', [
+      {x:p0x,y:p0y,mode:'markers',name:'Class 0',marker:{size:6,color:'#3498db',opacity:0.8}},
+      {x:p1x,y:p1y,mode:'markers',name:'Class 1',marker:{size:6,color:'#e74c3c',opacity:0.8}}
+    ], Object.assign({xaxis:{title:'PC\u2081'},yaxis:{title:'PC\u2082',scaleanchor:'x'},margin:{t:5,r:10,b:35,l:45},font:{size:12},legend:{x:0.02,y:0.98},title:{text:'Layer '+(selectedLayer+1)+' (PCA)',font:{size:13},x:0.5}},pBg),pCfg);
+  }
+
+  function trainStep() {
+    var lr = Math.pow(10, parseFloat(document.getElementById('hr-lr').value));
+    var idx = []; for (var i = 0; i < data.X.length; i++) idx.push(i);
+    var rng = createRNG(epoch);
+    for (var i = idx.length-1; i > 0; i--) { var j = Math.floor(rng()*(i+1)); var tmp=idx[i]; idx[i]=idx[j]; idx[j]=tmp; }
+    var tl = 0;
+    for (var i = 0; i < idx.length; i++) {
+      var p = net.forward(data.X[idx[i]]);
+      var y = data.Y[idx[i]];
+      p = Math.max(1e-7, Math.min(1-1e-7, p));
+      tl += -(y*Math.log(p)+(1-y)*Math.log(1-p));
+      net.backward(y, lr);
+    }
+    lossHist.push(tl/idx.length); epoch++;
+    document.getElementById('hr-epoch-label').textContent = 'Epoch: ' + epoch;
+  }
+
+  function trainLoop() {
+    for (var i = 0; i < 5; i++) trainStep();
+    renderAll();
+    if (epoch < 5000) animId = requestAnimationFrame(trainLoop);
+    else { if (animId) { cancelAnimationFrame(animId); animId = null; } }
+  }
+
+  document.getElementById('hr-width-slider').addEventListener('input', function() {
+    document.getElementById('hr-width-val').textContent = Math.pow(2, parseInt(this.value));
+  });
+  document.getElementById('hr-lr').addEventListener('input', function() {
+    document.getElementById('hr-lr-val').textContent = Math.pow(10, parseFloat(this.value)).toFixed(3);
+  });
+  document.getElementById('hr-train-btn').addEventListener('click', function(e) {
+    e.preventDefault(); e.stopPropagation();
+    if (animId) { cancelAnimationFrame(animId); animId = null; return; }
+    trainLoop();
+  });
+  document.getElementById('hr-reset-btn').addEventListener('click', function(e) {
+    e.preventDefault(); e.stopPropagation(); reset();
+  });
+  document.getElementById('hr-dataset').addEventListener('change', reset);
+  document.getElementById('hr-width-slider').addEventListener('change', reset);
+  // Layer buttons
+  var layerBtns = document.querySelectorAll('.hr-layer-btn');
+  for (var i = 0; i < layerBtns.length; i++) {
+    layerBtns[i].addEventListener('click', function(e) {
+      e.preventDefault(); e.stopPropagation();
+      selectedLayer = parseInt(this.getAttribute('data-layer'));
+      updateLayerBtns();
+      if (net && data) renderAll();
+    });
+  }
+  function init(e) {
+    if (!(e.currentSlide && e.currentSlide.querySelector('#hr-input-plot'))) return;
+    reset();
+  }
+  Reveal.on('slidechanged', init); Reveal.on('ready', init);
+})();
+</script>
+</body>
+</html>
