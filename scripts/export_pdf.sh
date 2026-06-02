@@ -3,11 +3,11 @@
 # Each fragment step is exported as a separate page.
 # Interactive Plotly slides are captured in their initial fully-revealed state.
 #
-# Usage: ./export_pdf.sh [lecture0|lecture1|all]
+# Usage: ./scripts/export_pdf.sh [lecture0|lecture1|all]
 
 set -e
 
-SLIDES_DIR="$(cd "$(dirname "$0")/docs" && pwd)"
+SLIDES_DIR="$(cd "$(dirname "$0")/../docs" && pwd)"
 PORT=8765
 TARGET="${1:-all}"
 

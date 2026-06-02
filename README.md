@@ -16,8 +16,8 @@ enabled. See [`docs/index.html`](docs/index.html) for the lecture index.
 
 Planning documents:
 
-- [`lecture_plan.md`](lecture_plan.md) — slide-level plans per lecture
-- [`handson_plan.md`](handson_plan.md) — two-session hands-on plan
+- [`plans/lecture_plan.md`](plans/lecture_plan.md) — slide-level plans per lecture
+- [`plans/handson_plan.md`](plans/handson_plan.md) — two-session hands-on plan
 
 ## Hands-on (Colab)
 

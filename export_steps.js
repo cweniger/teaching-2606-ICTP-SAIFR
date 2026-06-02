@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // Capture all narration-step states of interactive slides as vector PDFs.
 // Uses page.pdf() so Plotly SVG charts are embedded as vectors, not pixels.
-// Run via:  node export_steps.js   (requires export_pdf.sh to have been run once)
+// Run via:  node export_steps.js   (requires scripts/export_pdf.sh to have been run once)
 //
 // Dependencies: puppeteer (from decktape npx cache), pdfunite (poppler)
 
@@ -19,7 +19,7 @@ const PUPPETEER_PATH = (() => {
     const p = path.join(base, dir, 'node_modules', 'puppeteer');
     if (fs.existsSync(p)) return p;
   }
-  throw new Error('puppeteer not found in npx cache — run export_pdf.sh first');
+  throw new Error('puppeteer not found in npx cache — run scripts/export_pdf.sh first');
 })();
 const puppeteer = require(PUPPETEER_PATH);
 
