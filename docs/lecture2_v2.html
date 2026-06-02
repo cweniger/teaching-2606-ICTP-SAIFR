@@ -1,0 +1,1424 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Lecture 2: Building q_φ(θ|x) — from chi² to neural densities</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reveal.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/theme/white.css">
+<style>
+  .reveal .slides section {
+    background: #ffffff;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+    padding: 30px 40px;
+    box-sizing: border-box;
+    height: 700px !important;
+  }
+  .reveal { font-family: 'Inter', sans-serif; font-weight: 400; }
+  .reveal h1, .reveal h2, .reveal h3 { color: #2c3e50; font-family: 'Space Grotesk', sans-serif; font-weight: 700; }
+  .reveal h2 { font-size: 1.2em; margin-bottom: 0.3em; text-align: left; }
+  .reveal .subtitle { font-size: 0.6em; color: #7f8c8d; margin-top: 0.5em; }
+  .reveal section { font-size: 0.66em; }
+  .reveal p { margin: 0.3em 0; }
+  .reveal ul { text-align: left; margin: 0.3em 0; }
+  .reveal li { margin: 0.15em 0; }
+  .reveal .highlight { color: #e74c3c; font-weight: bold; }
+  .reveal .MathJax { font-size: 0.95em; }
+  .reveal .box {
+    background: #ecf0f1; border-radius: 10px; padding: 12px 16px;
+    margin: 10px 0; text-align: left;
+  }
+  .reveal .box-blue   { background:#eaf2f8; border-left:4px solid #2980b9; }
+  .reveal .box-orange { background:#fef5e7; border-left:4px solid #e67e22; }
+  .reveal .box-green  { background:#eafaf1; border-left:4px solid #27ae60; }
+  .reveal .box-purple { background:#f5eef8; border-left:4px solid #8e44ad; }
+  .slide-footer {
+    position: absolute; bottom: 8px; left: 40px; right: 40px;
+    font-size: 10px; color: #bdc3c7;
+    display: flex; justify-content: space-between; pointer-events: none;
+  }
+  pre code { font-family: 'Menlo','Monaco',monospace; }
+</style>
+</head>
+<body>
+<div class="reveal">
+<div class="slides">
+
+<!-- ============================================================ -->
+<!-- TITLE                                                        -->
+<!-- ============================================================ -->
+<section>
+  <h1 style="font-size:1.5em;">Machine Learning for<br>Physics &amp; Astronomy 2026</h1>
+  <h3>Lecture 2: Building \(q_\phi(\theta\mid x)\)</h3>
+  <p class="subtitle">From \(\chi^2\) fitting to neural conditional densities</p>
+  <p class="subtitle">Christoph Weniger &mdash; University of Amsterdam (GRAPPA)</p>
+</section>
+
+<section>
+  <h2>One continuous story</h2>
+  <p>We parameterise \(p(\theta\mid x)\) and make it more flexible as need demands. Every new ingredient enters because the <em>previous</em> model is too restrictive.</p>
+  <div style="display:flex; gap:10px; margin-top:14px; font-size:0.95em;">
+    <div class="box box-blue"   style="flex:1;"><strong>A.</strong> \(\chi^2\) as conditional Gaussian density</div>
+    <div class="box box-orange" style="flex:1;"><strong>B.</strong> Overfitting &amp; the basis-function problem</div>
+    <div class="box box-green"  style="flex:1;"><strong>C.</strong> Learn the basis: NNs + SGD</div>
+    <div class="box box-purple" style="flex:1;"><strong>D.</strong> From Gaussian to flexible \(q_\phi(\theta\mid x)\)</div>
+  </div>
+  <p style="margin-top:18px;">At the end we have <strong>\(q_\phi(\theta\mid x)\)</strong>, a learnable conditional density. Lecture 3 trains it on simulator output and calls it neural posterior estimation (NPE).</p>
+  <div class="box" style="text-align:center; margin-top:16px;">
+    Notation in this lecture: <strong>\(\theta\)</strong> = parameter we want to infer, <strong>\(x\)</strong> = observation/data.
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<!-- BLOCK A — chi^2 as conditional Gaussian density estimation   -->
+<!-- ============================================================ -->
+<section>
+  <div style="display:flex; align-items:center; justify-content:center; height:100%;">
+    <div style="text-align:center;">
+      <h1 style="font-size:1.8em; margin-bottom:0.2em;">Block A &mdash; \(\chi^2\) as Conditional Gaussian Density Estimation</h1>
+      <div style="width:140px; height:4px; background: linear-gradient(90deg, #2980b9, #e74c3c); margin:0 auto; border-radius:2px;"></div>
+      <p style="font-size:0.9em; color:#7f8c8d; margin-top:0.8em;">The role-swap: from "\(x \to\) point estimate of \(\theta\)" to "\(x \to q(\theta\mid x)\)".</p>
+    </div>
+  </div>
+</section>
+
+<!-- A1 -->
+<section>
+  <h2>What \(\chi^2\)-fitting really is</h2>
+  <p>You already know the procedure: pick a model \(\mu(x;\mathbf{w})\), define</p>
+  <div class="box" style="text-align:center;">
+    \[ \chi^2(\mathbf{w}) \;=\; \sum_{n=1}^{N}\frac{\bigl(t_n - \mu(x_n;\mathbf{w})\bigr)^2}{\sigma^2} \]
+  </div>
+  <p>and minimise. What is rarely spelt out: this <em>is</em> a probabilistic statement.</p>
+  <div class="box box-blue">
+    <p>Assume Gaussian noise \(t_n = \mu(x_n;\mathbf{w})+\varepsilon\), \(\varepsilon\sim\mathcal{N}(0,\sigma^2)\). The log-likelihood is</p>
+    \[ \ln p(\mathbf{t}\mid\mathbf{w},\sigma) = \text{const} \;-\; \frac{1}{2\sigma^2}\,\chi^2(\mathbf{w}) \]
+    <p>So <strong>\(\chi^2 = -2\ln L + \text{const}\)</strong>, and "minimise \(\chi^2\)" is just <strong>maximum likelihood</strong> (MLE).</p>
+  </div>
+  <p class="fragment" style="text-align:center; font-size:1.05em; margin-top:8px;">
+    Every \(\chi^2\) fit is a hidden density model. Let us make it visible.
+  </p>
+</section>
+
+<!-- A2 -->
+<section>
+  <h2>The linear-basis picture</h2>
+  <p>The classical \(\chi^2\) workflow uses a <strong>linear combination of basis functions</strong>:</p>
+  <div class="box" style="text-align:center;">
+    \[ \mu(x;\mathbf{w}) \;=\; \sum_{j=0}^{M-1} w_j\,\phi_j(x) \;=\; \mathbf{w}^T\boldsymbol{\phi}(x) \]
+  </div>
+  <ul>
+    <li>\(\{\phi_j\}\) &mdash; chosen templates: polynomials \(x^j\), Gaussian RBFs, sigmoids, Fourier modes...</li>
+    <li>\(\mathbf{w}\) &mdash; weights, the only thing MLE solves for.</li>
+    <li>"Linear" refers to <strong>linearity in \(\mathbf{w}\)</strong>, not in \(x\). The basis itself can be very nonlinear.</li>
+  </ul>
+  <p style="margin-top:14px; font-size:1.0em;">
+    The modelling decision is the choice of \(\boldsymbol{\phi}\). Everything that follows in this lecture is one continuous attack on that choice.
+  </p>
+</section>
+
+<!-- A3 — the role-swap (NEW slide, the conceptual core) -->
+<section>
+  <h2>The role-swap &mdash; the most important slide of the lecture</h2>
+  <div style="display:flex; gap:14px; margin-top:6px;">
+    <div class="box box-blue" style="flex:1;">
+      <strong>Old view (point estimate)</strong>
+      <p style="margin:6px 0;">Given \(x\), output a single best guess of \(\theta\).</p>
+      \[ x \;\longrightarrow\; \hat\theta(x) \]
+    </div>
+    <div class="box box-orange" style="flex:1;">
+      <strong>New view (conditional density)</strong>
+      <p style="margin:6px 0;">Given \(x\), output a whole distribution over \(\theta\).</p>
+      \[ x \;\longrightarrow\; q(\theta\mid x) \]
+    </div>
+  </div>
+  <div id="roleswap-plot" style="width:100%; height:300px; margin-top:8px;"></div>
+  <p style="text-align:center; font-size:0.85em; color:#7f8c8d; margin-top:4px;">
+    Same data, two readings. Left: regression curve. Right: Gaussian band \(\mathcal{N}(\mu(x),\sigma^2)\) &mdash; the density we have implicitly been fitting all along.
+  </p>
+</section>
+
+<!-- A4 -->
+<section>
+  <h2>Closed-form MLE, and where \(\sigma^2\) hides</h2>
+  <div class="box" style="text-align:center;">
+    With design matrix \(\boldsymbol\Phi_{nj} = \phi_j(x_n)\),
+    \[ \mathbf{w}_{\mathrm{ML}} = (\boldsymbol\Phi^T\boldsymbol\Phi)^{-1}\boldsymbol\Phi^T\mathbf{t}, \qquad
+       \sigma^2_{\mathrm{ML}} = \frac{1}{N}\sum_{n}\bigl(t_n - \mathbf{w}_{\mathrm{ML}}^T\boldsymbol{\phi}(x_n)\bigr)^2 \]
+  </div>
+  <ul>
+    <li>Convex problem. One global minimum. No optimiser, no learning rate.</li>
+    <li>The residuals <em>define</em> \(\sigma^2\) for us &mdash; we did not have to specify it.</li>
+    <li class="fragment"><strong style="color:#e74c3c;">But \(\sigma^2\) here is a single number, the same everywhere</strong>. The Gaussian band has constant width across \(x\).</li>
+    <li class="fragment">This is the first thing we will break in Block D: real noise depends on \(x\).</li>
+  </ul>
+</section>
+
+<!-- A5 — worked example interactive -->
+<section>
+  <h2>Worked example: polynomial \(\mu(x)\) with a Gaussian band</h2>
+  <div style="display:flex; gap:12px; font-size:0.85em; align-items:center; margin-top:4px;">
+    <label>Degree \(M\) = <span id="polyfit-m-val">3</span>
+      <input type="range" id="polyfit-m-slider" min="1" max="10" step="1" value="3" style="width:160px;">
+    </label>
+    <label>N = <span id="polyfit-n-val">20</span>
+      <input type="range" id="polyfit-n-slider" min="6" max="60" step="1" value="20" style="width:120px;">
+    </label>
+    <button id="polyfit-resample" style="padding:3px 12px; cursor:pointer;">⟳ Resample</button>
+    <span id="polyfit-readout" style="color:#7f8c8d;"></span>
+  </div>
+  <div id="polyfit-plot" style="width:100%; height:430px; margin-top:6px;"></div>
+  <p style="text-align:center; font-size:0.8em; color:#7f8c8d; margin-top:0;">
+    Black curve: \(\mu(x;\mathbf{w}_{\mathrm{ML}})\). Shaded band: \(\mu(x)\pm 2\sigma_{\mathrm{ML}}\). The fitted Gaussian density is \(q(\theta\mid x)=\mathcal{N}(\mu(x),\sigma^2)\).
+  </p>
+</section>
+
+<!-- ============================================================ -->
+<!-- BLOCK B — overfitting & basis-function problem               -->
+<!-- ============================================================ -->
+<section>
+  <div style="display:flex; align-items:center; justify-content:center; height:100%;">
+    <div style="text-align:center;">
+      <h1 style="font-size:1.8em; margin-bottom:0.2em;">Block B &mdash; Overfitting &amp; the Basis-Function Problem</h1>
+      <div style="width:140px; height:4px; background: linear-gradient(90deg, #e67e22, #e74c3c); margin:0 auto; border-radius:2px;"></div>
+      <p style="font-size:0.9em; color:#7f8c8d; margin-top:0.8em;">The fixed basis cannot be both expressive enough and well-behaved.</p>
+    </div>
+  </div>
+</section>
+
+<!-- B6 -->
+<section>
+  <h2>Overfitting &mdash; step through</h2>
+  <div style="display:flex; gap:10px; align-items:center; font-size:0.85em; margin-top:2px;">
+    <button id="overfit-next" style="padding:5px 18px; cursor:pointer; font-weight:600;">Next ▸</button>
+    <button id="overfit-reset" style="padding:5px 12px; cursor:pointer;">↺ Reset</button>
+    <span id="overfit-step-label" style="color:#7f8c8d;"></span>
+  </div>
+  <div id="overfit-plot" style="width:100%; height:380px; margin-top:4px;"></div>
+  <div id="overfit-msg" style="min-height:2.6em; margin-top:4px; font-size:0.95em; padding:6px 10px; border-radius:6px;"></div>
+</section>
+
+<!-- B7 -->
+<section>
+  <h2>Underfit / good fit / overfit</h2>
+  <div style="display:flex; gap:14px; margin-top:8px;">
+    <div class="box box-green"  style="flex:1;">
+      <h3 style="margin-top:0; color:#27ae60;">Underfit (\(M\) too small)</h3>
+      <p>Basis too rigid &mdash; cannot follow the signal.</p>
+      <p>Training error: high. Test error: high.</p>
+    </div>
+    <div class="box box-orange" style="flex:1;">
+      <h3 style="margin-top:0; color:#e67e22;">Good fit</h3>
+      <p>Basis matches the smoothness of the signal.</p>
+      <p>Training error: low. Test error: low.</p>
+    </div>
+    <div class="box" style="flex:1; border-left:4px solid #e74c3c;">
+      <h3 style="margin-top:0; color:#e74c3c;">Overfit (\(M\) too large)</h3>
+      <p>Basis flexible enough to chase the noise.</p>
+      <p>Training error: \(\to 0\). Test error: explodes.</p>
+    </div>
+  </div>
+  <p class="fragment" style="text-align:center; margin-top:24px;">
+    The signature of overfitting is the <strong>gap</strong> between training and test error.
+  </p>
+  <p class="fragment" style="text-align:center; margin-top:8px;">
+    With a fixed basis you only have one knob &mdash; \(M\) &mdash; and it controls both expressiveness <em>and</em> noise sensitivity.
+  </p>
+</section>
+
+<!-- B8 -->
+<section>
+  <h2>Validation &amp; the U-curve</h2>
+  <div class="box">
+    <p><strong>Training set</strong> &mdash; fit parameters \(\mathbf{w}\).</p>
+    <p><strong>Validation set</strong> &mdash; choose model complexity (\(M\), \(\lambda\), architecture, …).</p>
+    <p><strong>Test set</strong> &mdash; one-shot final score. Look once.</p>
+  </div>
+  <div style="display:flex; margin-top:10px; height:36px; border-radius:8px; overflow:hidden; font-size:0.85em; text-align:center; line-height:36px;">
+    <div style="flex:7; background:#3498db; color:white;">Training (70%)</div>
+    <div style="flex:1.5; background:#e67e22; color:white;">Validation (15%)</div>
+    <div style="flex:1.5; background:#e74c3c; color:white;">Test (15%)</div>
+  </div>
+  <div id="ucurve-plot" style="width:100%; height:300px; margin-top:6px;"></div>
+  <p style="text-align:center; font-size:0.8em; color:#7f8c8d; margin-top:0;">
+    Training error keeps decreasing with \(M\). Validation error is U-shaped &mdash; minimum picks the sweet spot.
+  </p>
+</section>
+
+<!-- B9 — bridge slide -->
+<section>
+  <h2>The basis-function problem</h2>
+  <div style="display:flex; gap:14px; margin-top:6px;">
+    <div class="box box-green" style="flex:1;">
+      <strong style="color:#27ae60;">Worked in 1D</strong><br>
+      We could draw the data, eyeball the smoothness, and pick polynomials or RBFs.
+    </div>
+    <div class="box" style="flex:1; border-left:4px solid #e74c3c;">
+      <strong style="color:#e74c3c;">Does not scale</strong><br>
+      What is a good basis for a 1024-pixel image? A gravitational-wave strain time series? A galaxy spectrum?
+    </div>
+  </div>
+  <p style="text-align:center; margin-top:18px; font-size:1.05em;">
+    In \(\mu(x) = \mathbf{w}^T\boldsymbol{\phi}(x)\), linear MLE solves the easy part &mdash; the weights. All of the modelling burden is on \(\boldsymbol{\phi}\).
+  </p>
+  <p class="fragment" style="text-align:center; margin-top:18px; font-size:1.2em;">
+    <strong>Can we learn the basis functions themselves?</strong>
+  </p>
+</section>
+
+<!-- ============================================================ -->
+<!-- BLOCK C — NNs + SGD                                          -->
+<!-- ============================================================ -->
+<section>
+  <div style="display:flex; align-items:center; justify-content:center; height:100%;">
+    <div style="text-align:center;">
+      <h1 style="font-size:1.8em; margin-bottom:0.2em;">Block C &mdash; Learning the Basis: NNs + SGD</h1>
+      <div style="width:140px; height:4px; background: linear-gradient(90deg, #27ae60, #2980b9); margin:0 auto; border-radius:2px;"></div>
+      <p style="font-size:0.9em; color:#7f8c8d; margin-top:0.8em;">Replace fixed templates with parametric ones. Train them by gradient descent.</p>
+    </div>
+  </div>
+</section>
+
+<!-- C10 — learnable building blocks -->
+<section>
+  <h2>Towards learnable building blocks</h2>
+  <p>Replace each fixed template by a <strong>parametric</strong> one:</p>
+  <div class="box" style="text-align:center;">
+    \[ \phi_j(x) \;=\; g\!\bigl(\mathbf{v}_j^T x + b_j\bigr) \]
+    <p style="font-size:0.9em; color:#7f8c8d; margin:4px 0 0;">\(g\) = nonlinear activation; \(\mathbf{v}_j, b_j\) are <strong>learnable</strong>.</p>
+  </div>
+  <div id="building-block-plot" style="width:100%; height:280px; margin-top:6px;"></div>
+  <div style="display:flex; gap:12px; align-items:center; margin-top:0; font-size:0.85em; justify-content:center;">
+    <label>Activation:
+      <select id="bb-act"><option value="relu" selected>ReLU</option><option value="sigmoid">Sigmoid</option><option value="tanh">Tanh</option></select>
+    </label>
+    <label>H = <span id="bb-h-val">5</span>
+      <input type="range" id="bb-h-slider" min="1" max="12" step="1" value="5" style="width:140px;">
+    </label>
+    <button id="bb-resample" style="padding:3px 12px; cursor:pointer;">⟳ Resample \(\mathbf{v},b\)</button>
+  </div>
+  <p style="text-align:center; font-size:0.8em; color:#7f8c8d;">Grey: individual \(\phi_j(x)\). Each one moves with \(\mathbf{v}_j, b_j\) &mdash; the basis is now a free parameter.</p>
+</section>
+
+<!-- C11 — neuron + activations -->
+<section>
+  <h2>The artificial neuron &amp; activations</h2>
+  <div style="display:flex; gap:16px; align-items:center; justify-content:center; margin-top:4px; font-size:0.88em;">
+    <div style="display:flex; flex-direction:column; align-items:center; gap:4px;">
+      <div style="background:#eaf2f8; border:2px solid #2980b9; border-radius:6px; padding:3px 12px;">\(x_1\)</div>
+      <div style="background:#eaf2f8; border:2px solid #2980b9; border-radius:6px; padding:3px 12px;">\(x_2\)</div>
+      <div style="color:#7f8c8d; font-size:1.1em;">\(\vdots\)</div>
+      <div style="background:#eaf2f8; border:2px solid #2980b9; border-radius:6px; padding:3px 12px;">\(x_d\)</div>
+    </div>
+    <div style="font-size:1.2em; color:#7f8c8d;">\(\xrightarrow{\,v_j\,}\)</div>
+    <div style="background:linear-gradient(135deg, #eafaf1, #d5f5e3); border:3px solid #27ae60; border-radius:50%; width:120px; height:120px; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center;">
+      <span>\(\mathbf{v}_j^T\mathbf{x} + b_j\)</span>
+      <span style="color:#27ae60;">\(\downarrow\)</span>
+      <span>\(g(\cdot)\)</span>
+    </div>
+    <div style="font-size:1.4em; color:#7f8c8d;">→</div>
+    <div style="background:#f5eef8; border:2px solid #8e44ad; border-radius:8px; padding:8px 14px;">
+      <strong>output</strong><br>\(\phi_j = g(\mathbf{v}_j^T\mathbf{x}+b_j)\)
+    </div>
+  </div>
+  <div id="activations-plot" style="width:100%; height:220px; margin-top:14px;"></div>
+  <p style="text-align:center; font-size:0.85em; color:#7f8c8d; margin-top:0;">
+    Sigmoid, tanh, ReLU, GELU. ReLU is the default; GELU appears in transformers.
+  </p>
+</section>
+
+<!-- C12 — one hidden layer = learnable phi -->
+<section>
+  <h2>One hidden layer = learnable \(\boldsymbol{\phi}\)</h2>
+  <p>Stack \(H\) neurons and let a linear head combine them:</p>
+  <div class="box" style="text-align:center; font-size:1.05em;">
+    \[ \mu(x;\mathbf{w},\mathbf{v},\mathbf{b}) \;=\; \sum_{j=1}^{H} w_j\,\underbrace{g(\mathbf{v}_j^T x + b_j)}_{\text{learnable }\phi_j(x)} + w_0 \]
+  </div>
+  <p style="margin-top:6px;">This is <strong>exactly</strong> the Block A model \(\mu(x) = \mathbf{w}^T\boldsymbol{\phi}(x)\) &mdash; only now \(\boldsymbol{\phi}\) has its own parameters that we will train jointly with \(\mathbf{w}\).</p>
+  <div class="fragment" style="display:flex; align-items:center; justify-content:center; gap:10px; margin-top:14px; font-size:0.9em;">
+    <div style="background:#eaf2f8; border:2px solid #2980b9; border-radius:8px; padding:10px 16px; text-align:center;">
+      <strong>Input</strong><br>\(x\)
+    </div>
+    <div style="font-size:1.4em; color:#7f8c8d;">→</div>
+    <div style="background:#eafaf1; border:2px solid #27ae60; border-radius:8px; padding:10px 16px; text-align:center;">
+      <strong>Hidden layer</strong><br>\(h_j = g(\mathbf{v}_j^T x + b_j)\)
+    </div>
+    <div style="font-size:1.4em; color:#7f8c8d;">→</div>
+    <div style="background:#f5eef8; border:2px solid #8e44ad; border-radius:8px; padding:10px 16px; text-align:center;">
+      <strong>Output head</strong><br>\(\mu(x)\), or later \(\mu,\sigma\)
+    </div>
+  </div>
+  <p class="fragment" style="text-align:center; margin-top:12px;">
+    Stack more hidden layers → <strong>multi-layer perceptron</strong> (MLP).
+  </p>
+</section>
+
+<!-- C13 — universal approximation -->
+<section>
+  <h2>Universal approximation &mdash; one line</h2>
+  <p style="text-align:center; font-size:1.1em; margin-top:14px;">
+    With enough neurons, a single hidden layer can approximate any continuous function on a compact domain to arbitrary precision.
+  </p>
+  <p style="text-align:center; color:#7f8c8d; font-size:0.9em;">Cybenko 1989, Hornik 1991.</p>
+  <ul style="font-size:1.0em; line-height:1.7; margin-top:18px;">
+    <li><strong>Why we care.</strong> Whatever \(\mu(x)\) we secretly need, the network can in principle express it. The basis is no longer the bottleneck.</li>
+    <li><strong>Why we still need engineering.</strong> The theorem says weights <em>exist</em>; it does not say SGD will <em>find</em> them. Depth and inductive bias matter in practice.</li>
+  </ul>
+  <p class="fragment" style="text-align:center; margin-top:20px; font-size:1.1em;">
+    No closed form for the weights any more &mdash; we need <strong>gradient descent</strong>.
+  </p>
+</section>
+
+<!-- C14 — Gradient descent + interactive -->
+<section>
+  <h2>Enter gradient descent</h2>
+  <div class="box" style="text-align:center; font-size:1.05em;">
+    \[ \mathbf{w} \;\leftarrow\; \mathbf{w} - \eta\,\nabla E(\mathbf{w}) \]
+    <p style="margin:4px 0 0; font-size:0.9em;">\(\eta\) = learning rate. Step downhill.</p>
+  </div>
+  <div style="display:flex; gap:14px; align-items:center; margin-top:6px; font-size:0.9em; justify-content:center;">
+    <label>\(\log_{10}\eta\) = <span id="gd-lr-val">-0.5</span>
+      <input type="range" id="gd-lr-slider" min="-2" max="0.5" step="0.05" value="-0.5" style="width:180px;">
+    </label>
+    <button id="gd-run" style="padding:4px 14px; cursor:pointer; font-weight:600;">▶ Run</button>
+    <button id="gd-reset" style="padding:4px 14px; cursor:pointer;">↺ Reset</button>
+  </div>
+  <div id="gd-plot" style="width:100%; height:340px; margin-top:4px;"></div>
+  <p style="text-align:center; font-size:0.8em; color:#7f8c8d; margin-top:0;">
+    Toy loss \(E(w) = \tfrac{1}{2}w^2 + 0.3\sin(3w)\). Small \(\eta\): crawls. Right \(\eta\): converges fast. Large \(\eta\): bounces or diverges.
+  </p>
+</section>
+
+<!-- C15 — GD pseudocode -->
+<section>
+  <h2>GD &mdash; details &amp; pseudocode</h2>
+  <ul>
+    <li>\(\nabla E(\mathbf{w})\) points in the direction of <strong>steepest increase</strong>. We step opposite.</li>
+    <li>Optimal \(\eta\) scales like \(1/E''(\mathbf{w})\) (inverse curvature). Anisotropic curvature is the practical headache.</li>
+    <li>Full-batch GD uses all \(N\) samples per step &mdash; expensive for large datasets.</li>
+  </ul>
+  <pre style="background:#2c3e50; color:#ecf0f1; padding:18px 22px; border-radius:10px; font-size:0.82em; line-height:1.55; text-align:left; margin-top:10px;"><code><span style="color:#7f8c8d;">// Given training data {(x_n, t_n)}, loss E, learning rate η</span>
+
+initialise w randomly
+
+for step = 1, 2, ... until converged:
+    <span style="color:#7f8c8d;">// Compute gradient over all N samples</span>
+    g ← (1/N) Σ_n ∇_w E_n(w)
+
+    <span style="color:#7f8c8d;">// Update</span>
+    w ← w − η · g</code></pre>
+</section>
+
+<!-- C16 — Mini-batch SGD -->
+<section>
+  <h2>Mini-batch SGD</h2>
+  <p>Computing the gradient over all \(N\) samples per step is wasteful. Use a random <strong>mini-batch</strong> \(\mathcal{B}\) of size \(B\ll N\):</p>
+  <div class="box" style="text-align:center;">
+    \[ \nabla E(\mathbf{w}) \;\approx\; \frac{1}{B}\sum_{n\in\mathcal{B}} \nabla E_n(\mathbf{w}) \]
+  </div>
+  <div style="display:flex; gap:14px; margin-top:12px;">
+    <div class="box box-orange" style="flex:1; text-align:center;">
+      <strong>Large \(B\)</strong><br>
+      Precise gradient, expensive per step.
+    </div>
+    <div class="box" style="flex:1; text-align:center; border-left:4px solid #e74c3c;">
+      <strong>Small \(B\)</strong><br>
+      Noisy gradient, cheap per step. Noise often helps generalisation.
+    </div>
+  </div>
+  <p style="margin-top:14px;">One full sweep through the data = one <strong>epoch</strong>. Typical \(B \in [32, 256]\). "SGD" almost always means "mini-batch SGD".</p>
+</section>
+
+<!-- C17 — backprop -->
+<section>
+  <h2>Backprop &mdash; one slide</h2>
+  <div style="display:flex; gap:14px; align-items:center; margin-top:6px;">
+    <div style="flex:1.1; font-size:1.0em; line-height:1.7;">
+      <p>Backpropagation is just the <strong>chain rule, applied bottom-up on a computation graph</strong>. For each parameter \(w_\ell\) we want \(\partial E / \partial w_\ell\); we get it by sweeping local Jacobians backwards from the loss.</p>
+      <p>You do not have to write it. Modern libraries (PyTorch, JAX) build the graph as you call functions and differentiate it for you &mdash; this is <em>autograd</em>.</p>
+      <p style="color:#7f8c8d;">Practically: you write the forward pass, call <code>loss.backward()</code>, get gradients of every parameter. Cost ≈ 2&times; the forward pass.</p>
+    </div>
+    <div style="flex:0.9;">
+      <svg viewBox="0 0 320 240" style="width:100%; height:240px;">
+        <defs>
+          <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#2c3e50"/></marker>
+          <marker id="arrR" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#e74c3c"/></marker>
+        </defs>
+        <!-- nodes -->
+        <circle cx="40"  cy="60"  r="22" fill="#eaf2f8" stroke="#2980b9" stroke-width="2"/><text x="40" y="65" text-anchor="middle" font-size="13">x</text>
+        <circle cx="120" cy="60"  r="22" fill="#eafaf1" stroke="#27ae60" stroke-width="2"/><text x="120" y="65" text-anchor="middle" font-size="12">h₁</text>
+        <circle cx="200" cy="60"  r="22" fill="#eafaf1" stroke="#27ae60" stroke-width="2"/><text x="200" y="65" text-anchor="middle" font-size="12">h₂</text>
+        <circle cx="280" cy="60"  r="22" fill="#f5eef8" stroke="#8e44ad" stroke-width="2"/><text x="280" y="65" text-anchor="middle" font-size="12">μ</text>
+        <circle cx="280" cy="160" r="22" fill="#fadbd8" stroke="#e74c3c" stroke-width="2"/><text x="280" y="165" text-anchor="middle" font-size="12">E</text>
+        <!-- forward arrows (blue) -->
+        <line x1="62"  y1="60" x2="98"  y2="60" stroke="#2980b9" stroke-width="2" marker-end="url(#arr)"/>
+        <line x1="142" y1="60" x2="178" y2="60" stroke="#2980b9" stroke-width="2" marker-end="url(#arr)"/>
+        <line x1="222" y1="60" x2="258" y2="60" stroke="#2980b9" stroke-width="2" marker-end="url(#arr)"/>
+        <line x1="280" y1="82" x2="280" y2="138" stroke="#2980b9" stroke-width="2" marker-end="url(#arr)"/>
+        <!-- backward arrows (red) -->
+        <line x1="260" y1="155" x2="260" y2="80" stroke="#e74c3c" stroke-width="2" stroke-dasharray="4,3" marker-end="url(#arrR)"/>
+        <line x1="258" y1="50" x2="222" y2="50" stroke="#e74c3c" stroke-width="2" stroke-dasharray="4,3" marker-end="url(#arrR)"/>
+        <line x1="178" y1="50" x2="142" y2="50" stroke="#e74c3c" stroke-width="2" stroke-dasharray="4,3" marker-end="url(#arrR)"/>
+        <line x1="98"  y1="50" x2="62"  y2="50" stroke="#e74c3c" stroke-width="2" stroke-dasharray="4,3" marker-end="url(#arrR)"/>
+        <text x="160" y="120" font-size="11" fill="#2980b9">forward (values)</text>
+        <text x="160" y="40"  font-size="11" fill="#e74c3c">backward (gradients)</text>
+      </svg>
+    </div>
+  </div>
+</section>
+
+<!-- C18 — Adam + LR schedule -->
+<section>
+  <h2>Practical optimisers in one slide</h2>
+  <div style="display:flex; gap:14px; margin-top:6px;">
+    <div class="box box-blue" style="flex:1;">
+      <strong>Adam</strong> &mdash; the default optimiser.
+      <ul style="font-size:0.92em;">
+        <li>Keeps running averages of the gradient (\(m_t\)) and its square (\(v_t\)).</li>
+        <li>Effective per-parameter step \(\propto m_t/\sqrt{v_t}\): rescales each direction by its own curvature.</li>
+        <li>Robust default: \(\eta = 10^{-3}\), \(\beta_1=0.9\), \(\beta_2=0.999\).</li>
+      </ul>
+    </div>
+    <div class="box box-orange" style="flex:1;">
+      <strong>Learning-rate schedule</strong>
+      <ul style="font-size:0.92em;">
+        <li>Decay \(\eta\) as training progresses (cosine, step, or linear warmup-then-decay).</li>
+        <li>Helps SGD settle into the minimum once you are close.</li>
+        <li>Cheap, large effect. Always worth tuning.</li>
+      </ul>
+    </div>
+  </div>
+  <p style="text-align:center; margin-top:16px; color:#7f8c8d;">
+    Plenty more (RMSProp, AdamW, Lion, SOAP, …). Adam + a sensible schedule is a strong default for everything in this school.
+  </p>
+</section>
+
+<!-- C19 — MLP regression demo -->
+<section>
+  <h2>MLP regression in action</h2>
+  <p style="margin-top:0;">Same 1D dataset as Block A, but \(\mu(x)\) is now an MLP fitted by SGD.</p>
+  <div style="display:flex; gap:12px; align-items:center; font-size:0.85em; flex-wrap:wrap;">
+    <label>Target:
+      <select id="mlpreg-target"><option value="sin" selected>sin(2πx)</option><option value="step">Step</option><option value="bump">Bump</option></select>
+    </label>
+    <label>Width H = <span id="mlpreg-h-val">12</span>
+      <input type="range" id="mlpreg-h-slider" min="2" max="40" step="1" value="12" style="width:120px;">
+    </label>
+    <label>\(\log_{10}\eta\) = <span id="mlpreg-lr-val">-1.0</span>
+      <input type="range" id="mlpreg-lr-slider" min="-3" max="0" step="0.1" value="-1.0" style="width:120px;">
+    </label>
+    <button id="mlpreg-train" style="padding:3px 14px; cursor:pointer; font-weight:600;">▶ Train</button>
+    <button id="mlpreg-reset" style="padding:3px 14px; cursor:pointer;">↺ Reset</button>
+    <span id="mlpreg-status" style="color:#7f8c8d;"></span>
+  </div>
+  <div style="display:flex; gap:10px;">
+    <div id="mlpreg-fit" style="flex:1; height:380px;"></div>
+    <div id="mlpreg-loss" style="flex:0 0 300px; height:380px;"></div>
+  </div>
+  <p style="text-align:center; font-size:0.8em; color:#7f8c8d; margin-top:0;">
+    The hidden layer learns its own basis. Watch ReLU "kinks" appear and align with the curve.
+  </p>
+</section>
+
+<!-- ============================================================ -->
+<!-- BLOCK D — flexible q_phi(theta|x)                            -->
+<!-- ============================================================ -->
+<section>
+  <div style="display:flex; align-items:center; justify-content:center; height:100%;">
+    <div style="text-align:center;">
+      <h1 style="font-size:1.8em; margin-bottom:0.2em;">Block D &mdash; From Gaussian to Flexible \(q_\phi(\theta\mid x)\)</h1>
+      <div style="width:140px; height:4px; background: linear-gradient(90deg, #8e44ad, #e67e22); margin:0 auto; border-radius:2px;"></div>
+      <p style="font-size:0.9em; color:#7f8c8d; margin-top:0.8em;">Let the noise depend on \(x\); then drop the Gaussian assumption altogether.</p>
+    </div>
+  </div>
+</section>
+
+<!-- D20 — Bayes-optimal classifier ↔ sigmoid -->
+<section>
+  <h2>One slide on classification: Bayes ↔ sigmoid</h2>
+  <p>Train a binary classifier on \(y\in\{0,1\}\) with cross-entropy. With enough data and capacity, the optimal output is:</p>
+  <div class="box" style="text-align:center;">
+    \[ p(y\!=\!1\mid x) \;=\; \sigma\!\bigl(f_\phi(x)\bigr), \qquad f_\phi(x)^\star = \ln\!\frac{p(x\mid y\!=\!1)}{p(x\mid y\!=\!0)} \]
+    <p style="margin:4px 0 0; font-size:0.9em;">The logit <em>is</em> a log-density ratio. Classifiers are statistics in disguise.</p>
+  </div>
+  <p style="margin-top:14px;">Plug \(p(y\!=\!1) = p(y\!=\!0)\) and you get \(p(y\!=\!1\mid x) - 1/2 = \tfrac{1}{4}f^\star(x) + \mathcal{O}(f^{\star 2})\). The same network can target probabilities, densities, or ratios.</p>
+  <p style="margin-top:14px;">
+    Why this matters for SBI: this is the doorway to <strong>neural ratio estimation</strong> (NRE), the classifier-flavoured cousin of NPE. Lecture 3 names it; we mention it here once and move on.
+  </p>
+</section>
+
+<!-- D21 — heteroscedastic noise (NEW) -->
+<section>
+  <h2>Heteroscedastic noise &mdash; \(\sigma^2(x)\) as a second output</h2>
+  <p>Block A baked in a single \(\sigma\). Real data are noisier in some regions than others. Make \(\sigma\) a function of \(x\):</p>
+  <div class="box" style="text-align:center;">
+    \[ q_\phi(\theta\mid x) \;=\; \mathcal{N}\!\bigl(\theta \,\big|\, \mu_\phi(x), \sigma_\phi(x)^2\bigr), \qquad \text{NLL loss: } \;-\!\sum_n \log q_\phi(\theta_n\mid x_n) \]
+  </div>
+  <p style="margin-top:4px;">Same network, <strong>two heads</strong>: \(\mu_\phi(x)\) and \(\log\sigma_\phi(x)\) (log for positivity). The NLL trades off mean accuracy against calibrated width.</p>
+  <div id="hetero-plot" style="width:100%; height:340px; margin-top:6px;"></div>
+  <p style="text-align:center; font-size:0.8em; color:#7f8c8d; margin-top:0;">
+    Toy: \(\theta = \sin(2\pi x) + \varepsilon(x)\) with noise that grows toward the edges. Constant-σ fit (blue band) overconfident in the middle, underconfident at edges; learned \(\sigma(x)\) (orange band) tracks the true scale.
+  </p>
+</section>
+
+<!-- D22 — Gaussian-head q_phi -->
+<section>
+  <h2>The Gaussian-head \(q_\phi(\theta\mid x)\) &mdash; the destination of this lecture</h2>
+  <div style="display:flex; gap:22px; align-items:flex-start; margin-top:10px;">
+    <div style="flex:1.1;">
+      <p><strong>Density family.</strong></p>
+      <p style="text-align:center; font-size:1.05em;">
+        \( q_\phi(\theta\mid x) \;=\; \mathcal{N}\!\bigl(\theta\,\big|\,\boldsymbol\mu_\phi(x), \boldsymbol\Sigma_\phi(x)\bigr) \)
+      </p>
+      <p>Both mean and covariance are NN outputs &mdash; the network learns where to be confident.</p>
+      <p style="margin-top:14px;"><strong>Loss</strong> on \((\theta_n, x_n)\) pairs:</p>
+      <p style="text-align:center; font-size:1.0em;">
+        \( \mathcal{L}(\phi) = -\tfrac{1}{N}\sum_n \log q_\phi(\theta_n\mid x_n) \)
+      </p>
+      <p>For diagonal \(\Sigma\): \(\;\tfrac{1}{2}\bigl((\theta-\mu)/\sigma\bigr)^2 + \log\sigma\). Constant \(\Sigma\) reduces to MSE (Block A callback).</p>
+    </div>
+    <div style="flex:1;">
+      <pre style="background:#2c3e50; color:#ecf0f1; padding:14px 16px; border-radius:8px; font-size:0.78em; line-height:1.55;"><code><span style="color:#7f8c8d;">// Supervised training of q_φ(θ|x)
+// Given pairs (θ_n, x_n)</span>
+for step = 1, 2, ... :
+    sample mini-batch B of pairs
+    μ, log_σ = f_φ(x)
+    L = mean( ½((θ−μ)/σ)² + log_σ )
+    φ ← Adam(φ, ∇_φ L)</code></pre>
+      <div class="box box-orange" style="margin-top:14px;">
+        <strong>Where Lec 3 picks this up.</strong> If \((\theta_n, x_n)\) come from a simulator (\(\theta_n\sim p(\theta), x_n\sim p(x\mid\theta_n)\)), the same procedure <em>is</em> neural posterior estimation (NPE).
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- D23 — live demo: Gaussian-head -->
+<section>
+  <h2>Live demo &mdash; Gaussian-head NN on \(\theta = a + b\,x\)</h2>
+  <div style="display:flex; gap:10px; font-size:0.85em; align-items:center; margin-top:0; flex-wrap:wrap;">
+    <button id="gh-train" style="padding:4px 14px; cursor:pointer; font-weight:600;">▶ Train</button>
+    <button id="gh-reset" style="padding:4px 14px; cursor:pointer;">↺ Reset network</button>
+    <label>\(\log_{10}\eta\) = <span id="gh-lr-val">-2.5</span>
+      <input type="range" id="gh-lr-slider" min="-4" max="-1" step="0.1" value="-2.5" style="width:120px;">
+    </label>
+    <button id="gh-newobs" style="padding:4px 14px; cursor:pointer;">↻ New observation</button>
+    <span id="gh-status" style="color:#7f8c8d;"></span>
+  </div>
+  <p style="margin:2px 0; font-size:0.8em; color:#7f8c8d;">
+    Forward model: \(t_i = a + b\,x_i + \varepsilon\), 20-point grid, \(\varepsilon\sim\mathcal{N}(0,0.25^2)\). Priors \(a\sim\mathcal U[-1,1]\), \(b\sim\mathcal U[-2,2]\). Network: MLP \([20{\to}32{\to}16{\to}5]\), output \((\mu_a,\mu_b,\log\sigma_a,\log\sigma_b,\rho)\).
+  </p>
+  <div style="display:flex; gap:10px;">
+    <div id="gh-data" style="flex:1; height:360px;"></div>
+    <div id="gh-post" style="flex:1; height:360px;"></div>
+  </div>
+  <p style="text-align:center; font-size:0.78em; color:#7f8c8d; margin-top:0;">
+    Left: a single observation \(\mathbf{x}\). Right: the learned posterior \(q_\phi(a,b\mid\mathbf{x})\) (orange ellipse) vs the true \((a^\star,b^\star)\) (green star). The same trained network handles any new \(\mathbf{x}\) &mdash; amortised inference.
+  </p>
+</section>
+
+<!-- D24 — why we need flows -->
+<section>
+  <h2>Where Gaussian breaks: multimodal posteriors</h2>
+  <p>The Gaussian head was a modelling choice we put in by hand &mdash; just like polynomials in Block A. It fails in exactly the way you would expect: when the true posterior is not Gaussian.</p>
+  <div id="multimodal-plot" style="width:100%; height:300px; margin-top:6px;"></div>
+  <div style="display:flex; gap:14px; margin-top:6px;">
+    <div class="box box-blue" style="flex:1; text-align:center;">
+      <strong>True posterior</strong><br>multimodal, curved, heavy-tailed
+    </div>
+    <div class="box" style="flex:1; text-align:center; border-left:4px solid #e74c3c;">
+      <strong>Best Gaussian fit</strong><br>smears across modes, miscalibrated tails
+    </div>
+    <div class="box box-green" style="flex:1; text-align:center;">
+      <strong>What we want</strong><br>a flexible density that can take any shape but is still a proper PDF
+    </div>
+  </div>
+  <p style="text-align:center; margin-top:10px;">Wishlist: ① easy to evaluate \(\log q_\phi(\theta\mid x)\) (for the loss); ② easy to sample (for downstream analysis); ③ arbitrary shape. <strong>Normalising flows</strong> deliver all three.</p>
+</section>
+
+<!-- D25 — Normalising flow preview -->
+<section>
+  <h2>Normalising flows &mdash; one-slide preview</h2>
+  <div style="display:flex; gap:14px; align-items:flex-start; margin-top:6px;">
+    <div style="flex:1.1; font-size:1.0em; line-height:1.65;">
+      <p><strong>Idea.</strong> Take a simple base density (Gaussian noise \(z\)). Push it through a stack of invertible neural maps to land on a complex target \(\theta\).</p>
+      <p style="text-align:center; margin:10px 0;">
+        \( \theta = f_L\circ\cdots\circ f_1(z), \quad z\sim\mathcal{N}(0,I) \)
+      </p>
+      <p><strong>Change-of-variables.</strong> For invertible \(f\),</p>
+      <p style="text-align:center; margin:6px 0;">
+        \( q_\phi(\theta\mid x) = p_Z(z)\;\bigl|\det \partial f/\partial z\bigr|^{-1} \)
+      </p>
+      <p>Build \(f\) so the Jacobian determinant is cheap (triangular).</p>
+      <p style="color:#7f8c8d; margin-top:10px;">Full machinery &mdash; coupling layers, conditional flows, log-Jacobian sums &mdash; in Lecture 3.</p>
+    </div>
+    <div style="flex:1;">
+      <div id="flow-warp-plot" style="width:100%; height:360px;"></div>
+      <div style="display:flex; gap:10px; align-items:center; justify-content:center; font-size:0.85em;">
+        <label>strength \(A\) = <span id="flow-a-val">0.80</span>
+          <input type="range" id="flow-a-slider" min="0" max="0.99" step="0.01" value="0.80" style="width:180px; accent-color:#8e44ad;">
+        </label>
+      </div>
+      <p style="text-align:center; font-size:0.78em; color:#7f8c8d; margin:2px 0 0;">
+        Base \(z\sim\mathcal{N}(0,1.5^2)\) warped by \(\theta = z + A\sin z\). As \(A\to 1\), the same base produces a bimodal target &mdash; for free.
+      </p>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<!-- BLOCK E — handoff                                            -->
+<!-- ============================================================ -->
+<section>
+  <h2>Where we are; where we are going</h2>
+  <p style="text-align:center; font-size:1.15em; margin-top:14px;">
+    We have built a learnable conditional density \(q_\phi(\theta\mid x)\), trained on \((\theta, x)\) pairs by NLL.
+  </p>
+  <div style="display:flex; gap:30px; margin-top:30px;">
+    <div style="flex:1;">
+      <h3 style="margin-top:0;">Lecture 3 &mdash; inference heads</h3>
+      <ul>
+        <li>The pairs come from a simulator → that is <strong>NPE</strong>.</li>
+        <li>Replace the Gaussian head with a <strong>normalising flow</strong>: full change-of-variables, coupling layers, conditional flows.</li>
+        <li>Flow matching and diffusion as visual side-companions.</li>
+        <li>DINGO, LISA &mdash; production examples.</li>
+      </ul>
+    </div>
+    <div style="flex:1;">
+      <h3 style="margin-top:0;">Lecture 4 &mdash; the embedding network</h3>
+      <ul>
+        <li>How do we get a good \(x\) when raw data is a 256×256 image or a 16k-sample time series?</li>
+        <li>CNNs, transformers, GNNs: data-aware compression trained jointly with the inference head.</li>
+      </ul>
+    </div>
+  </div>
+  <p style="text-align:center; margin-top:30px; font-size:1.1em;">
+    The triptych: <strong>simulator → compression → inference head</strong>. Today we built the head.
+  </p>
+</section>
+
+</div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/plotly.js@2.35.0/dist/plotly.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reveal.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/plugin/math/math.js"></script>
+<script>
+function createRNG(seed) {
+  return function() {
+    seed |= 0; seed = seed + 0x6D2B79F5 | 0;
+    var t = Math.imul(seed ^ seed >>> 15, 1 | seed);
+    t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+    return ((t ^ t >>> 14) >>> 0) / 4294967296;
+  };
+}
+function gaussN(rng) { return Math.sqrt(-2*Math.log(rng()+1e-12))*Math.cos(2*Math.PI*rng()); }
+
+Reveal.initialize({
+  hash: true, center: false, transition: 'fade', slideNumber: true,
+  width: 1214, height: 700, margin: 0.04, minScale: 0.2, maxScale: 2.0,
+  plugins: [ RevealMath.MathJax3 ]
+});
+
+document.querySelectorAll('.reveal .slides > section').forEach(function(slide) {
+  const footer = document.createElement('div');
+  footer.className = 'slide-footer';
+  footer.innerHTML = '<a href="index.html" style="color:#bdc3c7; text-decoration:none; pointer-events:auto;">← Index</a><span>ML4PhA 2026 — Lecture 2</span><span>Christoph Weniger — GRAPPA / UvA</span>';
+  slide.appendChild(footer);
+});
+
+// ============================================================
+// Tiny linear algebra helpers
+// ============================================================
+function matVec(A, v) { const m=A.length, n=v.length, r=new Array(m).fill(0); for(let i=0;i<m;i++){let s=0; for(let j=0;j<n;j++) s+=A[i][j]*v[j]; r[i]=s;} return r; }
+function solve(A, b) {
+  // Gauss elimination (symmetric pos-def assumed). A is n×n, b length n.
+  const n = b.length;
+  const M = A.map((row,i)=>row.slice().concat(b[i]));
+  for (let i=0;i<n;i++){
+    let p = i; for (let k=i+1;k<n;k++) if (Math.abs(M[k][i])>Math.abs(M[p][i])) p=k;
+    [M[i],M[p]]=[M[p],M[i]];
+    const piv = M[i][i] || 1e-12;
+    for (let k=i+1;k<n;k++){ const f=M[k][i]/piv; for(let j=i;j<=n;j++) M[k][j] -= f*M[i][j]; }
+  }
+  const x = new Array(n).fill(0);
+  for (let i=n-1;i>=0;i--){ let s=M[i][n]; for (let j=i+1;j<n;j++) s -= M[i][j]*x[j]; x[i] = s/(M[i][i]||1e-12); }
+  return x;
+}
+function polyDesign(xs, M) { return xs.map(x => { const r=new Array(M); let v=1; for(let j=0;j<M;j++){ r[j]=v; v*=x; } return r; }); }
+function polyEval(w, x) { let v=1, s=0; for(let j=0;j<w.length;j++){ s+=w[j]*v; v*=x; } return s; }
+function fitPoly(xs, ts, M) {
+  const Phi = polyDesign(xs, M);
+  const N = xs.length;
+  const A = []; for(let i=0;i<M;i++){ const row=new Array(M).fill(0); for(let j=0;j<M;j++){ let s=0; for(let n=0;n<N;n++) s+=Phi[n][i]*Phi[n][j]; row[j]=s; } A.push(row); }
+  const bv = new Array(M).fill(0); for(let i=0;i<M;i++){ let s=0; for(let n=0;n<N;n++) s+=Phi[n][i]*ts[n]; bv[i]=s; }
+  return solve(A, bv);
+}
+
+// ============================================================
+// Helpers for plot styling
+// ============================================================
+const LAY_NO_LEGEND = { paper_bgcolor:'rgba(0,0,0,0)', plot_bgcolor:'rgba(0,0,0,0)', font:{size:13}, showlegend:false };
+function baseLayout(opts={}) {
+  return Object.assign({
+    margin:{t:10,r:20,b:40,l:50},
+    paper_bgcolor:'rgba(0,0,0,0)', plot_bgcolor:'rgba(0,0,0,0)',
+    font:{size:13}, legend:{x:0.02, y:0.98}
+  }, opts);
+}
+
+// ============================================================
+// Slide A3 — role-swap visual
+// ============================================================
+(function(){
+  var rng = createRNG(7);
+  const xs=[], ts=[];
+  for (let i=0;i<30;i++){ const x=-2+4*rng(); const t = 0.6*x + 0.5*Math.sin(2*x) + 0.35*gaussN(rng); xs.push(x); ts.push(t); }
+  const w = fitPoly(xs, ts, 5);
+  const xLine=[]; for (let x=-2.2; x<=2.2; x+=0.03) xLine.push(x);
+  const muLine = xLine.map(x => polyEval(w, x));
+  let sumSq=0; for (let i=0;i<xs.length;i++){ const r = ts[i]-polyEval(w,xs[i]); sumSq+=r*r; }
+  const sigma = Math.sqrt(sumSq/xs.length);
+  function draw(e){
+    if (!e.currentSlide.querySelector('#roleswap-plot')) return;
+    const upper = muLine.map(v=>v+2*sigma), lower = muLine.map(v=>v-2*sigma);
+    Plotly.react('roleswap-plot', [
+      { x:xs, y:ts, mode:'markers', name:'data', marker:{size:8, color:'#2c3e50'} },
+      { x:xLine, y:muLine, mode:'lines', name:'μ(x)', line:{width:3, color:'#e74c3c'} },
+      { x:xLine.concat(xLine.slice().reverse()),
+        y:upper.concat(lower.slice().reverse()),
+        fill:'toself', fillcolor:'rgba(231,76,60,0.18)', line:{width:0},
+        name:'q(θ|x) = N(μ(x), σ²)', hoverinfo:'skip' }
+    ], baseLayout({ xaxis:{title:'x'}, yaxis:{title:'θ'} }), {displayModeBar:false});
+  }
+  Reveal.on('slidechanged', draw); Reveal.on('ready', draw);
+})();
+
+// ============================================================
+// Slide A5 — polynomial fit with Gaussian band
+// ============================================================
+(function(){
+  let dataX=[], dataT=[]; let rng = createRNG(123);
+  function regenData(N){
+    dataX=[]; dataT=[];
+    for (let i=0;i<N;i++){ const x=-1+2*rng(); dataT.push(Math.sin(2*Math.PI*x) + 0.3*gaussN(rng)); dataX.push(x); }
+  }
+  function draw(){
+    const M = parseInt(document.getElementById('polyfit-m-slider').value);
+    const N = parseInt(document.getElementById('polyfit-n-slider').value);
+    document.getElementById('polyfit-m-val').textContent = M;
+    document.getElementById('polyfit-n-val').textContent = N;
+    if (dataX.length !== N) regenData(N);
+    const w = fitPoly(dataX, dataT, M+1);
+    const xLine=[]; for (let x=-1.05;x<=1.05;x+=0.01) xLine.push(x);
+    const muLine = xLine.map(x => polyEval(w,x));
+    let ss=0; for (let i=0;i<dataX.length;i++){ const r = dataT[i]-polyEval(w,dataX[i]); ss+=r*r; }
+    const sigma = Math.sqrt(ss/dataX.length);
+    const upper = muLine.map(v=>v+2*sigma), lower = muLine.map(v=>v-2*sigma);
+    const xTrue=xLine, yTrue=xLine.map(x=>Math.sin(2*Math.PI*x));
+    document.getElementById('polyfit-readout').textContent = ` σ_ML ≈ ${sigma.toFixed(3)}`;
+    Plotly.react('polyfit-plot', [
+      { x:xLine.concat(xLine.slice().reverse()), y:upper.concat(lower.slice().reverse()),
+        fill:'toself', fillcolor:'rgba(231,76,60,0.18)', line:{width:0}, name:'μ ± 2σ', hoverinfo:'skip' },
+      { x:xTrue, y:yTrue, mode:'lines', name:'true sin(2πx)', line:{color:'#bdc3c7', width:2, dash:'dash'} },
+      { x:xLine, y:muLine, mode:'lines', name:'fitted μ(x)', line:{width:3, color:'#e74c3c'} },
+      { x:dataX, y:dataT, mode:'markers', name:'data', marker:{size:7, color:'#2c3e50'} }
+    ], baseLayout({xaxis:{title:'x', range:[-1.05,1.05]}, yaxis:{title:'θ', range:[-2.2,2.2]}}), {displayModeBar:false});
+  }
+  function init(e){
+    if (!e.currentSlide.querySelector('#polyfit-plot')) return;
+    if (dataX.length===0) regenData(parseInt(document.getElementById('polyfit-n-slider').value));
+    draw();
+  }
+  document.getElementById('polyfit-m-slider').addEventListener('input', draw);
+  document.getElementById('polyfit-n-slider').addEventListener('input', () => { regenData(parseInt(document.getElementById('polyfit-n-slider').value)); draw(); });
+  document.getElementById('polyfit-resample').addEventListener('click', () => { rng = createRNG(Math.floor(1e9*Math.random())); regenData(parseInt(document.getElementById('polyfit-n-slider').value)); draw(); });
+  Reveal.on('slidechanged', init); Reveal.on('ready', init);
+})();
+
+// ============================================================
+// Slide B6 — overfitting animation
+// ============================================================
+(function(){
+  const rng = createRNG(321);
+  const N=12;
+  const xs=[], ts=[];
+  for (let i=0;i<N;i++){ const x=-1+2*i/(N-1); xs.push(x); ts.push(Math.sin(2*Math.PI*x)+0.25*gaussN(rng)); }
+  const steps = [
+    { M:1, msg:'M=1 (linear) — underfit. Cannot follow the curve.', color:'#fef5e7' },
+    { M:2, msg:'M=2. Still rigid.', color:'#fef5e7' },
+    { M:4, msg:'M=4 — good fit. Matches the smoothness.', color:'#eafaf1' },
+    { M:7, msg:'M=7 — starting to wiggle.', color:'#fdf2e9' },
+    { M:11, msg:'M=11 — overfit. Curve chases the noise; wild swings at the edges.', color:'#fadbd8' }
+  ];
+  let step = 0;
+  function draw(){
+    const s = steps[step];
+    const w = fitPoly(xs, ts, s.M+1);
+    const xLine=[]; for (let x=-1.05;x<=1.05;x+=0.005) xLine.push(x);
+    const yLine = xLine.map(x=>polyEval(w,x));
+    const yTrue = xLine.map(x=>Math.sin(2*Math.PI*x));
+    Plotly.react('overfit-plot', [
+      { x:xLine, y:yTrue, mode:'lines', name:'true', line:{color:'#bdc3c7', width:2, dash:'dash'} },
+      { x:xs, y:ts, mode:'markers', name:'data', marker:{size:9, color:'#2c3e50'} },
+      { x:xLine, y:yLine, mode:'lines', name:'fit (M='+s.M+')', line:{width:3, color:'#e74c3c'} }
+    ], baseLayout({xaxis:{title:'x', range:[-1.05,1.05]}, yaxis:{title:'θ', range:[-2.5,2.5]}}), {displayModeBar:false});
+    const m = document.getElementById('overfit-msg'); m.textContent = s.msg; m.style.background = s.color;
+    document.getElementById('overfit-step-label').textContent = (step+1)+' / '+steps.length;
+  }
+  document.getElementById('overfit-next').onclick = ()=>{ step = (step+1) % steps.length; draw(); };
+  document.getElementById('overfit-reset').onclick = ()=>{ step=0; draw(); };
+  function init(e){ if (e.currentSlide.querySelector('#overfit-plot')) draw(); }
+  Reveal.on('slidechanged', init); Reveal.on('ready', init);
+})();
+
+// ============================================================
+// Slide B8 — U-curve
+// ============================================================
+(function(){
+  function draw(e){
+    if (!e.currentSlide.querySelector('#ucurve-plot')) return;
+    const rng = createRNG(77);
+    const N=20;
+    const xs=[], ts=[], xVal=[], tVal=[];
+    for (let i=0;i<N;i++){ const x=-1+2*rng(); xs.push(x); ts.push(Math.sin(2*Math.PI*x)+0.25*gaussN(rng)); }
+    for (let i=0;i<N;i++){ const x=-1+2*rng(); xVal.push(x); tVal.push(Math.sin(2*Math.PI*x)+0.25*gaussN(rng)); }
+    const Ms = [1,2,3,4,5,6,7,8,9,10,11,12]; const trErr=[], valErr=[];
+    for (const M of Ms){
+      const w = fitPoly(xs, ts, M+1);
+      let tr=0; for (let i=0;i<xs.length;i++){ const r = ts[i]-polyEval(w,xs[i]); tr+=r*r; }
+      let va=0; for (let i=0;i<xVal.length;i++){ const r = tVal[i]-polyEval(w,xVal[i]); va+=r*r; }
+      trErr.push(Math.sqrt(tr/xs.length)); valErr.push(Math.sqrt(va/xVal.length));
+    }
+    Plotly.react('ucurve-plot', [
+      { x:Ms, y:trErr, mode:'lines+markers', name:'training RMSE', line:{color:'#2980b9', width:3} },
+      { x:Ms, y:valErr, mode:'lines+markers', name:'validation RMSE', line:{color:'#e67e22', width:3} }
+    ], baseLayout({xaxis:{title:'polynomial degree M'}, yaxis:{title:'RMSE', range:[0, 2]}, legend:{x:0.55,y:0.98}}), {displayModeBar:false});
+  }
+  Reveal.on('slidechanged', draw); Reveal.on('ready', draw);
+})();
+
+// ============================================================
+// Slide C10 — building block plot
+// ============================================================
+(function(){
+  let rng = createRNG(11);
+  let params = [];
+  function regen(H){ params = []; for (let j=0;j<H;j++) params.push({v: 4*rng()-2, b: 4*rng()-2, w: 2*rng()-1}); }
+  function actFn(name){ return name==='relu' ? x=>Math.max(0,x) : name==='tanh' ? x=>Math.tanh(x) : x=>1/(1+Math.exp(-x)); }
+  function draw(){
+    const H = parseInt(document.getElementById('bb-h-slider').value);
+    const name = document.getElementById('bb-act').value;
+    document.getElementById('bb-h-val').textContent = H;
+    if (params.length !== H) regen(H);
+    const g = actFn(name);
+    const xLine=[]; for(let x=-3;x<=3;x+=0.02) xLine.push(x);
+    const traces = [];
+    let sum = new Array(xLine.length).fill(0);
+    for (let j=0;j<H;j++){
+      const y = xLine.map(x => params[j].w * g(params[j].v*x + params[j].b));
+      for (let k=0;k<sum.length;k++) sum[k]+=y[k];
+      traces.push({ x:xLine, y, mode:'lines', line:{color:'rgba(127,140,141,0.55)', width:1.2}, showlegend:false, hoverinfo:'skip' });
+    }
+    traces.push({ x:xLine, y:sum, mode:'lines', line:{color:'#2c3e50', width:3}, name:'Σ wⱼ g(vⱼx+bⱼ)' });
+    Plotly.react('building-block-plot', traces, baseLayout({xaxis:{title:'x'}, yaxis:{title:'φⱼ(x)'}, legend:{x:0.02,y:0.98}}), {displayModeBar:false});
+  }
+  document.getElementById('bb-h-slider').addEventListener('input', draw);
+  document.getElementById('bb-act').addEventListener('change', draw);
+  document.getElementById('bb-resample').addEventListener('click', ()=>{ rng = createRNG(Math.floor(1e9*Math.random())); regen(parseInt(document.getElementById('bb-h-slider').value)); draw(); });
+  function init(e){ if (e.currentSlide.querySelector('#building-block-plot')) { if (params.length===0) regen(parseInt(document.getElementById('bb-h-slider').value)); draw(); } }
+  Reveal.on('slidechanged', init); Reveal.on('ready', init);
+})();
+
+// ============================================================
+// Slide C11 — activation zoo
+// ============================================================
+(function(){
+  function draw(e){
+    if (!e.currentSlide.querySelector('#activations-plot')) return;
+    const xLine=[]; for(let x=-4;x<=4;x+=0.02) xLine.push(x);
+    const acts = [
+      { name:'Sigmoid', y: xLine.map(x => 1/(1+Math.exp(-x))), color:'#2980b9' },
+      { name:'Tanh',    y: xLine.map(x => Math.tanh(x)), color:'#27ae60' },
+      { name:'ReLU',    y: xLine.map(x => Math.max(0,x)), color:'#e67e22' },
+      { name:'GELU',    y: xLine.map(x => x*(1/(1+Math.exp(-1.7*x)))), color:'#8e44ad' }
+    ];
+    Plotly.react('activations-plot', acts.map(a=>({x:xLine, y:a.y, mode:'lines', name:a.name, line:{color:a.color, width:2.5}})),
+      baseLayout({xaxis:{title:'x', range:[-4,4]}, yaxis:{range:[-1.5, 3]}, legend:{x:0.02, y:0.98}}), {displayModeBar:false});
+  }
+  Reveal.on('slidechanged', draw); Reveal.on('ready', draw);
+})();
+
+// ============================================================
+// Slide C14 — GD on toy loss
+// ============================================================
+(function(){
+  function E(w){ return 0.5*w*w + 0.3*Math.sin(3*w); }
+  function dE(w){ return w + 0.9*Math.cos(3*w); }
+  let traj = [2.5];
+  function refresh(){
+    document.getElementById('gd-lr-val').textContent = parseFloat(document.getElementById('gd-lr-slider').value).toFixed(2);
+    const xLine=[]; for(let w=-3;w<=3;w+=0.02) xLine.push(w);
+    const yLine = xLine.map(E);
+    const tx = traj, ty = traj.map(E);
+    Plotly.react('gd-plot', [
+      { x:xLine, y:yLine, mode:'lines', name:'E(w)', line:{color:'#2c3e50', width:2} },
+      { x:tx, y:ty, mode:'lines+markers', name:'trajectory', line:{color:'#e74c3c', width:2}, marker:{size:6, color:'#e74c3c'} }
+    ], baseLayout({xaxis:{title:'w', range:[-3,3]}, yaxis:{title:'E(w)', range:[-0.7, 5]}}), {displayModeBar:false});
+  }
+  function run(){
+    const eta = Math.pow(10, parseFloat(document.getElementById('gd-lr-slider').value));
+    let w = traj[traj.length-1];
+    let i = 0;
+    const tick = () => {
+      const g = dE(w);
+      w = w - eta*g;
+      if (Math.abs(w) > 5) w = Math.sign(w)*5;
+      traj.push(w);
+      refresh();
+      i++;
+      if (i < 60 && Math.abs(g) > 1e-3) requestAnimationFrame(tick);
+    };
+    tick();
+  }
+  document.getElementById('gd-lr-slider').addEventListener('input', refresh);
+  document.getElementById('gd-run').onclick = run;
+  document.getElementById('gd-reset').onclick = ()=>{ traj=[2.5]; refresh(); };
+  function init(e){ if (e.currentSlide.querySelector('#gd-plot')) refresh(); }
+  Reveal.on('slidechanged', init); Reveal.on('ready', init);
+})();
+
+// ============================================================
+// Tiny MLP utility (1D in → 1 or 2 out) used by several demos.
+// ============================================================
+function MLP1D(H, nOut, seed) {
+  const rng = createRNG(seed||1);
+  // weights init: He for ReLU
+  const W1 = []; const b1 = []; const W2 = []; const b2 = [];
+  for (let j=0;j<H;j++){ W1.push(0.8*gaussN(rng)); b1.push(0.5*gaussN(rng)); }
+  for (let k=0;k<nOut;k++){ const row=[]; for (let j=0;j<H;j++) row.push(gaussN(rng)/Math.sqrt(H)); W2.push(row); b2.push(0); }
+  return {W1,b1,W2,b2,H,nOut};
+}
+function mlpForward(net, x) {
+  const h = new Array(net.H), hPre = new Array(net.H);
+  for (let j=0;j<net.H;j++){ const a = net.W1[j]*x + net.b1[j]; hPre[j]=a; h[j] = a>0?a:0; }
+  const out = new Array(net.nOut);
+  for (let k=0;k<net.nOut;k++){ let s = net.b2[k]; for (let j=0;j<net.H;j++) s += net.W2[k][j]*h[j]; out[k]=s; }
+  return {out, h, hPre};
+}
+// gradient: gradOut: array of len nOut. returns gradients of params; updates buffers in-place if g supplied
+function mlpBackward(net, x, fwd, gradOut) {
+  const H = net.H, nOut = net.nOut;
+  const gW2 = []; const gb2 = new Array(nOut);
+  for (let k=0;k<nOut;k++){
+    const row=new Array(H); for (let j=0;j<H;j++) row[j] = gradOut[k]*fwd.h[j];
+    gW2.push(row); gb2[k] = gradOut[k];
+  }
+  const dh = new Array(H).fill(0);
+  for (let j=0;j<H;j++){ let s=0; for (let k=0;k<nOut;k++) s += gradOut[k]*net.W2[k][j]; dh[j] = s; }
+  const dhPre = new Array(H);
+  for (let j=0;j<H;j++) dhPre[j] = fwd.hPre[j] > 0 ? dh[j] : 0;
+  const gW1 = new Array(H), gb1 = new Array(H);
+  for (let j=0;j<H;j++){ gW1[j] = dhPre[j]*x; gb1[j] = dhPre[j]; }
+  return {gW1, gb1, gW2, gb2};
+}
+function adamStep(net, grads, opt, lr) {
+  const beta1=0.9, beta2=0.999, eps=1e-8;
+  opt.t = (opt.t||0)+1;
+  function upd(p, g, m, v){
+    for (let i=0;i<p.length;i++){
+      m[i] = beta1*m[i] + (1-beta1)*g[i];
+      v[i] = beta2*v[i] + (1-beta2)*g[i]*g[i];
+      const mh = m[i]/(1-Math.pow(beta1, opt.t));
+      const vh = v[i]/(1-Math.pow(beta2, opt.t));
+      p[i] -= lr*mh/(Math.sqrt(vh)+eps);
+    }
+  }
+  if (!opt.mW1){
+    opt.mW1=new Array(net.H).fill(0); opt.vW1=new Array(net.H).fill(0);
+    opt.mb1=new Array(net.H).fill(0); opt.vb1=new Array(net.H).fill(0);
+    opt.mW2=net.W2.map(r=>r.map(_=>0)); opt.vW2=net.W2.map(r=>r.map(_=>0));
+    opt.mb2=new Array(net.nOut).fill(0); opt.vb2=new Array(net.nOut).fill(0);
+  }
+  upd(net.W1, grads.gW1, opt.mW1, opt.vW1);
+  upd(net.b1, grads.gb1, opt.mb1, opt.vb1);
+  for (let k=0;k<net.nOut;k++){ upd(net.W2[k], grads.gW2[k], opt.mW2[k], opt.vW2[k]); }
+  upd(net.b2, grads.gb2, opt.mb2, opt.vb2);
+}
+
+// ============================================================
+// Slide C19 — MLP regression demo
+// ============================================================
+(function(){
+  let net = MLP1D(12, 1, 7), opt = {};
+  let dataX=[], dataT=[]; let lossHist=[]; let timer=null;
+  function targetFn(name){ return name==='step' ? x => x>0?1:-1 : name==='bump' ? x => Math.exp(-8*x*x) : x => Math.sin(2*Math.PI*x); }
+  function regen(){
+    const rng = createRNG(42);
+    const tgt = targetFn(document.getElementById('mlpreg-target').value);
+    dataX=[]; dataT=[];
+    for (let i=0;i<60;i++){ const x=-1+2*rng(); dataX.push(x); dataT.push(tgt(x)+0.15*gaussN(rng)); }
+  }
+  function rebuild(){
+    const H = parseInt(document.getElementById('mlpreg-h-slider').value);
+    document.getElementById('mlpreg-h-val').textContent = H;
+    net = MLP1D(H, 1, 7); opt = {}; lossHist = []; regen(); draw(); document.getElementById('mlpreg-status').textContent='';
+  }
+  function trainStep(){
+    const lr = Math.pow(10, parseFloat(document.getElementById('mlpreg-lr-slider').value));
+    document.getElementById('mlpreg-lr-val').textContent = parseFloat(document.getElementById('mlpreg-lr-slider').value).toFixed(2);
+    const B = 16;
+    let totLoss = 0;
+    const gW1 = new Array(net.H).fill(0), gb1=new Array(net.H).fill(0), gb2=[0];
+    const gW2 = [new Array(net.H).fill(0)];
+    for (let bIdx=0;bIdx<B;bIdx++){
+      const idx = Math.floor(Math.random()*dataX.length);
+      const x = dataX[idx], t = dataT[idx];
+      const f = mlpForward(net, x);
+      const r = f.out[0] - t; totLoss += 0.5*r*r;
+      const gr = mlpBackward(net, x, f, [r]);
+      for (let j=0;j<net.H;j++){ gW1[j]+=gr.gW1[j]/B; gb1[j]+=gr.gb1[j]/B; gW2[0][j]+=gr.gW2[0][j]/B; }
+      gb2[0]+=gr.gb2[0]/B;
+    }
+    adamStep(net, {gW1, gb1, gW2, gb2}, opt, lr);
+    lossHist.push(totLoss/B);
+    if (lossHist.length > 300) lossHist.shift();
+  }
+  function draw(){
+    const xLine=[]; for(let x=-1.05;x<=1.05;x+=0.01) xLine.push(x);
+    const yLine = xLine.map(x => mlpForward(net, x).out[0]);
+    const tgt = targetFn(document.getElementById('mlpreg-target').value);
+    const yTrue = xLine.map(x => tgt(x));
+    Plotly.react('mlpreg-fit', [
+      { x:xLine, y:yTrue, mode:'lines', name:'target', line:{color:'#bdc3c7', dash:'dash', width:2} },
+      { x:dataX, y:dataT, mode:'markers', name:'data', marker:{size:5, color:'#2c3e50', opacity:0.7} },
+      { x:xLine, y:yLine, mode:'lines', name:'MLP μ(x)', line:{color:'#e74c3c', width:3} }
+    ], baseLayout({xaxis:{title:'x', range:[-1.05,1.05]}, yaxis:{title:'θ', range:[-2,2]}}), {displayModeBar:false});
+    Plotly.react('mlpreg-loss', [
+      { x: lossHist.map((_,i)=>i), y: lossHist, mode:'lines', line:{color:'#e67e22', width:2}, name:'mini-batch loss' }
+    ], baseLayout({xaxis:{title:'step'}, yaxis:{title:'loss', type:'log'}}), {displayModeBar:false});
+    document.getElementById('mlpreg-status').textContent = 'step ' + lossHist.length;
+  }
+  document.getElementById('mlpreg-h-slider').addEventListener('input', rebuild);
+  document.getElementById('mlpreg-target').addEventListener('change', rebuild);
+  document.getElementById('mlpreg-lr-slider').addEventListener('input', ()=>{
+    document.getElementById('mlpreg-lr-val').textContent = parseFloat(document.getElementById('mlpreg-lr-slider').value).toFixed(2);
+  });
+  document.getElementById('mlpreg-reset').onclick = rebuild;
+  document.getElementById('mlpreg-train').onclick = ()=>{
+    if (timer){ clearInterval(timer); timer=null; document.getElementById('mlpreg-train').textContent='▶ Train'; return; }
+    document.getElementById('mlpreg-train').textContent='⏸ Pause';
+    timer = setInterval(()=>{ for (let i=0;i<5;i++) trainStep(); draw(); }, 40);
+  };
+  function init(e){
+    if (!e.currentSlide.querySelector('#mlpreg-fit')) {
+      if (timer){ clearInterval(timer); timer=null; document.getElementById('mlpreg-train').textContent='▶ Train'; }
+      return;
+    }
+    if (dataX.length===0) regen();
+    draw();
+  }
+  Reveal.on('slidechanged', init); Reveal.on('ready', init);
+})();
+
+// ============================================================
+// Slide D21 — heteroscedastic noise
+// ============================================================
+(function(){
+  function trueMu(x){ return Math.sin(2*Math.PI*x); }
+  function trueSigma(x){ return 0.08 + 0.5*x*x; }
+  let dataX=[], dataT=[];
+  function regen(){
+    const rng = createRNG(8);
+    dataX=[]; dataT=[];
+    for (let i=0;i<150;i++){ const x=-1+2*rng(); dataX.push(x); dataT.push(trueMu(x)+trueSigma(x)*gaussN(rng)); }
+  }
+  // Two heads MLP — quick analytic fit: fit μ(x) with poly degree 5, σ(x) with poly degree 3 of |residuals|
+  function fitBoth(){
+    const wMu = fitPoly(dataX, dataT, 6);
+    const resAbs = dataX.map((x,i)=> Math.abs(dataT[i] - polyEval(wMu, x)));
+    const wSig = fitPoly(dataX, resAbs, 4);
+    // adjust scale: |normal| has mean σ√(2/π)
+    const scale = Math.sqrt(Math.PI/2);
+    return {wMu, wSig, scale};
+  }
+  function draw(e){
+    if (!e.currentSlide.querySelector('#hetero-plot')) return;
+    if (dataX.length===0) regen();
+    const fit = fitBoth();
+    const xLine=[]; for (let x=-1.05;x<=1.05;x+=0.01) xLine.push(x);
+    const muLine = xLine.map(x => polyEval(fit.wMu, x));
+    const sigLine = xLine.map(x => Math.max(0.02, polyEval(fit.wSig, x)*fit.scale));
+    // constant-σ baseline
+    let ss=0; for (let i=0;i<dataX.length;i++){ const r = dataT[i]-polyEval(fit.wMu, dataX[i]); ss+=r*r; }
+    const sigConst = Math.sqrt(ss/dataX.length);
+    const upHet = muLine.map((v,i)=>v+2*sigLine[i]), loHet = muLine.map((v,i)=>v-2*sigLine[i]);
+    const upHom = muLine.map(v=>v+2*sigConst),     loHom = muLine.map(v=>v-2*sigConst);
+    Plotly.react('hetero-plot', [
+      { x:xLine.concat(xLine.slice().reverse()), y:upHom.concat(loHom.slice().reverse()),
+        fill:'toself', fillcolor:'rgba(41,128,185,0.16)', line:{width:0}, name:'constant σ' },
+      { x:xLine.concat(xLine.slice().reverse()), y:upHet.concat(loHet.slice().reverse()),
+        fill:'toself', fillcolor:'rgba(230,126,34,0.25)', line:{width:0}, name:'learned σ(x)' },
+      { x:dataX, y:dataT, mode:'markers', name:'data', marker:{size:5, color:'#2c3e50', opacity:0.55} },
+      { x:xLine, y:xLine.map(trueMu), mode:'lines', name:'true μ(x)', line:{color:'#bdc3c7', dash:'dash', width:2} },
+      { x:xLine, y:muLine, mode:'lines', name:'fitted μ(x)', line:{color:'#e74c3c', width:3} }
+    ], baseLayout({xaxis:{title:'x', range:[-1.05,1.05]}, yaxis:{title:'θ'}, legend:{x:0.02,y:0.98}}), {displayModeBar:false});
+  }
+  Reveal.on('slidechanged', draw); Reveal.on('ready', draw);
+})();
+
+// ============================================================
+// Slide D23 — Gaussian-head demo (lightweight, full network).
+// Forward model: t_i = a + b*x_i + ε, x grid 20 points in [0,1].
+// Trained network maps t-vector → (μ_a, μ_b, log σ_a, log σ_b, tanh-1 ρ).
+// ============================================================
+(function(){
+  const N_GRID = 20;
+  const xGrid = []; for (let i=0;i<N_GRID;i++) xGrid.push(i/(N_GRID-1));
+  const NOISE = 0.25;
+  // Net: input 20 → hidden 32 → hidden 16 → out 5
+  function init(){
+    const rng = createRNG(99);
+    function mat(R,C, scale){ const M=[]; for(let i=0;i<R;i++){ const row=[]; for(let j=0;j<C;j++) row.push(scale*gaussN(rng)); M.push(row);} return M; }
+    return {
+      W1: mat(32, N_GRID, 1/Math.sqrt(N_GRID)), b1: new Array(32).fill(0),
+      W2: mat(16, 32, 1/Math.sqrt(32)),         b2: new Array(16).fill(0),
+      W3: mat(5,  16, 1/Math.sqrt(16)),         b3: new Array(5).fill(0)
+    };
+  }
+  let net = init(), opt = {};
+  let timer = null;
+  let obs = null; // current observation
+  function relu(z){ return z>0?z:0; }
+  function fwd(net, x){
+    // x: array length N_GRID
+    const h1 = new Array(32), h1pre = new Array(32);
+    for (let i=0;i<32;i++){ let s=net.b1[i]; for (let j=0;j<N_GRID;j++) s+=net.W1[i][j]*x[j]; h1pre[i]=s; h1[i]=relu(s); }
+    const h2 = new Array(16), h2pre = new Array(16);
+    for (let i=0;i<16;i++){ let s=net.b2[i]; for (let j=0;j<32;j++) s+=net.W2[i][j]*h1[j]; h2pre[i]=s; h2[i]=relu(s); }
+    const out = new Array(5);
+    for (let i=0;i<5;i++){ let s=net.b3[i]; for (let j=0;j<16;j++) s+=net.W3[i][j]*h2[j]; out[i]=s; }
+    return {out, h1, h2, h1pre, h2pre};
+  }
+  function bwd(net, x, f, dOut){
+    // d outputs of net wrt 5 outputs
+    const gW3 = []; const gb3 = dOut.slice();
+    for (let i=0;i<5;i++){ const row=new Array(16); for(let j=0;j<16;j++) row[j]=dOut[i]*f.h2[j]; gW3.push(row); }
+    const dh2 = new Array(16).fill(0);
+    for (let j=0;j<16;j++){ let s=0; for(let i=0;i<5;i++) s+=dOut[i]*net.W3[i][j]; dh2[j]=s; }
+    const dh2pre = new Array(16); for (let j=0;j<16;j++) dh2pre[j] = f.h2pre[j]>0 ? dh2[j] : 0;
+    const gW2 = []; const gb2 = dh2pre.slice();
+    for (let i=0;i<16;i++){ const row=new Array(32); for(let j=0;j<32;j++) row[j]=dh2pre[i]*f.h1[j]; gW2.push(row); }
+    const dh1 = new Array(32).fill(0);
+    for (let j=0;j<32;j++){ let s=0; for(let i=0;i<16;i++) s+=dh2pre[i]*net.W2[i][j]; dh1[j]=s; }
+    const dh1pre = new Array(32); for (let j=0;j<32;j++) dh1pre[j] = f.h1pre[j]>0 ? dh1[j] : 0;
+    const gW1 = []; const gb1 = dh1pre.slice();
+    for (let i=0;i<32;i++){ const row=new Array(N_GRID); for(let j=0;j<N_GRID;j++) row[j]=dh1pre[i]*x[j]; gW1.push(row); }
+    return {gW1,gb1,gW2,gb2,gW3,gb3};
+  }
+  function adam(net, g, opt, lr) {
+    const beta1=0.9, beta2=0.999, eps=1e-8;
+    opt.t = (opt.t||0)+1;
+    function init2D(W){ return W.map(r=>r.map(_=>0)); }
+    function init1D(b){ return b.map(_=>0); }
+    if (!opt.mW1){
+      opt.mW1=init2D(net.W1); opt.vW1=init2D(net.W1); opt.mb1=init1D(net.b1); opt.vb1=init1D(net.b1);
+      opt.mW2=init2D(net.W2); opt.vW2=init2D(net.W2); opt.mb2=init1D(net.b2); opt.vb2=init1D(net.b2);
+      opt.mW3=init2D(net.W3); opt.vW3=init2D(net.W3); opt.mb3=init1D(net.b3); opt.vb3=init1D(net.b3);
+    }
+    function updMat(P, G, M, V) {
+      for (let i=0;i<P.length;i++) for (let j=0;j<P[0].length;j++){
+        M[i][j] = beta1*M[i][j] + (1-beta1)*G[i][j];
+        V[i][j] = beta2*V[i][j] + (1-beta2)*G[i][j]*G[i][j];
+        const mh = M[i][j]/(1-Math.pow(beta1, opt.t));
+        const vh = V[i][j]/(1-Math.pow(beta2, opt.t));
+        P[i][j] -= lr*mh/(Math.sqrt(vh)+eps);
+      }
+    }
+    function updVec(P, G, M, V) {
+      for (let i=0;i<P.length;i++){
+        M[i] = beta1*M[i] + (1-beta1)*G[i];
+        V[i] = beta2*V[i] + (1-beta2)*G[i]*G[i];
+        const mh = M[i]/(1-Math.pow(beta1, opt.t));
+        const vh = V[i]/(1-Math.pow(beta2, opt.t));
+        P[i] -= lr*mh/(Math.sqrt(vh)+eps);
+      }
+    }
+    updMat(net.W1, g.gW1, opt.mW1, opt.vW1); updVec(net.b1, g.gb1, opt.mb1, opt.vb1);
+    updMat(net.W2, g.gW2, opt.mW2, opt.vW2); updVec(net.b2, g.gb2, opt.mb2, opt.vb2);
+    updMat(net.W3, g.gW3, opt.mW3, opt.vW3); updVec(net.b3, g.gb3, opt.mb3, opt.vb3);
+  }
+  function simulate(rng){
+    const a = -1 + 2*rng();
+    const b = -2 + 4*rng();
+    const t = xGrid.map(x => a + b*x + NOISE*gaussN(rng));
+    return {a, b, t};
+  }
+  const trainRng = createRNG(33);
+  function trainStep(){
+    const lr = Math.pow(10, parseFloat(document.getElementById('gh-lr-slider').value));
+    document.getElementById('gh-lr-val').textContent = parseFloat(document.getElementById('gh-lr-slider').value).toFixed(2);
+    const B = 16;
+    // accumulators
+    function zero2D(W){ return W.map(r=>r.map(_=>0)); }
+    const gW1 = zero2D(net.W1), gW2 = zero2D(net.W2), gW3 = zero2D(net.W3);
+    const gb1 = new Array(net.b1.length).fill(0), gb2 = new Array(net.b2.length).fill(0), gb3 = new Array(net.b3.length).fill(0);
+    let totLoss = 0;
+    for (let k=0;k<B;k++){
+      const sim = simulate(trainRng);
+      const f = fwd(net, sim.t);
+      const mua = f.out[0], mub = f.out[1];
+      const lsa = Math.max(-3, Math.min(2, f.out[2]));
+      const lsb = Math.max(-3, Math.min(2, f.out[3]));
+      const sa = Math.exp(lsa), sb = Math.exp(lsb);
+      const rho = Math.tanh(f.out[4]);
+      const da = sim.a - mua, db = sim.b - mub;
+      const oneM = 1 - rho*rho;
+      // NLL bivariate Gaussian
+      const quad = (da*da/(sa*sa) - 2*rho*da*db/(sa*sb) + db*db/(sb*sb)) / oneM;
+      const loss = 0.5*quad + lsa + lsb + 0.5*Math.log(oneM);
+      totLoss += loss;
+      // gradients wrt outputs
+      const dMua = -((da/(sa*sa) - rho*db/(sa*sb))/oneM);  // d L / d mua = -dL/d da
+      const dMub = -((db/(sb*sb) - rho*da/(sa*sb))/oneM);
+      // d L / d sa  via lsa: let q = quad; d quad / d sa = -2*da²/sa³/oneM + 2*rho*da*db/(sa²*sb)/oneM
+      const dq_dsa = (-2*da*da/(sa*sa*sa) + 2*rho*da*db/(sa*sa*sb))/oneM;
+      const dq_dsb = (-2*db*db/(sb*sb*sb) + 2*rho*da*db/(sa*sb*sb))/oneM;
+      // dL/dlsa = 0.5 * dq/dsa * sa + 1
+      const dLsa = 0.5*dq_dsa*sa + 1;
+      const dLsb = 0.5*dq_dsb*sb + 1;
+      // dq/drho = (2*da*db/(sa*sb) ... ) careful: q = num/oneM, num = da²/sa² - 2ρ da db/(sa sb) + db²/sb²
+      const num = da*da/(sa*sa) - 2*rho*da*db/(sa*sb) + db*db/(sb*sb);
+      const dnum_drho = -2*da*db/(sa*sb);
+      const doneM_drho = -2*rho;
+      const dq_drho = (dnum_drho*oneM - num*doneM_drho)/(oneM*oneM);
+      // dL/drho_out via tanh: drho = (1-rho²)
+      const dRho = 0.5*dq_drho + 0.5*(-2*rho/oneM); // d(0.5*log(1-rho²))/drho = -rho/(1-rho²)
+      const dOut5 = dRho*(1-rho*rho);
+      const dOut = [dMua, dMub, dLsa, dLsb, dOut5];
+      const gr = bwd(net, sim.t, f, dOut);
+      for (let i=0;i<gW1.length;i++) for (let j=0;j<gW1[0].length;j++) gW1[i][j] += gr.gW1[i][j]/B;
+      for (let i=0;i<gW2.length;i++) for (let j=0;j<gW2[0].length;j++) gW2[i][j] += gr.gW2[i][j]/B;
+      for (let i=0;i<gW3.length;i++) for (let j=0;j<gW3[0].length;j++) gW3[i][j] += gr.gW3[i][j]/B;
+      for (let i=0;i<gb1.length;i++) gb1[i]+=gr.gb1[i]/B;
+      for (let i=0;i<gb2.length;i++) gb2[i]+=gr.gb2[i]/B;
+      for (let i=0;i<gb3.length;i++) gb3[i]+=gr.gb3[i]/B;
+    }
+    adam(net, {gW1,gb1,gW2,gb2,gW3,gb3}, opt, lr);
+    return totLoss/B;
+  }
+  function makeObs(){
+    const rng = createRNG(Math.floor(1e9*Math.random()));
+    obs = simulate(rng);
+  }
+  function draw(){
+    if (!obs) makeObs();
+    // left: data + current μ fit
+    const f = fwd(net, obs.t);
+    const xs = xGrid;
+    const mua = f.out[0], mub = f.out[1];
+    const lsa = Math.max(-3, Math.min(2, f.out[2])), lsb = Math.max(-3, Math.min(2, f.out[3]));
+    const sa = Math.exp(lsa), sb = Math.exp(lsb), rho = Math.tanh(f.out[4]);
+    const xLine=[]; for(let x=0;x<=1;x+=0.01) xLine.push(x);
+    const truth = xLine.map(x=>obs.a + obs.b*x);
+    const pred  = xLine.map(x=>mua + mub*x);
+    Plotly.react('gh-data', [
+      { x:xLine, y:truth, mode:'lines', name:'truth', line:{color:'#bdc3c7', dash:'dash', width:2} },
+      { x:xs, y:obs.t, mode:'markers', name:'observation', marker:{size:8, color:'#2980b9'} },
+      { x:xLine, y:pred, mode:'lines', name:'NPE mean', line:{color:'#e67e22', width:3} }
+    ], baseLayout({xaxis:{title:'x', range:[-0.02,1.02]}, yaxis:{title:'t = a + b·x + ε'}, legend:{x:0.02,y:0.98}}), {displayModeBar:false});
+    // right: posterior ellipse on (a,b)
+    const thetaG=[], a1=[], b1=[], a2=[], b2v=[];
+    for (let k=0;k<=80;k++){
+      const th = 2*Math.PI*k/80, c=Math.cos(th), s=Math.sin(th);
+      const ea = sa*c, eb = sb*(rho*c + Math.sqrt(Math.max(0,1-rho*rho))*s);
+      a1.push(mua + ea); b1.push(mub + eb);
+      a2.push(mua + 2*ea); b2v.push(mub + 2*eb);
+    }
+    Plotly.react('gh-post', [
+      // prior box
+      { x:[-1,1,1,-1,-1], y:[-2,-2,2,2,-2], mode:'lines', line:{color:'#bdc3c7', dash:'dot', width:1}, name:'prior support' },
+      { x:a2, y:b2v, mode:'lines', line:{color:'rgba(230,126,34,0.7)', width:1.5, dash:'dash'}, name:'2σ' },
+      { x:a1, y:b1, mode:'lines', line:{color:'#e67e22', width:3}, name:'q_φ(a,b|x) — 1σ' },
+      { x:[obs.a], y:[obs.b], mode:'markers', name:'truth (a★,b★)', marker:{size:14, color:'#27ae60', symbol:'star'} },
+      { x:[mua], y:[mub], mode:'markers', name:'μ', marker:{size:8, color:'#e74c3c'} }
+    ], baseLayout({xaxis:{title:'a', range:[-1.3,1.3]}, yaxis:{title:'b', range:[-2.5,2.5]}, legend:{x:0.02,y:0.98}}), {displayModeBar:false});
+  }
+  let step = 0;
+  document.getElementById('gh-lr-slider').addEventListener('input', ()=>{ document.getElementById('gh-lr-val').textContent = parseFloat(document.getElementById('gh-lr-slider').value).toFixed(2); });
+  document.getElementById('gh-reset').onclick = ()=>{ net = init(); opt={}; step=0; document.getElementById('gh-status').textContent=''; draw(); };
+  document.getElementById('gh-newobs').onclick = ()=>{ makeObs(); draw(); };
+  document.getElementById('gh-train').onclick = ()=>{
+    if (timer){ clearInterval(timer); timer=null; document.getElementById('gh-train').textContent='▶ Train'; return; }
+    document.getElementById('gh-train').textContent='⏸ Pause';
+    timer = setInterval(()=>{
+      let loss=0;
+      for (let i=0;i<3;i++){ loss = trainStep(); step++; }
+      document.getElementById('gh-status').textContent = 'step '+step+'  loss '+loss.toFixed(3);
+      draw();
+    }, 50);
+  };
+  function initSlide(e){
+    if (!e.currentSlide.querySelector('#gh-data')){
+      if (timer){ clearInterval(timer); timer=null; document.getElementById('gh-train').textContent='▶ Train'; }
+      return;
+    }
+    if (!obs) makeObs();
+    draw();
+  }
+  Reveal.on('slidechanged', initSlide); Reveal.on('ready', initSlide);
+})();
+
+// ============================================================
+// Slide D24 — multimodal posterior visualisation
+// ============================================================
+(function(){
+  function draw(e){
+    if (!e.currentSlide.querySelector('#multimodal-plot')) return;
+    const xLine=[]; for(let t=-4;t<=4;t+=0.02) xLine.push(t);
+    function gpdf(t, mu, sigma){ return Math.exp(-0.5*((t-mu)/sigma)**2)/(sigma*Math.sqrt(2*Math.PI)); }
+    const truth = xLine.map(t => 0.5*gpdf(t,-1.5,0.5) + 0.5*gpdf(t,1.5,0.5));
+    // best Gaussian (moment match)
+    const mu = 0, sig2 = 0.5*(0.25 + 2.25) + 0.5*(0.25 + 2.25) - 0; // mixture variance
+    const fitted = xLine.map(t => gpdf(t, 0, Math.sqrt(sig2)));
+    Plotly.react('multimodal-plot', [
+      { x:xLine, y:truth, mode:'lines', name:'true p(θ|x)', line:{color:'#2c3e50', width:3}, fill:'tozeroy', fillcolor:'rgba(44,62,80,0.10)' },
+      { x:xLine, y:fitted, mode:'lines', name:'best Gaussian fit', line:{color:'#e74c3c', width:3, dash:'dash'} }
+    ], baseLayout({xaxis:{title:'θ'}, yaxis:{title:'p(θ|x)'}, legend:{x:0.02, y:0.98}}), {displayModeBar:false});
+  }
+  Reveal.on('slidechanged', draw); Reveal.on('ready', draw);
+})();
+
+// ============================================================
+// Slide D25 — flow warping visualisation
+// ============================================================
+(function(){
+  function gpdf(z, sigma){ return Math.exp(-0.5*(z/sigma)**2)/(sigma*Math.sqrt(2*Math.PI)); }
+  function draw(){
+    const A = parseFloat(document.getElementById('flow-a-slider').value);
+    document.getElementById('flow-a-val').textContent = A.toFixed(2);
+    const sigma = 1.5;
+    const zL=[]; for(let z=-5;z<=5;z+=0.02) zL.push(z);
+    const pz = zL.map(z=>gpdf(z,sigma));
+    const theta = zL.map(z=>z+A*Math.sin(z));
+    const jac = zL.map(z=>Math.abs(1+A*Math.cos(z)));
+    const pTheta = pz.map((p,i)=>p/Math.max(1e-3, jac[i]));
+    Plotly.react('flow-warp-plot', [
+      { x:zL, y:pz, mode:'lines', name:'base p_Z(z)', line:{color:'#2980b9', width:2.5}, yaxis:'y' },
+      { x:theta, y:pTheta, mode:'lines', name:'warped p_Θ(θ)', line:{color:'#8e44ad', width:3}, yaxis:'y' },
+      { x:zL, y:theta, mode:'lines', name:'θ = z + A·sin(z)', line:{color:'#e67e22', dash:'dot', width:2}, yaxis:'y2' }
+    ], baseLayout({
+      xaxis:{title:'z / θ', range:[-5,5]},
+      yaxis:{title:'density', range:[0, 0.4]},
+      yaxis2:{title:'θ', overlaying:'y', side:'right', range:[-7,7], showgrid:false},
+      legend:{x:0.02, y:0.98}
+    }), {displayModeBar:false});
+  }
+  document.getElementById('flow-a-slider').addEventListener('input', draw);
+  function init(e){ if (e.currentSlide.querySelector('#flow-warp-plot')) draw(); }
+  Reveal.on('slidechanged', init); Reveal.on('ready', init);
+})();
+</script>
+</body>
+</html>
