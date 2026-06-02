@@ -1,13 +1,6 @@
-# ---
-# jupyter:
-#   jupytext:
-#     formats: ipynb,py:percent
-#     text_representation:
-#       extension: .py
-#       format_name: percent
-# ---
-
 # %% [markdown]
+# [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/cweniger/teaching-2606-ICTP-SAIFR/blob/main/notebooks/lec1b_abc_demos.ipynb)
+#
 # # Lec 1b — Classic ABC: three demos on the ball-throw
 #
 # Reference notebook for the three live demos in Lecture 1b. Each demo
