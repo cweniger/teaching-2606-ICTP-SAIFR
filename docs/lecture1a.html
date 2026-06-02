@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Lecture 1a: Machine Learning in APP and GW — an overview</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reveal.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/theme/white.css">
+<style>
+  .reveal .slides section {
+    background: #ffffff;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+    padding: 30px 40px;
+    box-sizing: border-box;
+    height: 700px !important;
+  }
+  .reveal { font-family: 'Inter', sans-serif; font-weight: 400; }
+  .reveal h1, .reveal h2, .reveal h3 { color: #2c3e50; font-family: 'Space Grotesk', sans-serif; font-weight: 700; }
+  /* Reveal's white theme applies text-transform: uppercase to h1/h2/h3;
+     that mangles inline MathJax glyphs. Keep titles in their natural case. */
+  .reveal h1, .reveal h2, .reveal h3 { text-transform: none; }
+  .reveal h2 { font-size: 1.2em; margin-bottom: 0.3em; text-align: left; }
+  .reveal .subtitle { font-size: 0.6em; color: #7f8c8d; margin-top: 0.5em; }
+  .reveal section { font-size: 0.66em; }
+  .reveal p { margin: 0.3em 0; }
+  .reveal ul { text-align: left; margin: 0.3em 0; }
+  .reveal li { margin: 0.15em 0; }
+  .reveal .highlight { color: #1a3a6e; font-weight: bold; }
+  .reveal .MathJax { font-size: 0.95em; }
+  /* Equations rendered by MathJax — dark red, consistently. */
+  .reveal mjx-container, .reveal mjx-container * { color: #8b1a1a !important; }
+  /* Important keywords — dark blue, consistently. */
+  .reveal section p strong,
+  .reveal section li strong,
+  .reveal section td strong { color: #1a3a6e; }
+  /* Single, neutral box style — used very sparingly. */
+  .reveal .box, .reveal .box-blue, .reveal .box-orange,
+  .reveal .box-green, .reveal .box-purple {
+    background: #f4f6f8;
+    border-left: 4px solid #1a3a6e;
+    border-radius: 6px;
+    padding: 12px 16px;
+    margin: 10px 0;
+    text-align: left;
+  }
+  .slide-footer {
+    position: absolute; bottom: 8px; left: 40px; right: 40px;
+    font-size: 10px; color: #bdc3c7;
+    display: flex; justify-content: space-between; pointer-events: none;
+  }
+  pre code { font-family: 'Menlo','Monaco',monospace; }
+</style>
+</head>
+<body>
+<div class="reveal">
+<div class="slides">
+
+<!-- ============================================================ -->
+<!-- TITLE                                                        -->
+<!-- ============================================================ -->
+<section>
+  <h1 style="font-size:1.5em;">Machine Learning for<br>Physics &amp; Astronomy 2026</h1>
+  <h3>Lecture 1a: ML in astroparticle physics &amp; gravitational waves</h3>
+  <p class="subtitle">An overview, organised around the scientific-method loop</p>
+  <p class="subtitle">Christoph Weniger &mdash; University of Amsterdam (GRAPPA)</p>
+</section>
+
+<!-- ============================================================ -->
+<!-- SLIDE 1 — Opener: the scientific-method loop                 -->
+<!-- ============================================================ -->
+<section>
+  <h2>Doing physics with data, and where ML now enters</h2>
+
+  <div style="display:grid; grid-template-columns:1fr auto 1fr; align-items:center; gap:14px; margin:6px 0;">
+    <div class="box" style="text-align:center; margin:0;">
+      <strong>theory</strong>
+      <div style="font-size:0.82em; color:#5d6d7e; margin-top:4px;">GR, &Lambda;CDM, &nu; oscillation Hamiltonian, dark-matter halo models, EFT of LSS</div>
+    </div>
+    <div style="font-size:1.5em; color:#8b1a1a; font-weight:700;">&rarr;</div>
+    <div class="box" style="text-align:center; margin:0;">
+      <strong>model / simulator</strong>
+      <div style="font-size:0.82em; color:#5d6d7e; margin-top:4px;">LALSimulation, CORSIKA, <em>N</em>-body, hydro sims, &nu; propagation</div>
+    </div>
+  </div>
+
+  <div style="display:grid; grid-template-columns:1fr auto 1fr; align-items:center; gap:14px; margin:6px 0;">
+    <div class="box" style="text-align:center; margin:0;">
+      <strong>instrument</strong>
+      <div style="font-size:0.82em; color:#5d6d7e; margin-top:4px;">LIGO/Virgo/KAGRA, IceCube, Fermi-LAT, Euclid, LSST, CTA, SKA, CMB-S4</div>
+    </div>
+    <div style="font-size:1.5em; color:#8b1a1a; font-weight:700;">&rarr;</div>
+    <div class="box" style="text-align:center; margin:0;">
+      <strong>data</strong>
+      <div style="font-size:0.82em; color:#5d6d7e; margin-top:4px;">strain <em>h</em>(<em>t</em>), DOM hits, &gamma;-ray photon lists, survey images, CMB maps, visibilities</div>
+    </div>
+  </div>
+
+  <div style="display:grid; grid-template-columns:1fr auto 1fr auto 1fr; align-items:center; gap:14px; margin:6px 0;">
+    <div class="box" style="text-align:center; margin:0;">
+      <strong>data + model</strong>
+      <div style="font-size:0.82em; color:#5d6d7e; margin-top:4px;">forward model meets observation</div>
+    </div>
+    <div style="font-size:1.5em; color:#8b1a1a; font-weight:700;">&rarr;</div>
+    <div class="box" style="text-align:center; margin:0; border-left-color:#8b1a1a;">
+      <strong style="color:#8b1a1a;">inference</strong>
+      <div style="font-size:0.82em; color:#5d6d7e; margin-top:4px;">posteriors on &theta;: BH masses/spins, mixing angles, &Omega;<sub>m</sub>, &sigma;<sub>8</sub></div>
+    </div>
+    <div style="font-size:1.5em; color:#8b1a1a; font-weight:700;">&rarr;</div>
+    <div class="box" style="text-align:center; margin:0;">
+      <strong>insight</strong>
+      <div style="font-size:0.82em; color:#5d6d7e; margin-top:4px;">H<sub>0</sub>, NS equation of state, dark-matter mass, &nu; hierarchy</div>
+    </div>
+  </div>
+
+  <p style="margin-top:14px; text-align:center;">
+    ML now lives at <strong>every arrow</strong>. We will touch on each, but the lecture &mdash; and the rest of the school &mdash; spend most time on the <span style="color:#8b1a1a; font-weight:700;">bottom line</span>: inference.
+  </p>
+</section>
+
+<!-- ============================================================ -->
+<!-- SLIDE 2 — History arc                                        -->
+<!-- ============================================================ -->
+<section>
+  <h2>A short history of statistical / computational astronomy</h2>
+  <div style="padding:22px; background:#f4f6f7; border:2px dashed #bdc3c7; border-radius:8px; color:#7f8c8d; text-align:center; font-size:0.95em;">[Composite figure: Gauss's least-squares geometry &rarr; HR diagram &rarr; SExtractor segmentation &rarr; CNN feature map.]</div>
+  <ul style="margin-top:10px;">
+    <li><strong>1809</strong> &mdash; Gauss, <em>Theoria Motus</em>: least squares rediscovers Ceres. ML-before-ML.</li>
+    <li><strong>1911&ndash;1913</strong> &mdash; Hertzsprung &amp; Russell: statistical population study of stellar luminosities &amp; colours.</li>
+    <li><strong>1968</strong> &mdash; Schmidt, V/V<sub>max</sub>: inference on a real survey.</li>
+    <li><strong>1996</strong> &mdash; Bertin &amp; Arnouts, SExtractor: <em>CLASS_STAR</em> is a feed-forward NN. Deployed on every modern survey.</li>
+    <li><strong>2010</strong> &mdash; Ball &amp; Brunner review: Sloan-era ML (RF, SVM, photo-z, classification).</li>
+    <li><strong>2015</strong> &mdash; Dieleman, Willett &amp; Dambre: rotation-invariant CNN wins the Galaxy Zoo Kaggle challenge. The deep-learning era begins for astro.</li>
+  </ul>
+  <p style="font-size:0.85em; color:#7f8c8d; margin-top:8px;">Bertin &amp; Arnouts 1996 (A&amp;AS 117, 393); Ball &amp; Brunner 2010 (<a href="https://arxiv.org/abs/0906.2173">arXiv:0906.2173</a>); Dieleman et al. 2015 (<a href="https://arxiv.org/abs/1503.07077">arXiv:1503.07077</a>).</p>
+</section>
+
+<!-- ============================================================ -->
+<!-- SLIDE 3 — ML for theory: symbolic regression                 -->
+<!-- ============================================================ -->
+<section>
+  <h2>ML for theory &mdash; can a network rediscover the equation?</h2>
+  <div style="padding:22px; background:#f4f6f7; border:2px dashed #bdc3c7; border-radius:8px; color:#7f8c8d; text-align:center; font-size:0.95em;">[Cranmer et al. 2020, Fig.\ message-function plots &mdash; GNN edges recover 1/<em>r</em><sup>2</sup> and the new DM overdensity formula.]</div>
+  <ul>
+    <li><strong>Cranmer, Sanchez-Gonzalez et al. 2020.</strong> Train a graph net on <em>N</em>-body sims, distil its edge messages with symbolic regression. Recovers Newton; <em>discovers</em> a new analytic formula for dark-matter overdensity &delta; (MAE 0.088).</li>
+    <li><strong>Lemos et al. 2022.</strong> Same trick on 30 years of real solar-system data: rediscovers Newton's law plus all planetary masses, unsupervised.</li>
+    <li><strong>Tools:</strong> PySR (Cranmer 2023), AI Feynman (Udrescu &amp; Tegmark 2020).</li>
+    <li><strong>Cosmology-adjacent:</strong> Bartlett, Desmond &amp; Ferreira 2022 &mdash; exhaustive SR on H(<em>z</em>); &sim;40 of 5.2M functions fit cosmic chronometers better than Friedmann.</li>
+    <li style="color:#a04000;"><em>Honest caveat:</em> still thin in APP/GW specifically. The arrow exists; the field is moving in.</li>
+  </ul>
+  <p style="font-size:0.85em; color:#7f8c8d; margin-top:6px;">Cranmer et al. 2020 (<a href="https://arxiv.org/abs/2006.11287">arXiv:2006.11287</a>); Lemos et al. 2022 (<a href="https://arxiv.org/abs/2202.02306">arXiv:2202.02306</a>).</p>
+</section>
+
+<!-- ============================================================ -->
+<!-- SLIDE 4 — ML for the simulator: cosmology emulators          -->
+<!-- ============================================================ -->
+<section>
+  <h2>ML for the simulator &mdash; emulators replace expensive forward models</h2>
+  <div style="padding:22px; background:#f4f6f7; border:2px dashed #bdc3c7; border-radius:8px; color:#7f8c8d; text-align:center; font-size:0.95em;">[CosmoPower P(<em>k</em>) emulator residuals + speedup plot; CAMELS suite cosmology-vs-astrophysics grid.]</div>
+  <div style="font-size:0.9em; color:#a04000; background:#fef9e7; border-left:4px solid #f39c12; padding:8px 12px; margin:8px 0; border-radius:4px;">TODO: verify CosmoPower headline numbers (speedup factor, fractional accuracy) before quoting on slide.</div>
+  <ul>
+    <li><strong>CosmoPower</strong> (Spurio Mancini, Piras et al. 2021): NN emulators for cosmological power spectra; the de-facto inside modern MCMC pipelines.</li>
+    <li><strong>CAMELS</strong> (Villaescusa-Navarro et al. 2021): thousands of <em>N</em>-body+hydro sims as training set for emulators and SBI.</li>
+  </ul>
+  <p style="font-size:0.85em; color:#7f8c8d;">CosmoPower (<a href="https://arxiv.org/abs/2106.03846">arXiv:2106.03846</a>); CAMELS (<a href="https://arxiv.org/abs/2010.00619">arXiv:2010.00619</a>).</p>
+</section>
+
+<!-- ============================================================ -->
+<!-- SLIDE 5 — GW waveform surrogates                             -->
+<!-- ============================================================ -->
+<section>
+  <h2>ML for the simulator &mdash; gravitational-wave surrogates</h2>
+  <div style="padding:22px; background:#f4f6f7; border:2px dashed #bdc3c7; border-radius:8px; color:#7f8c8d; text-align:center; font-size:0.95em;">[NRSur7dq4 mismatch-vs-alternatives plot; DANSur throughput-vs-accuracy plot.]</div>
+  <ul>
+    <li><strong>NRSur7dq4</strong> (Varma et al. 2019): 1528 NR sims, <em>q</em> &le; 4, &chi; &le; 0.8, generic spins. <strong>&ge;1 order of magnitude more accurate</strong> than alternatives <em>within training range</em>. Used in GW190521.</li>
+    <li><strong>mlgw</strong> (Schmidt 2020) and <strong>mlgw-bns</strong> (Tissino 2022): PCA+regression on EOB waveforms; 10&ndash;50&times; speedup. BNS validated on GW170817.</li>
+    <li><strong>DANSur</strong> (Fernandes et al. 2024): dual-stage NN, pretrained on approximants then fine-tuned with NR. Millions of waveforms in &lt;20 ms on GPU; mean NR mismatch &sim;10<sup>&minus;4</sup>.</li>
+    <li><strong>Generative-model variant:</strong> Liao &amp; Lin 2021, conditional autoencoder, &gt;97% overlap, 10&ndash;100&times; over EOBNR.</li>
+  </ul>
+  <p style="font-size:0.85em; color:#7f8c8d;">Varma et al. 2019 (<a href="https://arxiv.org/abs/1905.09300">arXiv:1905.09300</a>); Fernandes et al. 2024 (<a href="https://arxiv.org/abs/2412.06946">arXiv:2412.06946</a>).</p>
+</section>
+
+<!-- ============================================================ -->
+<!-- SLIDE 6 — ML for the instrument: Deep Loop Shaping           -->
+<!-- ============================================================ -->
+<section>
+  <h2>ML for the instrument &mdash; Deep Loop Shaping at LIGO Livingston</h2>
+  <div style="padding:22px; background:#f4f6f7; border:2px dashed #bdc3c7; border-radius:8px; color:#7f8c8d; text-align:center; font-size:0.95em;">[Noise spectrum before/after RL control: &gt;30&times; reduction in 10&ndash;30 Hz band; Fig. from Buchli, Tracey et al. 2025.]</div>
+  <ul>
+    <li><strong>DeepMind + LIGO Instrument Team, <em>Science</em> 389, 6764 (2025).</strong> Reinforcement learning with a <strong>frequency-domain reward</strong> controls mirror suspensions in real time.</li>
+    <li><strong>&gt;30&times; control-noise reduction</strong> in the 10&ndash;30 Hz band, up to 100&times; in sub-bands. Surpasses the quantum-limit-motivated design goal.</li>
+    <li>Loud, recent, on a real detector. ML now <em>operates</em> a flagship physics instrument.</li>
+  </ul>
+  <p style="font-size:0.85em; color:#7f8c8d;">Buchli, Tracey et al. 2025 (<a href="https://arxiv.org/abs/2509.14016">arXiv:2509.14016</a>; DOI 10.1126/science.adw1291).</p>
+</section>
+
+<!-- ============================================================ -->
+<!-- SLIDE 7 — Data: Gravity Spy                                  -->
+<!-- ============================================================ -->
+<section>
+  <h2>ML for the data &mdash; glitch classification (Gravity Spy)</h2>
+  <div style="padding:22px; background:#f4f6f7; border:2px dashed #bdc3c7; border-radius:8px; color:#7f8c8d; text-align:center; font-size:0.95em;">[Gravity Spy glitch morphology gallery (Q-transform spectrograms) + Zooniverse + CNN confusion matrix.]</div>
+  <ul>
+    <li>Advanced LIGO data contains instrumental/environmental transients that <strong>mask or mimic</strong> astrophysical signals.</li>
+    <li><strong>Zevin et al. 2017:</strong> CNN + Zooniverse citizen-science labels &mdash; the canonical glitch classifier.</li>
+    <li><strong>Wu et al. 2024 (O4 update):</strong> multi-time-window fusion with attention. Deployed in O4.</li>
+  </ul>
+  <p style="font-size:0.85em; color:#7f8c8d;">Zevin et al. 2017 (<a href="https://arxiv.org/abs/1611.04596">arXiv:1611.04596</a>); Wu et al. 2024 (<a href="https://arxiv.org/abs/2401.12913">arXiv:2401.12913</a>).</p>
+</section>
+
+<!-- ============================================================ -->
+<!-- SLIDE 8 — Data: IceCube                                      -->
+<!-- ============================================================ -->
+<section>
+  <h2>ML for the data &mdash; neutrino reconstruction at IceCube</h2>
+  <div style="padding:22px; background:#f4f6f7; border:2px dashed #bdc3c7; border-radius:8px; color:#7f8c8d; text-align:center; font-size:0.95em;">[Energy/direction residual histograms: CNN vs likelihood reconstruction.]</div>
+  <ul>
+    <li><strong>Cascade-CNN with hexagonal kernels</strong> (Abbasi et al. 2021, JINST 16). Tested on experimental data. <strong>2&ndash;3 orders of magnitude faster</strong> than likelihood reconstruction, robust to simulation systematics.</li>
+    <li><strong>2023 DeepCore CNN:</strong> 2D architecture exploiting time and depth translational symmetry for muon-neutrino flavour ID and inelasticity. Outperforms conventional likelihood reconstruction.</li>
+  </ul>
+  <p style="font-size:0.85em; color:#7f8c8d;">Abbasi et al. 2021 (<a href="https://arxiv.org/abs/2101.11589">arXiv:2101.11589</a>); IceCube DeepCore CNN 2023 (<a href="https://arxiv.org/abs/2307.16373">arXiv:2307.16373</a>).</p>
+</section>
+
+<!-- ============================================================ -->
+<!-- SLIDE 9 — Data: Galaxy Zoo / Walmsley                        -->
+<!-- ============================================================ -->
+<section>
+  <h2>ML for the data &mdash; probabilistic galaxy morphology</h2>
+  <div style="padding:22px; background:#f4f6f7; border:2px dashed #bdc3c7; border-radius:8px; color:#7f8c8d; text-align:center; font-size:0.95em;">[Walmsley 2020 Fig.: posterior morphology distributions vs Galaxy Zoo vote fractions.]</div>
+  <ul>
+    <li><strong>Walmsley et al. 2020</strong> (MNRAS): Bayesian CNN + generative model of volunteer responses on Galaxy Zoo.</li>
+    <li>Output is not a class label but a <strong>posterior over morphology</strong> &mdash; calibrated uncertainty on real survey data.</li>
+    <li>The clean "Bayesian deep learning on real images" example.</li>
+  </ul>
+  <p style="font-size:0.85em; color:#7f8c8d;">Walmsley et al. 2020 (<a href="https://arxiv.org/abs/1905.07424">arXiv:1905.07424</a>).</p>
+</section>
+
+<!-- ============================================================ -->
+<!-- SLIDE 10 — Data: Fermi-LAT                                   -->
+<!-- ============================================================ -->
+<section>
+  <h2>ML for the data &mdash; classifying unassociated &gamma;-ray sources</h2>
+  <div style="padding:22px; background:#f4f6f7; border:2px dashed #bdc3c7; border-radius:8px; color:#7f8c8d; text-align:center; font-size:0.95em;">[Zhu 2023 Fig.: latitude-split candidate-yield bar plots (AGN-like, PSR-like, other-like).]</div>
+  <ul>
+    <li><strong>Zhu et al. 2023.</strong> Voting ensemble of ML classifiers on Fermi-LAT unassociated sources.</li>
+    <li>High Galactic latitude: 4 binary classifiers, <strong>91% balanced accuracy</strong>, 1037 AGN + 88 PSR candidates.</li>
+    <li>Low Galactic latitude: 4 ternary classifiers, <strong>81% balanced accuracy</strong>, 290 AGN-like + 135 PSR-like + 742 other-like.</li>
+  </ul>
+  <p style="font-size:0.85em; color:#7f8c8d;">Zhu et al. 2023 (<a href="https://arxiv.org/abs/2311.03678">arXiv:2311.03678</a>).</p>
+</section>
+
+<!-- ============================================================ -->
+<!-- SLIDE 11 — Inference: GW detection nets                      -->
+<!-- ============================================================ -->
+<section>
+  <h2>ML for the inference &mdash; GW detection, then &amp; now</h2>
+  <div style="padding:22px; background:#f4f6f7; border:2px dashed #bdc3c7; border-radius:8px; color:#7f8c8d; text-align:center; font-size:0.95em;">[Left: Gabbard 2018 ROC curve (CNN matches matched filter on simulated data). Right: AresGW 2024 sensitive-distance gain in real O3 noise.]</div>
+  <ul>
+    <li><strong>Gabbard et al. 2018</strong> (PRL): CNN matches matched-filter ROC on the same simulated datasets. The "is this possible?" demonstration. <em>Caveat: simulated noise.</em></li>
+    <li><strong>AresGW</strong> (Nousi et al. 2022, 2024): 54-layer ResNet + Deep Adaptive Input Normalization + dynamic augmentation + curriculum learning. <strong>Detects non-aligned-spin BBH in real LIGO O3a noise</strong>. 2024 paper reports new ML-only candidate events in the 7&ndash;50 M<sub>&odot;</sub> training range.</li>
+    <li>Six years from "can it work?" to "it's finding events the pipelines missed."</li>
+  </ul>
+  <p style="font-size:0.85em; color:#7f8c8d;">Gabbard et al. 2018 (<a href="https://arxiv.org/abs/1712.06041">arXiv:1712.06041</a>); AresGW (<a href="https://arxiv.org/abs/2211.01520">2211.01520</a> &amp; <a href="https://arxiv.org/abs/2407.07820">2407.07820</a>).</p>
+</section>
+
+<!-- ============================================================ -->
+<!-- SLIDE 12 — Inference: DINGO (full draft, Option A)           -->
+<!-- ============================================================ -->
+<section>
+  <h2>ML for the inference &mdash; DINGO for GW parameter estimation</h2>
+  <div style="display:flex; gap:18px; align-items:flex-start;">
+    <div style="flex:1.15; text-align:center;">
+      <img src="figures/lecture1a/dingo_fig3.png" style="max-width:100%; max-height:480px; border-radius:4px;" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
+      <div style="display:none; padding:22px; background:#f4f6f7; border:2px dashed #bdc3c7; border-radius:8px; color:#7f8c8d; text-align:center; font-size:0.95em;">[Dax et al. 2021, Fig. 3 &mdash; (a) <em>m</em><sub>1</sub>&ndash;<em>m</em><sub>2</sub> posterior corners for 8 GWTC-1 events; (b) sky-position Mollweides. DINGO overlaid on LALInference, 90% credible regions.]</div>
+      <div style="font-size:0.78em; color:#7f8c8d; margin-top:4px;">
+        Eight GWTC-1 events. Coloured contours: DINGO (neural posterior estimation). Grey contours: LALInference (gold-standard stochastic sampler).
+      </div>
+    </div>
+    <div style="flex:1; font-size:0.88em;">
+      <p style="margin-top:0;"><strong>DINGO = neural posterior estimation on GW strain.</strong></p>
+      <ul>
+        <li><strong>Simulator:</strong> waveform model + LIGO/Virgo noise PSDs.</li>
+        <li><strong>Embedding:</strong> whitened strain &rarr; 128-d summary (SVD-seeded ResNet).</li>
+        <li><strong>Head:</strong> 15-D conditional normalising flow over masses, spins, distance, sky, inclination.</li>
+      </ul>
+      <div class="box" style="margin:8px 0; padding:8px 12px;">
+        <strong>Headline:</strong> <em>O</em>(day) &rarr; <strong>20 s</strong>/event. Mean JSD vs LALInference <strong>0.0009 nat</strong> (sampler floor &sim;0.002).
+      </div>
+      <p style="margin:6px 0;">
+        <strong>DINGO-IS</strong> (2022) adds importance sampling: unbiased posteriors + failure-case diagnostic. 42 BBH events, median &epsilon; &sim;10%.
+      </p>
+      <p style="font-size:0.82em; color:#7f8c8d; margin-top:4px;">
+        Dax et al. 2021 (<a href="https://arxiv.org/abs/2106.12594">PRL 127, 241103</a>); Dax et al. 2022 (<a href="https://arxiv.org/abs/2210.05686">arXiv:2210.05686</a>).
+      </p>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<!-- SLIDE 13 — Inference beyond GW                               -->
+<!-- ============================================================ -->
+<section>
+  <h2>ML for the inference &mdash; beyond gravitational waves</h2>
+  <div style="padding:22px; background:#f4f6f7; border:2px dashed #bdc3c7; border-radius:8px; color:#7f8c8d; text-align:center; font-size:0.95em;">[Strong-lens image + posterior on substructure mass &mdash; Wagner-Carena et al. 2023 (recommended), pending verification.]</div>
+  <div style="font-size:0.9em; color:#a04000; background:#fef9e7; border-left:4px solid #f39c12; padding:8px 12px; margin:8px 0; border-radius:4px;">TODO: verify Wagner-Carena 2023 (arXiv:2203.00690) numbers + figure clarity, then pick the single best example for this slide. Candidates: strong lensing (HST), 21cm SBI (HERA-like), CMB NN inference (Planck/ACT).</div>
+  <ul>
+    <li>SBI is now on <strong>real instrument data</strong> in several non-GW domains: strong lensing, 21cm cosmology, CMB analysis, field-level galaxy clustering.</li>
+    <li>The bottleneck is no longer "does the method work?" but "is the simulator faithful enough?"</li>
+  </ul>
+</section>
+
+<!-- ============================================================ -->
+<!-- SLIDE 14 — Two inference families + SBI taxonomy             -->
+<!-- ============================================================ -->
+<section>
+  <h2>Two ways to do Bayesian inference with a simulator</h2>
+  <div style="display:flex; gap:14px; margin-top:6px;">
+    <div class="box box-blue" style="flex:1;">
+      <strong>Likelihood-based &mdash; "MCMC on steroids"</strong>
+      <ul style="margin:6px 0 0 0;">
+        <li>Write down \(p(d\mid\theta)\) explicitly.</li>
+        <li>Replace the slow forward model with a <strong>neural emulator</strong> (CosmoPower).</li>
+        <li>Run MCMC / HMC over the emulator. The likelihood is still there.</li>
+      </ul>
+    </div>
+    <div class="box box-orange" style="flex:1;">
+      <strong>Simulation-based &mdash; "ABC on steroids"</strong>
+      <ul style="margin:6px 0 0 0;">
+        <li>No explicit likelihood. Only \((\theta_i, x_i) \sim p(\theta)\,p(x\mid\theta)\) pairs.</li>
+        <li>Learn the posterior (<strong>NPE</strong>), the likelihood (NLE), or the ratio (NRE) directly.</li>
+        <li>DINGO is NPE. Most of the rest of this school is here.</li>
+      </ul>
+    </div>
+  </div>
+  <div style="margin-top:10px; padding:22px; background:#f4f6f7; border:2px dashed #bdc3c7; border-radius:8px; color:#7f8c8d; text-align:center; font-size:0.95em;">[Cranmer, Brehmer &amp; Louppe 2020 Fig. 1 &mdash; the canonical NPE/NLE/NRE taxonomy diagram.]</div>
+  <p style="font-size:0.85em; color:#7f8c8d; margin-top:6px;">Cranmer, Brehmer &amp; Louppe 2020, "The frontier of simulation-based inference," PNAS 117, 30055 (<a href="https://arxiv.org/abs/1911.01429">arXiv:1911.01429</a>).</p>
+</section>
+
+<!-- ============================================================ -->
+<!-- SLIDE 15 — Foundation models + segue to Lec 1b               -->
+<!-- ============================================================ -->
+<section>
+  <h2>The transverse trend &mdash; and where we go next</h2>
+  <div style="display:flex; gap:18px;">
+    <div style="flex:1;">
+      <h3 style="font-size:0.95em; margin-top:0;">Foundation models touching astro</h3>
+      <ul>
+        <li><strong>AstroCLIP</strong> (Parker et al. 2024): cross-modal image-spectrum embedding; transfers to photo-z, morphology, redshift.</li>
+        <li><strong>AstroLLaMA</strong> (Nguyen et al. 2023): LLaMA-2 domain-adapted on astro-ph abstracts.</li>
+        <li style="color:#a04000;"><em>No Mistral-in-astro paper exists to my knowledge as of mid-2026.</em></li>
+      </ul>
+    </div>
+    <div style="flex:1;">
+      <h3 style="font-size:0.95em; margin-top:0;">Where Lec 1b picks up</h3>
+      <div class="box">
+        <strong>Approximate Bayesian Computation (ABC).</strong>
+        <pre style="font-size:0.85em; margin:6px 0;"><code>for i in 1..N:
+    &theta;_i &sim; p(&theta;)
+    x_i &sim; p(x | &theta;_i)
+    if d(x_i, x_obs) &lt; &epsilon;:
+        accept &theta;_i</code></pre>
+        <p style="margin:4px 0;">The whole right column of slide 1 lives or dies on what we can do with this loop. Lec 1b: how it breaks, and what neural SBI fixes.</p>
+      </div>
+    </div>
+  </div>
+  <p style="font-size:0.85em; color:#7f8c8d; margin-top:8px;">AstroCLIP (<a href="https://arxiv.org/abs/2310.03024">arXiv:2310.03024</a>); AstroLLaMA (<a href="https://arxiv.org/abs/2309.06126">arXiv:2309.06126</a>).</p>
+</section>
+
+</div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reveal.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/plugin/math/math.js"></script>
+<script>
+Reveal.initialize({
+  hash: true, center: false, transition: 'fade', slideNumber: true,
+  width: 1214, height: 700, margin: 0.04, minScale: 0.2, maxScale: 2.0,
+  plugins: [ RevealMath.MathJax3 ]
+});
+
+document.querySelectorAll('.reveal .slides > section').forEach(function(slide) {
+  const footer = document.createElement('div');
+  footer.className = 'slide-footer';
+  footer.innerHTML = '<a href="index.html" style="color:#bdc3c7; text-decoration:none; pointer-events:auto;">&larr; Index</a><span>ML4PhA 2026 &mdash; Lecture 1a</span><span>Christoph Weniger &mdash; GRAPPA / UvA</span>';
+  slide.appendChild(footer);
+});
+</script>
+</body>
+</html>
