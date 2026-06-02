@@ -12,8 +12,9 @@ venv/
 # Jupyter
 .ipynb_checkpoints/
 
-# Generated figures (notebooks regenerate them)
-figures/
+# Stray figure dumps from interactive sessions (NOT docs/figures/ —
+# those are the tracked slide + lecture-notes assets).
+/figures/
 notebooks/figures/
 
 # OS / editor cruft
