@@ -23,7 +23,10 @@
 # will live in the reveal.js Lec 1b slides.
 
 # %%
-# !pip install -q git+https://github.com/cweniger/teaching-2606-ICTP-SAIFR.git  # noqa: E501
+# Always reinstall to pick up the latest from main — pip would otherwise
+# short-circuit on an already-installed version, even when git HEAD has
+# changed. --no-deps skips numpy/scipy/matplotlib (Colab ships them).
+# !pip install -q --upgrade --force-reinstall --no-deps git+https://github.com/cweniger/teaching-2606-ICTP-SAIFR.git  # noqa: E501
 
 # %%
 import numpy as np
