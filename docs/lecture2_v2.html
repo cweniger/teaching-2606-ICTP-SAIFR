@@ -24,16 +24,24 @@
   .reveal p { margin: 0.3em 0; }
   .reveal ul { text-align: left; margin: 0.3em 0; }
   .reveal li { margin: 0.15em 0; }
-  .reveal .highlight { color: #e74c3c; font-weight: bold; }
+  .reveal .highlight { color: #1a3a6e; font-weight: bold; }
   .reveal .MathJax { font-size: 0.95em; }
-  .reveal .box {
-    background: #ecf0f1; border-radius: 10px; padding: 12px 16px;
-    margin: 10px 0; text-align: left;
+  /* Equations rendered by MathJax — dark red, consistently. */
+  .reveal mjx-container, .reveal mjx-container * { color: #8b1a1a !important; }
+  /* Important keywords — dark blue, consistently. */
+  .reveal section p strong,
+  .reveal section li strong,
+  .reveal section td strong { color: #1a3a6e; }
+  /* Single, neutral box style — used very sparingly. */
+  .reveal .box, .reveal .box-blue, .reveal .box-orange,
+  .reveal .box-green, .reveal .box-purple {
+    background: #f4f6f8;
+    border-left: 4px solid #1a3a6e;
+    border-radius: 6px;
+    padding: 12px 16px;
+    margin: 10px 0;
+    text-align: left;
   }
-  .reveal .box-blue   { background:#eaf2f8; border-left:4px solid #2980b9; }
-  .reveal .box-orange { background:#fef5e7; border-left:4px solid #e67e22; }
-  .reveal .box-green  { background:#eafaf1; border-left:4px solid #27ae60; }
-  .reveal .box-purple { background:#f5eef8; border-left:4px solid #8e44ad; }
   .slide-footer {
     position: absolute; bottom: 8px; left: 40px; right: 40px;
     font-size: 10px; color: #bdc3c7;
@@ -59,16 +67,16 @@
 <section>
   <h2>One continuous story</h2>
   <p>We parameterise \(p(\theta\mid x)\) and make it more flexible as need demands. Every new ingredient enters because the <em>previous</em> model is too restrictive.</p>
-  <div style="display:flex; gap:10px; margin-top:14px; font-size:0.95em;">
-    <div class="box box-blue"   style="flex:1;"><strong>A.</strong> \(\chi^2\) as conditional Gaussian density</div>
-    <div class="box box-orange" style="flex:1;"><strong>B.</strong> Overfitting &amp; the basis-function problem</div>
-    <div class="box box-green"  style="flex:1;"><strong>C.</strong> Learn the basis: NNs + SGD</div>
-    <div class="box box-purple" style="flex:1;"><strong>D.</strong> From Gaussian to flexible \(q_\phi(\theta\mid x)\)</div>
-  </div>
-  <p style="margin-top:18px;">At the end we have <strong>\(q_\phi(\theta\mid x)\)</strong>, a learnable conditional density. Lecture 3 trains it on simulator output and calls it neural posterior estimation (NPE).</p>
-  <div class="box" style="text-align:center; margin-top:16px;">
-    Notation in this lecture: <strong>\(\theta\)</strong> = parameter we want to infer, <strong>\(x\)</strong> = observation/data.
-  </div>
+  <ol style="font-size:1.0em; line-height:1.8; margin-top:18px;">
+    <li><strong>Block A.</strong> \(\chi^2\) as conditional Gaussian density estimation.</li>
+    <li><strong>Block B.</strong> Overfitting and the basis-function problem.</li>
+    <li><strong>Block C.</strong> Learn the basis: neural networks + SGD.</li>
+    <li><strong>Block D.</strong> From Gaussian to flexible \(q_\phi(\theta\mid x)\).</li>
+  </ol>
+  <p style="margin-top:20px;">At the end we have \(q_\phi(\theta\mid x)\), a learnable conditional density. Lecture 3 trains it on simulator output and calls it neural posterior estimation (NPE).</p>
+  <p style="text-align:center; margin-top:18px; color:#7f8c8d;">
+    Notation: \(\theta\) = parameter we want to infer, \(x\) = observation/data.
+  </p>
 </section>
 
 <!-- ============================================================ -->
@@ -87,15 +95,12 @@
 <!-- A1 -->
 <section>
   <h2>What \(\chi^2\)-fitting really is</h2>
-  <p>You already know the procedure: pick a model \(\mu(x;\mathbf{w})\), define</p>
-  <div class="box" style="text-align:center;">
-    \[ \chi^2(\mathbf{w}) \;=\; \sum_{n=1}^{N}\frac{\bigl(t_n - \mu(x_n;\mathbf{w})\bigr)^2}{\sigma^2} \]
-  </div>
-  <p>and minimise. What is rarely spelt out: this <em>is</em> a probabilistic statement.</p>
-  <div class="box box-blue">
+  <p>You already know the procedure: pick a model \(\mu(x;\mathbf{w})\), define
+    \(\;\chi^2(\mathbf{w}) = \sum_n (t_n - \mu(x_n;\mathbf{w}))^2/\sigma^2\), and minimise. What is rarely spelt out: this <em>is</em> a probabilistic statement.</p>
+  <div class="box">
     <p>Assume Gaussian noise \(t_n = \mu(x_n;\mathbf{w})+\varepsilon\), \(\varepsilon\sim\mathcal{N}(0,\sigma^2)\). The log-likelihood is</p>
     \[ \ln p(\mathbf{t}\mid\mathbf{w},\sigma) = \text{const} \;-\; \frac{1}{2\sigma^2}\,\chi^2(\mathbf{w}) \]
-    <p>So <strong>\(\chi^2 = -2\ln L + \text{const}\)</strong>, and "minimise \(\chi^2\)" is just <strong>maximum likelihood</strong> (MLE).</p>
+    <p>So \(\chi^2 = -2\ln L + \text{const}\), and "minimise \(\chi^2\)" is just <strong>maximum likelihood</strong> (MLE).</p>
   </div>
   <p class="fragment" style="text-align:center; font-size:1.05em; margin-top:8px;">
     Every \(\chi^2\) fit is a hidden density model. Let us make it visible.
@@ -151,7 +156,7 @@
   <ul>
     <li>Convex problem. One global minimum. No optimiser, no learning rate.</li>
     <li>The residuals <em>define</em> \(\sigma^2\) for us &mdash; we did not have to specify it.</li>
-    <li class="fragment"><strong style="color:#e74c3c;">But \(\sigma^2\) here is a single number, the same everywhere</strong>. The Gaussian band has constant width across \(x\).</li>
+    <li class="fragment"><strong>But \(\sigma^2\) here is a single number, the same everywhere</strong>. The Gaussian band has constant width across \(x\).</li>
     <li class="fragment">This is the first thing we will break in Block D: real noise depends on \(x\).</li>
   </ul>
 </section>
@@ -250,14 +255,14 @@
 <!-- B9 — bridge slide -->
 <section>
   <h2>The basis-function problem</h2>
-  <div style="display:flex; gap:14px; margin-top:6px;">
-    <div class="box box-green" style="flex:1;">
-      <strong style="color:#27ae60;">Worked in 1D</strong><br>
-      We could draw the data, eyeball the smoothness, and pick polynomials or RBFs.
+  <div style="display:flex; gap:30px; margin-top:14px;">
+    <div style="flex:1;">
+      <h3 style="margin-top:0;">Worked in 1D</h3>
+      <p>We could draw the data, eyeball the smoothness, and pick polynomials or RBFs.</p>
     </div>
-    <div class="box" style="flex:1; border-left:4px solid #e74c3c;">
-      <strong style="color:#e74c3c;">Does not scale</strong><br>
-      What is a good basis for a 1024-pixel image? A gravitational-wave strain time series? A galaxy spectrum?
+    <div style="flex:1;">
+      <h3 style="margin-top:0;">Does not scale</h3>
+      <p>What is a good basis for a 1024-pixel image? A gravitational-wave strain time series? A galaxy spectrum?</p>
     </div>
   </div>
   <p style="text-align:center; margin-top:18px; font-size:1.05em;">
@@ -418,17 +423,12 @@ for step = 1, 2, ... until converged:
   <div class="box" style="text-align:center;">
     \[ \nabla E(\mathbf{w}) \;\approx\; \frac{1}{B}\sum_{n\in\mathcal{B}} \nabla E_n(\mathbf{w}) \]
   </div>
-  <div style="display:flex; gap:14px; margin-top:12px;">
-    <div class="box box-orange" style="flex:1; text-align:center;">
-      <strong>Large \(B\)</strong><br>
-      Precise gradient, expensive per step.
-    </div>
-    <div class="box" style="flex:1; text-align:center; border-left:4px solid #e74c3c;">
-      <strong>Small \(B\)</strong><br>
-      Noisy gradient, cheap per step. Noise often helps generalisation.
-    </div>
-  </div>
-  <p style="margin-top:14px;">One full sweep through the data = one <strong>epoch</strong>. Typical \(B \in [32, 256]\). "SGD" almost always means "mini-batch SGD".</p>
+  <ul style="margin-top:16px; line-height:1.7;">
+    <li><strong>Large \(B\):</strong> precise gradient, expensive per step.</li>
+    <li><strong>Small \(B\):</strong> noisy gradient, cheap per step; the noise often helps generalisation.</li>
+    <li>One full sweep through the data = one <strong>epoch</strong>. Typical \(B \in [32, 256]\).</li>
+    <li>"SGD" almost always means "mini-batch SGD".</li>
+  </ul>
 </section>
 
 <!-- C17 — backprop -->
@@ -472,18 +472,18 @@ for step = 1, 2, ... until converged:
 <!-- C18 — Adam + LR schedule -->
 <section>
   <h2>Practical optimisers in one slide</h2>
-  <div style="display:flex; gap:14px; margin-top:6px;">
-    <div class="box box-blue" style="flex:1;">
-      <strong>Adam</strong> &mdash; the default optimiser.
-      <ul style="font-size:0.92em;">
+  <div style="display:flex; gap:30px; margin-top:14px;">
+    <div style="flex:1;">
+      <h3 style="margin-top:0;">Adam &mdash; the default optimiser</h3>
+      <ul>
         <li>Keeps running averages of the gradient (\(m_t\)) and its square (\(v_t\)).</li>
         <li>Effective per-parameter step \(\propto m_t/\sqrt{v_t}\): rescales each direction by its own curvature.</li>
         <li>Robust default: \(\eta = 10^{-3}\), \(\beta_1=0.9\), \(\beta_2=0.999\).</li>
       </ul>
     </div>
-    <div class="box box-orange" style="flex:1;">
-      <strong>Learning-rate schedule</strong>
-      <ul style="font-size:0.92em;">
+    <div style="flex:1;">
+      <h3 style="margin-top:0;">Learning-rate schedule</h3>
+      <ul>
         <li>Decay \(\eta\) as training progresses (cosine, step, or linear warmup-then-decay).</li>
         <li>Helps SGD settle into the minimum once you are close.</li>
         <li>Cheap, large effect. Always worth tuning.</li>
