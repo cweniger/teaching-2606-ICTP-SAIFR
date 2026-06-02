@@ -25,5 +25,8 @@ notebooks/figures/
 # Office lock files
 ~$*
 
+# Downloaded paper PDFs (kept in Dropbox, not git)
+plans/*_pdfs/
+
 # Local config (not the shared .claude/ skill defs)
 .claude/settings.local.json
