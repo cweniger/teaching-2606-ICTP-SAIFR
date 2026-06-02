@@ -11,27 +11,139 @@ The plan asked us to be explicit about loud-but-unconfirmed examples. The DeepMi
 
 ---
 
-## Star picks per slide
+## Slide structure (locked 2026-06-02)
 
-A first cut at one anchor paper per slide, to be confirmed once we lock the slide-level outline. Slide numbers are tentative and assume ~15 slides.
+Spine: the **scientific method as a loop**, with ML at every arrow:
 
-| # | Slide topic                                       | Star pick                                              | Status |
-|---|---------------------------------------------------|--------------------------------------------------------|--------|
-| 1 | Title + history arc                                | SExtractor (Bertin & Arnouts 1996) + Gauss/Ceres anchor| ✗ TODO |
-| 2 | The ML-in-physics wave (framing)                   | Cranmer, Brehmer, Louppe 2020 "Frontier of SBI"        | ◇      |
-| 3 | Data reduction: GW glitch classification           | Gravity Spy (Zevin 2017 + Wu 2024)                     | ✓      |
-| 4 | Data reduction: neutrino event reconstruction      | IceCube cascade-CNN (Abbasi 2021)                      | ✓      |
-| 5 | Classification on real data: γ-ray sources         | Fermi-LAT ensemble (Zhu 2023)                          | ✓      |
-| 6 | Classification on real data: galaxy morphology     | Galaxy Zoo Bayesian CNN (Walmsley 2020)                | ✓      |
-| 7 | Anomaly / new-physics search                       | Self-supervised transients (Villar 2023, ◇) or LHC ADC | ✗ TODO |
-| 8 | Fast surrogates: cosmology emulators               | CosmoPower (Spurio Mancini 2021)                       | ◇      |
-| 9 | Fast surrogates: GW waveforms or N-body            | CAMELS (Villaescusa-Navarro 2021)                      | ◇      |
-| 10| GW detection nets                                  | Gabbard 2018 (historical) + AresGW 2024 (current)      | ✓      |
-| 11| GW parameter inference                             | DINGO (Dax 2021) + DINGO-IS (Dax 2022)                 | ✓      |
-| 12| LIGO interferometer control                        | Deep Loop Shaping (Buchli et al., Science 2025)        | ✓      |
-| 13| Foundation models touching astro                   | AstroCLIP (Parker 2024) + AstroLLaMA (Nguyen 2023)     | ◇      |
-| 14| Likelihood-based inference "on steroids"           | CosmoPower-HMC pipelines                               | ◇      |
-| 15| SBI ("ABC on steroids") + segue to Lec 1b          | Cranmer, Brehmer, Louppe 2020 + sbi library            | ◇      |
+```
+   theory ─▶ model/simulator       (Block 3)
+   instrument ─▶ data              (Blocks 4–5)
+   data + model ─▶ inference ─▶ insight   (Block 6)
+```
+
+Block 5 (data) follows Block 4 (instrument), reading naturally left-to-right along the second arrow. Block 6 is the heaviest; it sets up the rest of the school. Slide 1 shows the three rows visually, the rest of the lecture walks them.
+
+### 15-slide outline
+
+**Opening (1 slide)**
+1. **The scientific method loop.** Three rows: theory→model, instrument→data, data+model→inference→insight. APP+GW keyword clusters under each box. Verbal framing: "ML lives at every arrow; this lecture walks all of them, but the bottom row is where we'll spend most time and where the rest of the school picks up."
+
+**Block 1 — History (1 slide)**
+2. Gauss/Ceres (1809) → Hertzsprung-Russell (1911–13) → Schmidt V/Vmax (1968) → SExtractor (Bertin & Arnouts 1996) → Sloan-era ML (Ball & Brunner 2010) → deep-learning era (Dieleman 2015 Galaxy Zoo CNN). One composite figure. *(2nd-pass scan in progress.)*
+
+**Block 2 — ML for theory (1 slide, NEW)**
+3. Symbolic regression and equation discovery. **Star pick:** Cranmer et al. 2020 "Discovering symbolic models from deep learning with inductive biases" (graph nets → force laws / DM halo overdensity formula). Supporting: PySR, AI Feynman; one-line on AI-scientist agents. Honest framing: thin in APP/GW specifically, but the arrow exists. *(2nd-pass scan in progress.)*
+
+**Block 3 — ML for the simulator (2 slides)**
+4. Cosmology emulators. **Star pick:** CosmoPower (Spurio Mancini 2021) + one line on CAMELS (Villaescusa-Navarro 2021) as the training-set backbone. ◇
+5. GW waveform surrogates. NRSur7dq4 (Varma 2019) as the anchor; mlgw and 2023–26 neural-ODE / diffusion follow-ups. *(2nd-pass scan in progress.)*
+
+**Block 4 — ML for the instrument (1 slide)**
+6. **Deep Loop Shaping** (DeepMind + LIGO Instrument Team, Science 2025). RL controlling mirror suspensions at LIGO Livingston, >30× noise reduction in 10–30 Hz. ✓ The loud slide.
+
+**Block 5 — ML for the data (4 slides)**
+7. GW glitches: Gravity Spy (Zevin 2017 + Wu 2024 O4 update). ✓
+8. Neutrino reconstruction: IceCube hexagonal-kernel cascade CNN (Abbasi 2021); DeepCore symmetry-exploiting CNN (2023). ✓
+9. Galaxy morphology: Galaxy Zoo Bayesian CNN (Walmsley 2020). ✓
+10. γ-ray source classification: Fermi-LAT voting ensemble (Zhu 2023). ✓
+
+**Block 6 — ML for the inference (4 slides)**
+11. GW detection nets: Gabbard 2018 (historical) → AresGW 2024 (current, real O3 noise). ✓ One slide, before/after.
+12. GW parameter inference: DINGO + DINGO-IS (Dax 2021, 2022). ✓ The headline result.
+13. Inference beyond GW: strong lensing / 21cm / CMB. One example. *(2nd-pass scan in progress.)*
+14. **The two inference families + SBI taxonomy.** Likelihood-on-steroids (CosmoPower-HMC pipelines) vs SBI (ABC-on-steroids). NPE/NLE/NRE figure (Cranmer-Brehmer-Louppe 2020). One dense slide. ◇
+
+**Closing (1 slide)**
+15. **Two transverse trends + segue to Lec 1b.** Foundation models touching astro (AstroCLIP, AstroLLaMA; explicit "no Mistral-in-astro yet"). Then: pseudocode for ABC as the bridge to Lec 1b. ◇
+
+### Slide-to-reference index
+
+| #  | Slide                                         | Star pick                                                   | Status |
+|----|-----------------------------------------------|-------------------------------------------------------------|--------|
+| 1  | Scientific method loop (opener)               | —                                                           | n/a    |
+| 2  | History arc                                   | SExtractor (Bertin & Arnouts 1996) + Gauss anchor           | ✓ post-1990, ✗ pre-1990 |
+| 3  | ML for theory (symbolic regression)           | Cranmer et al. 2020 graph-nets → symbolic                   | ✓      |
+| 4  | Cosmology emulators                           | CosmoPower (Spurio Mancini 2021) + CAMELS                   | ◇      |
+| 5  | GW waveform surrogates                        | NRSur7dq4 (Varma 2019) + DANSur (Fernandes 2024)            | ✓      |
+| 6  | LIGO interferometer control                   | Deep Loop Shaping (Buchli et al., Science 2025)             | ✓      |
+| 7  | GW glitches                                   | Gravity Spy (Zevin 2017 + Wu 2024)                          | ✓      |
+| 8  | Neutrino reconstruction                       | IceCube cascade-CNN (Abbasi 2021)                           | ✓      |
+| 9  | Galaxy morphology                             | Walmsley 2020 Bayesian CNN                                  | ✓      |
+| 10 | γ-ray source classification                   | Fermi-LAT ensemble (Zhu 2023)                               | ✓      |
+| 11 | GW detection nets                             | Gabbard 2018 + AresGW 2024                                  | ✓      |
+| 12 | GW parameter inference                        | DINGO + DINGO-IS (Dax 2021, 2022)                           | ✓      |
+| 13 | Inference beyond GW                           | Wagner-Carena et al. 2023 (real HST lenses) — recommended   | ◇ pending verify |
+| 14 | Two inference families + SBI taxonomy         | Cranmer-Brehmer-Louppe 2020                                 | ◇      |
+| 15 | Foundation models + segue to Lec 1b           | AstroCLIP (Parker 2024) + AstroLLaMA (Nguyen 2023)          | ◇      |
+
+After second-pass scan (2026-06-02): **11 of 14 content slides** have verified anchors. Three slides have scan-only references (4, 14, 15). One slide (13) has a recommended star pick but still needs adversarial verification. Pre-1990 history anchors (Gauss, Hertzsprung-Russell, Schmidt) are textbook-standard but not re-verified; a quick ADS pass before slide finalisation is fine.
+
+---
+
+## Second-pass results (2026-06-02)
+
+### Block 1 — History anchors (verified)
+
+1. ✓ **Bertin & Arnouts 1996, "SExtractor: Source extractor"** — A&AS 117, 393 (DOI 10.1051/aas:1996164). The widely-deployed 1990s astronomy pipeline with `CLASS_STAR`, a supervised multilayer feed-forward NN trained on ~600 simulated images for star/galaxy separation. The "ML existed in astro long before deep learning" anchor. **Figure:** `CLASS_STAR` stellarity histograms, Sect. 4.
+
+2. ✓ **Ball & Brunner 2010, "Data mining and machine learning in astronomy"** — IJMPD 19, 1049 (arxiv:0906.2173). The canonical Sloan-era ML review: ANN, SVM, photo-z, classification, time-domain. **Figure:** photo-z scatter plots and ANN/SVM schematics.
+
+3. ✓ **Dieleman, Willett & Dambre 2015, "Rotation-invariant convolutional neural networks for galaxy morphology prediction"** — MNRAS 450, 1441 (arxiv:1503.07077). The deep-learning era marker for astronomy: won the Galaxy Zoo Kaggle challenge, >99% reproduction of crowd consensus on high-agreement images. **Figure:** rotation-invariant architecture diagram + per-question accuracy.
+
+4. ✗ **Pre-1990 anchors** still to confirm against ADS: Gauss 1809 *Theoria Motus*; Hertzsprung 1911 / Russell 1913 (use Russell 1914 *Popular Astronomy* for the citation, the original HR diagram paper); Schmidt 1968 *ApJ* 151, 393 (V/Vmax). Uncontroversial textbook citations, but worth a 5-minute ADS pass before slide ships.
+
+### Block 2 — ML for theory (verified)
+
+1. ✓ **Cranmer, Sanchez-Gonzalez et al. 2020, "Discovering symbolic models from deep learning with inductive biases"** — NeurIPS, arxiv:2006.11287. **Star pick.** GNNs + symbolic regression rediscover Newtonian force laws from N-body sims, then derive a *new* analytic formula for dark-matter overdensity δ (MAE 0.088). **Wording care:** the discovered formula predicts overdensity δ, *not* NFW concentration c — track the paper's wording on the slide. **Figure:** dark-matter overdensity scatter vs GNN/SR prediction; N-body force-law message-function plots.
+
+2. ✓ **Cranmer 2023, "Interpretable Machine Learning for Science with PySR and SymbolicRegression.jl"** — arxiv:2305.01582. The open-source SR library reference; Julia backend, multi-population evolve-simplify-optimize. **Figure:** Pareto-front complexity-vs-loss plots.
+
+3. ✓ **Udrescu & Tegmark 2020, "AI Feynman"** — Science Advances (arxiv:1905.11481). Recursive physics-inspired SR (NNs + symmetry + separability + dimensional analysis) recovers 100 Feynman-textbook equations. Historical anchor. **Figure:** recovery-rate bar chart over Feynman dataset; recursive decomposition diagram.
+
+4. ✓ **Bartlett, Desmond & Ferreira 2022, "Exhaustive Symbolic Regression"** — arxiv:2211.11461. ESR applied to cosmic chronometers + Pantheon+ to reconstruct H(z); ~40 of 5.2M candidate functions fit better than the Friedmann equation under MDL. Clean cosmology-adjacent SR application. **Figure:** H(z) Pareto front; symbolic-expression ranking vs Friedmann.
+
+5. ✓ **Lemos et al. 2022, "Rediscovering orbital mechanics with machine learning"** — MLST 2023, arxiv:2202.02306. GNN trained on 30 years of *real* solar-system trajectories, SR recovers Newton's law of gravitation plus solar-system masses without prior specification. The "ML rediscovers physics from observation" demonstration. **Figure:** inferred-vs-true mass plot; recovered force-law functional form.
+
+6. ✗ **Lu et al. 2024 Sakana "AI Scientist" (arxiv:2408.06292)** — flagged but **not verified** in this pass. Cite only after a 5-minute arxiv check; no astro-specific "AstroPilot" autonomous-agent paper was confirmed to exist.
+
+### Slide 5 — GW waveform surrogates (verified)
+
+1. ✓ **Varma et al. 2019, "Surrogate models for precessing binary black hole simulations with unequal masses" (NRSur7dq4)** — PRR (arxiv:1905.09300). **Star pick / NR-surrogate anchor.** 1,528 NR simulations, q ≤ 4, χ ≤ 0.8, generic spins. ≥1 order of magnitude more accurate than alternatives *within training range* (preserve the scope qualifier on the slide). Used in GW190521. **Figure:** mismatch-vs-alternatives plots; precessing waveform overlays.
+
+2. ✓ **Schmidt et al. 2020, "mlgw: a machine learning surrogate model for gravitational waves"** — arxiv:2011.01958. PCA + regression on ~1000 TEOBResumS / SEOBNRv4 EOB waveforms; ~10⁻³ faithfulness, 10–50× speedup over EOB. Aligned-spin BBH, q = 1–20. **Figure:** faithfulness histograms; EOB-overlay.
+
+3. ✓ **Tissino et al. 2022, "mlgw-bns"** — arxiv:2210.15684. BNS counterpart trained on TEOBResumSPA, frequency-domain, ~35× speedup, validated on GW170817 parameter estimation. The natural BNS extension. **Figure:** GW170817 posterior overlays vs TEOBResumSPA.
+
+4. ✓ **Fernandes et al. 2024, "DANSur"** — arxiv:2412.06946 (PRD 112, 043026, 2025). **Star pick for "modern NN waveform surrogate."** Dual-stage NN: pretrained on approximant waveforms, fine-tuned with NR. Generates millions of waveforms in <20 ms on GPU, mean NR mismatch ~10⁻⁴. **Figure:** throughput-vs-accuracy comparison; NR mismatch distribution.
+
+5. ✓ **Liao & Lin 2021, "Generative model for gravitational waveforms with conditional autoencoder"** — PRD 103, 124051 (arxiv:2101.06685). Conditional autoencoder for BBH inspiral-merger, q = 1–10; >97% matched-filter overlap, 10–100× speedup over EOBNR. Useful if the slide wants a generative-model framing. **Figure:** schematic + overlap histograms.
+
+**Slide framing note:** if the lecture emphasises "ML strictly," lead with DANSur. If it emphasises "surrogate modelling broadly," lead with NRSur7dq4 and mention DANSur as the modern NN-native heir. The latter reads more naturally given the audience.
+
+### Slide 13 — End-to-end inference beyond GW (recommended shortlist, NOT yet verified)
+
+This gap was not covered by the second-pass verified claim set. The workflow returned a **recommended shortlist** that matches the slide's needs; each needs a primary-source check before the slide ships.
+
+1. ◇ **Wagner-Carena et al. 2023** — arxiv:2203.00690. **Recommended star pick.** Hierarchical SBI on real HST strong lenses. The cleanest "real instrument data, here is the posterior" candidate for this slide. *Verify before quoting.*
+
+2. ◇ **Hezaveh, Levasseur, Marshall 2017** — Nature 548, 555 (arxiv:1708.08842). Historical anchor: fast automated strong-lens analysis with CNNs on real HST cutouts. *Verify.*
+
+3. ◇ **Coogan, Karchev, Weniger 2022** — arxiv:2010.07032. Dark-substructure SBI in strong lenses. Natural self-cite from the lecturer's own group. *Verify.*
+
+4. ◇ **Saxena et al. 2023** — arxiv:2303.07339. 21cm SBI applied near-HERA data. *Verify.*
+
+Decision-needed: pick *one* anchor for this slide. Strong-lensing-on-HST is the most visually satisfying ("here is the lens image, here is the posterior on substructure mass") and has three of the four candidates. Wagner-Carena 2023 looks like the right call modulo verification.
+
+---
+
+## Open items before slide drafting
+
+1. **Slide 13 verification pass** — confirm Wagner-Carena 2023 numbers and figure clarity before adopting as star pick. ~5-10 minute job.
+2. **Pre-1990 history anchors** — quick ADS pass to lock exact citation format for Gauss 1809, Russell 1913/14, Schmidt 1968.
+3. **Slide 4 emulator slide** — CosmoPower headline numbers (◇) still need verification before quotable on slide.
+4. **Slide 14 SBI taxonomy** — same for Cranmer-Brehmer-Louppe 2020 (◇).
+5. **Slide 15 foundation models** — AstroCLIP / AstroLLaMA (◇) numbers + figure choice.
+6. **"AI Scientist" Sakana (Lu et al. 2024)** — confirm arxiv:2408.06292 before mentioning anywhere on slide 3.
 
 ---
 
