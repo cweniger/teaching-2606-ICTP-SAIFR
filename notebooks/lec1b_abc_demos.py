@@ -41,6 +41,37 @@ from samma_sbi.viz import plot_cannon_throw
 SEED = 0
 
 # %% [markdown]
+# Figures are saved to `docs/figures/lec1b/` as both PDF (vector, for
+# LaTeX inclusion in lecture notes) and PNG (for slides / web). Saving is
+# skipped silently in Colab.
+
+# %%
+import sys
+from pathlib import Path
+
+IN_COLAB = "google.colab" in sys.modules
+
+if not IN_COLAB:
+    _here = Path.cwd().resolve()
+    REPO_ROOT = next(
+        (p for p in [_here, *_here.parents] if (p / "pyproject.toml").exists()),
+        _here,
+    )
+    FIG_DIR = REPO_ROOT / "docs" / "figures" / "lec1b"
+    FIG_DIR.mkdir(parents=True, exist_ok=True)
+
+
+def savefig(fig, name: str) -> None:
+    """Save *fig* as ``docs/figures/lec1b/{name}.pdf`` and ``.png``.
+
+    No-op in Colab (the directory wouldn't be persisted anyway).
+    """
+    if IN_COLAB:
+        return
+    for ext in ("pdf", "png"):
+        fig.savefig(FIG_DIR / f"{name}.{ext}", dpi=150, bbox_inches="tight")
+
+# %% [markdown]
 # ## The simulator
 #
 # One parameter `theta` (launch angle, radians). One observation `x`
@@ -69,53 +100,23 @@ print(f"r(theta_true) = {sim.range_mean(theta_true):.3f} m  (noise-free)")
 #
 # A cannon at the origin, launch angle $\theta$, launch speed $v_0$, and
 # a Gaussian measurement error $\sigma_x$ on the landing position. The
-# static picture below shows one realisation of `n_samples = 5` throws
-# with a small jitter on $v_0$ to make the spread visible; an
-# interactive widget follows for live exploration.
+# panels below show single-throw, multi-throw with measurement noise,
+# and multi-throw with both $v_0$ jitter and measurement noise.
 
 # %%
-plot_cannon_throw(
-    theta=theta_true, v0=10.0, sigma_v=0.3, sigma_x=sim.sigma,
-    n_samples=5, seed=SEED,
-)
+fig, axs = plt.subplots(3, 1, figsize=(10, 11))
+plot_cannon_throw(theta=theta_true, v0=10.0, sigma_v=0.0, sigma_x=0.0,
+                  n_samples=1, seed=SEED, ax=axs[0])
+axs[0].set_title(rf"Single noise-free throw, $\theta = {np.degrees(theta_true):.0f}°$")
+plot_cannon_throw(theta=theta_true, v0=10.0, sigma_v=0.0, sigma_x=0.3,
+                  n_samples=10, seed=SEED, ax=axs[1])
+axs[1].set_title(rf"10 throws, measurement noise only ($\sigma_x = 0.30$ m)")
+plot_cannon_throw(theta=theta_true, v0=10.0, sigma_v=0.3, sigma_x=0.3,
+                  n_samples=10, seed=SEED, ax=axs[2])
+axs[2].set_title(rf"10 throws, with $v_0$ jitter ($\sigma_v = 0.30$ m/s)")
+fig.tight_layout()
+savefig(fig, "cannon_overview")
 plt.show()
-
-# %% [markdown]
-# **Interactive cannon.** Adjust $\theta$, $v_0$, the $v_0$ jitter, and
-# the measurement noise, and click **Run Interact** to resample. With
-# $\sigma_v = 0$ you see a single trajectory and `n_samples` red dots
-# scattered around its landing point (pure measurement noise); with
-# $\sigma_v > 0$ each throw also gets its own trajectory.
-
-# %%
-try:
-    from ipywidgets import (
-        interact_manual, FloatSlider, IntSlider
-    )
-
-    @interact_manual(
-        theta_deg=FloatSlider(value=34, min=5, max=85, step=1,
-                              description=r"$\theta$ (deg)"),
-        v0=FloatSlider(value=10.0, min=2.0, max=20.0, step=0.5,
-                       description=r"$v_0$ (m/s)"),
-        sigma_v=FloatSlider(value=0.3, min=0.0, max=2.0, step=0.1,
-                            description=r"$\sigma(v_0)$"),
-        sigma_x=FloatSlider(value=0.3, min=0.0, max=1.0, step=0.05,
-                            description=r"$\sigma(x)$"),
-        n_samples=IntSlider(value=5, min=1, max=30, step=1,
-                            description=r"# throws"),
-    )
-    def _cannon_widget(theta_deg, v0, sigma_v, sigma_x, n_samples):
-        plot_cannon_throw(
-            theta=np.radians(theta_deg),
-            v0=v0, sigma_v=sigma_v, sigma_x=sigma_x,
-            n_samples=n_samples,
-            seed=None,  # resample each click
-        )
-        plt.show()
-
-except ImportError:
-    print("ipywidgets not installed — interactive cannon skipped.")
 
 # %% [markdown]
 # Quick visual of the simulator — the range function with a noise band,
@@ -148,6 +149,7 @@ ax_p.set_title(f"Reference posterior at $x_\\mathrm{{obs}} = {x_obs:.2f}$")
 ax_p.legend()
 
 fig.tight_layout()
+savefig(fig, "simulator_overview")
 plt.show()
 
 # %% [markdown]
@@ -206,6 +208,7 @@ plot_demo1(N=20000, M=200, ax=axs[1, 1])
 axs[1, 1].set_title("N=20000, M=200 (sharp, expensive)")
 fig.suptitle("Rejection ABC — the M/N tradeoff", y=1.02)
 fig.tight_layout()
+savefig(fig, "demo1_rejection_abc")
 plt.show()
 
 # %% [markdown]
@@ -262,6 +265,7 @@ axs[2].set_title("n_balls = 100")
 fig.suptitle("Adding a summary statistic — same N, M, much sharper posterior",
              y=1.05)
 fig.tight_layout()
+savefig(fig, "demo2_summary")
 plt.show()
 
 # %% [markdown]
@@ -315,11 +319,13 @@ def plot_demo3(N: int, bandwidth="scott", seed: int = SEED):
     axs[1].legend(loc="upper right", fontsize=9)
 
     fig.tight_layout()
+    return fig
+
+
+for N in (500, 2000):
+    fig = plot_demo3(N=N, bandwidth="scott")
+    savefig(fig, f"demo3_kde_n{N}")
     plt.show()
-
-
-plot_demo3(N=500, bandwidth="scott")
-plot_demo3(N=2000, bandwidth="scott")
 
 # %% [markdown]
 # **Key message.** At the same `N` as Demo 1, the KDE slice is
@@ -362,6 +368,7 @@ ax.set_ylabel(r"$p(\theta \mid x_\mathrm{obs})$")
 ax.set_title("KDE posterior as we pad x_obs with uninformative dimensions")
 ax.legend(loc="upper right", fontsize=9)
 fig.tight_layout()
+savefig(fig, "demo3b_curse_of_dimensionality")
 plt.show()
 
 # %% [markdown]
@@ -377,42 +384,10 @@ plt.show()
 #    → Lecture 3: normalising flows / NPE.
 #
 # Everything else in the school is in service of these two problems.
-
-# %% [markdown]
-# ## Appendix — Interactive widgets
 #
-# A small ipywidgets panel for live use in lecture. Skips silently if
-# ipywidgets is not installed (e.g., fresh Colab without enabling
-# widgets).
-
-# %%
-try:
-    from ipywidgets import interact, IntSlider
-
-    @interact(
-        N=IntSlider(value=2000, min=100, max=20000, step=100),
-        M=IntSlider(value=200, min=10, max=2000, step=10),
-    )
-    def _demo1_interactive(N, M):
-        if M > N:
-            M = N
-        fig, ax = plt.subplots(figsize=(7, 4))
-        plot_demo1(N=N, M=M, ax=ax)
-        ax.set_title(f"Rejection ABC: N={N}, M={M}")
-        plt.show()
-
-    @interact(
-        N=IntSlider(value=2000, min=100, max=20000, step=100),
-        M=IntSlider(value=200, min=10, max=2000, step=10),
-        n_balls=IntSlider(value=10, min=1, max=200, step=1),
-    )
-    def _demo2_interactive(N, M, n_balls):
-        if M > N:
-            M = N
-        fig, ax = plt.subplots(figsize=(7, 4))
-        plot_demo2(N=N, M=M, n_balls=n_balls, ax=ax)
-        ax.set_title(f"ABC + summary: N={N}, M={M}, n_balls={n_balls}")
-        plt.show()
-
-except ImportError:
-    print("ipywidgets not installed — interactive panels skipped.")
+# ---
+#
+# Live, slider-driven exploration of these demos lives in the reveal.js
+# slides (JS implementation). This notebook is the canonical source for
+# the algorithms and the figure factory for the frozen lecture-notes
+# PDFs.
