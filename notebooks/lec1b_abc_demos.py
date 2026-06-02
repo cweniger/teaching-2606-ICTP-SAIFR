@@ -35,6 +35,7 @@ from samma_sbi.abc import (
     joint_kde_posterior,
     joint_kde_posterior_highd,
 )
+from samma_sbi.viz import plot_cannon_throw
 
 # A single RNG seed for reproducibility across the whole notebook.
 SEED = 0
@@ -62,6 +63,59 @@ x_obs = float(sim.simulate(np.array([theta_true]), rng=rng).item())
 print(f"theta_true = {theta_true:.3f} rad ({np.degrees(theta_true):.1f} deg)")
 print(f"x_obs      = {x_obs:.3f} m")
 print(f"r(theta_true) = {sim.range_mean(theta_true):.3f} m  (noise-free)")
+
+# %% [markdown]
+# ### What the simulator actually does — pedagogical picture
+#
+# A cannon at the origin, launch angle $\theta$, launch speed $v_0$, and
+# a Gaussian measurement error $\sigma_x$ on the landing position. The
+# static picture below shows one realisation of `n_samples = 5` throws
+# with a small jitter on $v_0$ to make the spread visible; an
+# interactive widget follows for live exploration.
+
+# %%
+plot_cannon_throw(
+    theta=theta_true, v0=10.0, sigma_v=0.3, sigma_x=sim.sigma,
+    n_samples=5, seed=SEED,
+)
+plt.show()
+
+# %% [markdown]
+# **Interactive cannon.** Adjust $\theta$, $v_0$, the $v_0$ jitter, and
+# the measurement noise, and click **Run Interact** to resample. With
+# $\sigma_v = 0$ you see a single trajectory and `n_samples` red dots
+# scattered around its landing point (pure measurement noise); with
+# $\sigma_v > 0$ each throw also gets its own trajectory.
+
+# %%
+try:
+    from ipywidgets import (
+        interact_manual, FloatSlider, IntSlider
+    )
+
+    @interact_manual(
+        theta_deg=FloatSlider(value=34, min=5, max=85, step=1,
+                              description=r"$\theta$ (deg)"),
+        v0=FloatSlider(value=10.0, min=2.0, max=20.0, step=0.5,
+                       description=r"$v_0$ (m/s)"),
+        sigma_v=FloatSlider(value=0.3, min=0.0, max=2.0, step=0.1,
+                            description=r"$\sigma(v_0)$"),
+        sigma_x=FloatSlider(value=0.3, min=0.0, max=1.0, step=0.05,
+                            description=r"$\sigma(x)$"),
+        n_samples=IntSlider(value=5, min=1, max=30, step=1,
+                            description=r"# throws"),
+    )
+    def _cannon_widget(theta_deg, v0, sigma_v, sigma_x, n_samples):
+        plot_cannon_throw(
+            theta=np.radians(theta_deg),
+            v0=v0, sigma_v=sigma_v, sigma_x=sigma_x,
+            n_samples=n_samples,
+            seed=None,  # resample each click
+        )
+        plt.show()
+
+except ImportError:
+    print("ipywidgets not installed — interactive cannon skipped.")
 
 # %% [markdown]
 # Quick visual of the simulator — the range function with a noise band,
