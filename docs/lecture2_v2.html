@@ -555,14 +555,13 @@ for step = 1, 2, ... until converged:
 <!-- D21 — heteroscedastic noise (NEW) -->
 <section>
   <h2>Heteroscedastic noise &mdash; \(\sigma^2(x)\) as a second output</h2>
-  <p>Block A baked in a single \(\sigma\). Real data are noisier in some regions than others. Make \(\sigma\) a function of \(x\):</p>
-  <div class="box" style="text-align:center;">
-    \[ q_\phi(\theta\mid x) \;=\; \mathcal{N}\!\bigl(\theta \,\big|\, \mu_\phi(x), \sigma_\phi(x)^2\bigr), \qquad \text{NLL loss: } \;-\!\sum_n \log q_\phi(\theta_n\mid x_n) \]
+  <p style="margin:6px 0;">Block A baked in a single \(\sigma\). Make \(\sigma\) a function of \(x\); same network, <strong>two heads</strong>: \(\mu_\phi(x)\) and \(\log\sigma_\phi(x)\). The NLL trades off mean accuracy against calibrated width.</p>
+  <div class="box" style="text-align:center; padding:8px 16px; margin:6px 0;">
+    \[ q_\phi(\theta\mid x) \;=\; \mathcal{N}\!\bigl(\theta \,\big|\, \mu_\phi(x), \sigma_\phi(x)^2\bigr), \qquad \mathcal{L} = -\!\sum_n \log q_\phi(\theta_n\mid x_n) \]
   </div>
-  <p style="margin-top:4px;">Same network, <strong>two heads</strong>: \(\mu_\phi(x)\) and \(\log\sigma_\phi(x)\) (log for positivity). The NLL trades off mean accuracy against calibrated width.</p>
-  <div id="hetero-plot" style="width:100%; height:340px; margin-top:6px;"></div>
-  <p style="text-align:center; font-size:0.8em; color:#7f8c8d; margin-top:0;">
-    Toy: \(\theta = \sin(2\pi x) + \varepsilon(x)\) with noise that grows toward the edges. Constant-σ fit (blue band) overconfident in the middle, underconfident at edges; learned \(\sigma(x)\) (orange band) tracks the true scale.
+  <div id="hetero-plot" style="width:100%; height:280px; margin-top:4px;"></div>
+  <p style="text-align:center; font-size:0.78em; color:#7f8c8d; margin:2px 0 0;">
+    Toy: noise grows toward the edges. Constant-σ fit (blue band) overconfident in the middle, underconfident at edges; learned \(\sigma(x)\) (orange) tracks the true scale.
   </p>
 </section>
 
@@ -624,20 +623,20 @@ for step = 1, 2, ... :
 <!-- D24 — why we need flows -->
 <section>
   <h2>Where Gaussian breaks: multimodal posteriors</h2>
-  <p>The Gaussian head was a modelling choice we put in by hand &mdash; just like polynomials in Block A. It fails in exactly the way you would expect: when the true posterior is not Gaussian.</p>
-  <div id="multimodal-plot" style="width:100%; height:300px; margin-top:6px;"></div>
-  <div style="display:flex; gap:14px; margin-top:6px;">
-    <div class="box box-blue" style="flex:1; text-align:center;">
+  <p style="margin:4px 0;">The Gaussian head was a modelling choice we put in by hand &mdash; just like polynomials in Block A. It fails when the true posterior is not Gaussian.</p>
+  <div id="multimodal-plot" style="width:100%; height:230px; margin-top:4px;"></div>
+  <div style="display:flex; gap:12px; margin-top:6px;">
+    <div class="box" style="flex:1; text-align:center; padding:8px 12px;">
       <strong>True posterior</strong><br>multimodal, curved, heavy-tailed
     </div>
-    <div class="box" style="flex:1; text-align:center; border-left:4px solid #e74c3c;">
+    <div class="box" style="flex:1; text-align:center; padding:8px 12px;">
       <strong>Best Gaussian fit</strong><br>smears across modes, miscalibrated tails
     </div>
-    <div class="box box-green" style="flex:1; text-align:center;">
-      <strong>What we want</strong><br>a flexible density that can take any shape but is still a proper PDF
+    <div class="box" style="flex:1; text-align:center; padding:8px 12px;">
+      <strong>What we want</strong><br>a flexible density that takes any shape but is still a proper PDF
     </div>
   </div>
-  <p style="text-align:center; margin-top:10px;">Wishlist: ① easy to evaluate \(\log q_\phi(\theta\mid x)\) (for the loss); ② easy to sample (for downstream analysis); ③ arbitrary shape. <strong>Normalising flows</strong> deliver all three.</p>
+  <p style="text-align:center; margin-top:8px; font-size:0.95em;">Wishlist: ① evaluate \(\log q_\phi\); ② sample; ③ arbitrary shape. <strong>Normalising flows</strong> deliver all three.</p>
 </section>
 
 <!-- D25 — Normalising flow preview -->
@@ -675,28 +674,28 @@ for step = 1, 2, ... :
 <!-- ============================================================ -->
 <section>
   <h2>Where we are; where we are going</h2>
-  <p style="text-align:center; font-size:1.15em; margin-top:14px;">
+  <p style="text-align:center; font-size:1.1em; margin-top:8px;">
     We have built a learnable conditional density \(q_\phi(\theta\mid x)\), trained on \((\theta, x)\) pairs by NLL.
   </p>
-  <div style="display:flex; gap:30px; margin-top:30px;">
+  <div style="display:flex; gap:26px; margin-top:14px;">
     <div style="flex:1;">
-      <h3 style="margin-top:0;">Lecture 3 &mdash; inference heads</h3>
-      <ul>
+      <h3 style="margin-top:0; margin-bottom:6px;">Lecture 3 &mdash; inference heads</h3>
+      <ul style="margin-top:0;">
         <li>The pairs come from a simulator → that is <strong>NPE</strong>.</li>
-        <li>Replace the Gaussian head with a <strong>normalising flow</strong>: full change-of-variables, coupling layers, conditional flows.</li>
+        <li>Replace the Gaussian head with a <strong>normalising flow</strong>: change-of-variables, coupling layers, conditional flows.</li>
         <li>Flow matching and diffusion as visual side-companions.</li>
         <li>DINGO, LISA &mdash; production examples.</li>
       </ul>
     </div>
     <div style="flex:1;">
-      <h3 style="margin-top:0;">Lecture 4 &mdash; the embedding network</h3>
-      <ul>
+      <h3 style="margin-top:0; margin-bottom:6px;">Lecture 4 &mdash; the embedding network</h3>
+      <ul style="margin-top:0;">
         <li>How do we get a good \(x\) when raw data is a 256×256 image or a 16k-sample time series?</li>
         <li>CNNs, transformers, GNNs: data-aware compression trained jointly with the inference head.</li>
       </ul>
     </div>
   </div>
-  <p style="text-align:center; margin-top:30px; font-size:1.1em;">
+  <p style="text-align:center; margin-top:18px; font-size:1.05em;">
     The triptych: <strong>simulator → compression → inference head</strong>. Today we built the head.
   </p>
 </section>
