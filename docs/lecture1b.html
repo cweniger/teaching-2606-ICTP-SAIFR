@@ -53,6 +53,7 @@
   .ctrl-row label { white-space: nowrap; }
   .ctrl-row input[type=range] { vertical-align: middle; }
   .ctrl-row button { padding:3px 12px; cursor:pointer; }
+  .ctrl-row input[type=checkbox] { vertical-align: middle; transform: scale(1.2); margin-right:4px; }
 </style>
 </head>
 <body>
@@ -60,49 +61,77 @@
 <div class="slides">
 
 <!-- ============================================================ -->
-<!-- TITLE                                                        -->
+<!-- 1 — TITLE                                                    -->
 <!-- ============================================================ -->
 <section>
   <h1 style="font-size:1.5em;">Machine Learning for<br>Astroparticle Physics</h1>
   <p style="font-family:'Space Grotesk',sans-serif; font-size:0.85em; font-weight:500; color:#34495e; margin:6px 0 18px;">A Crash-Course in Simulation-Based Inference</p>
   <h3>Lecture 1b: Classic ABC</h3>
-  <p class="subtitle">Three demos on a ball throw — and the two failures that motivate the rest of the school</p>
+  <p class="subtitle">A running example, three live demos, and the bridge to neural SBI</p>
   <p class="subtitle">Christoph Weniger &mdash; University of Amsterdam (GRAPPA)</p>
 </section>
 
 <!-- ============================================================ -->
-<!-- 2 — STAIRCASE OVERVIEW                                       -->
+<!-- 2 — CANNON-BALL VISUAL (the running example, leading slide)  -->
 <!-- ============================================================ -->
 <section>
-  <h2>A three-demo staircase</h2>
-  <p>One simulator, one observation, three algorithms. Each demo fixes a specific failure of the previous one — until we hit two failures that <em>no</em> classical method fixes. Those two are why the rest of the school exists.</p>
-  <ol style="font-size:1.0em; line-height:1.8; margin-top:14px;">
-    <li><strong>Rejection ABC.</strong> Establishes the method. Sample efficiency is brutal.</li>
-    <li><strong>+ Summary statistic.</strong> A good summary buys orders of magnitude. But who chooses it?</li>
-    <li><strong>KDE in (\(\theta, x\))-space.</strong> Uses all simulations, no \(\varepsilon\) to tune. Dies in high dimensions.</li>
-  </ol>
-  <div class="box" style="margin-top:14px;">
-    <strong>The two failures</strong> we will name at the end:
-    <ul style="margin:4px 0;">
-      <li><strong>Summary identification</strong> when \(x\) is structured / high-D &nbsp;→&nbsp; neural summary networks (Lec 4).</li>
-      <li><strong>Density estimation in high D</strong> — KDE collapses &nbsp;→&nbsp; normalising flows, NPE / NLE (Lec 2–3).</li>
-    </ul>
+  <h2>Running example &mdash; a cannon on flat ground</h2>
+  <div style="display:flex; gap:14px; margin-top:4px;">
+    <div style="flex:0 0 38%;">
+      <p>A cannon fires a ball at <strong>launch angle</strong> \(\theta\), fixed speed \(v_0 = 10\) m/s, gravity \(g = 9.81\). We <em>see</em> only the noisy landing position \(x\).</p>
+      <p style="margin-top:6px;"><strong>Inference question:</strong> given one observed \(x_\mathrm{obs}\), what was \(\theta\)?</p>
+      <div class="box box-orange" style="margin-top:8px;">
+        <strong>Why this example.</strong> The map \(\theta \mapsto x\) is two-to-one: \(\theta\) and \(\tfrac{\pi}{2}-\theta\) land at the same expected position. The posterior is generically <strong>bimodal</strong>. Move the slider.
+      </div>
+      <div class="ctrl-row" style="margin-top:8px;">
+        <label>\(\theta\) = <span id="cannon-th-val">0.60</span> rad
+          (<span id="cannon-deg-val">34</span>&deg;)
+          <input type="range" id="cannon-th" min="0.05" max="1.52" step="0.01" value="0.60" style="width:180px;"></label>
+      </div>
+    </div>
+    <div style="flex:1;">
+      <div id="cannon-plot" style="width:100%; height:430px;"></div>
+    </div>
   </div>
 </section>
 
 <!-- ============================================================ -->
-<!-- 3 — WHAT IS ABC                                              -->
+<!-- 3 — SIMULATOR EQUATIONS + REFERENCE POSTERIOR                -->
 <!-- ============================================================ -->
 <section>
-  <h2>What is Approximate Bayesian Computation?</h2>
-  <p>Lec 1a's closing slide: when we cannot write \(p(x\mid\theta)\) but we <em>can</em> run the simulator, the simplest possible inference loop is</p>
+  <h2>The simulator, written down</h2>
+  <div style="display:flex; gap:14px;">
+    <div style="flex:1;">
+      <ul>
+        <li><strong>Parameter:</strong> \(\theta \in [0.05,\,\tfrac{\pi}{2}-0.05]\) rad, uniform prior.</li>
+        <li><strong>Forward model:</strong>
+          \[ x = \underbrace{\frac{v_0^2}{g}\sin(2\theta)}_{r(\theta)} + \varepsilon,\quad \varepsilon \sim \mathcal{N}(0,\sigma^2),\quad \sigma = 0.30\,\mathrm{m}. \]
+        </li>
+        <li><strong>Observation:</strong> one \(x_\mathrm{obs}\), generated once from \(\theta_\mathrm{true} = 0.60\) rad.</li>
+        <li>Closed-form likelihood: \(p(x\mid\theta) = \mathcal{N}(x;\, r(\theta),\, \sigma^2)\). For ABC we will <em>not</em> use it &mdash; only sample from the simulator. The reference posterior (right, fine grid) is our benchmark.</li>
+      </ul>
+      <p style="font-size:0.78em; color:#7f8c8d; margin-top:6px;">Reference notebook: <a href="../notebooks/lec1b_abc_demos.ipynb"><code>notebooks/lec1b_abc_demos.ipynb</code></a>.</p>
+    </div>
+    <div style="flex:1; display:flex; flex-direction:column; gap:6px;">
+      <div id="sim-forward" style="width:100%; height:200px;"></div>
+      <div id="sim-post"    style="width:100%; height:200px;"></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<!-- 4 — WHAT IS ABC                                              -->
+<!-- ============================================================ -->
+<section>
+  <h2>Approximate Bayesian Computation &mdash; the loop</h2>
+  <p>When we can run the simulator but cannot or do not want to write down \(p(x\mid\theta)\), the simplest possible inference loop is:</p>
   <div class="box" style="text-align:left;">
     <pre style="margin:6px 0; font-size:0.95em;"><code>for i in 1..N:
     &theta;_i &sim; p(&theta;)                     # draw from the prior
     x_i  &sim; p(x | &theta;_i)              # run the simulator
     if d(x_i, x_obs) &lt; &epsilon;:           # accept if close enough
         keep &theta;_i</code></pre>
-    <p style="margin:6px 0 0 0;">The kept \(\theta\)'s are samples from an approximation to \(p(\theta\mid x_\mathrm{obs})\) — exact only in the limit \(\varepsilon \to 0\), \(N \to \infty\).</p>
+    <p style="margin:6px 0 0 0;">The kept \(\theta\)'s are samples from an approximation to \(p(\theta\mid x_\mathrm{obs})\) &mdash; exact only in the limit \(\varepsilon \to 0\), \(N \to \infty\).</p>
   </div>
   <ul>
     <li>Three knobs: <strong>prior</strong>, <strong>simulator</strong>, <strong>distance</strong> \(d\) and tolerance \(\varepsilon\).</li>
@@ -112,35 +141,10 @@
 </section>
 
 <!-- ============================================================ -->
-<!-- 4 — THE BALL-THROW SIMULATOR                                 -->
+<!-- 5 — DEMO 1: REJECTION ABC                                    -->
 <!-- ============================================================ -->
 <section>
-  <h2>Running example — one-parameter ball throw</h2>
-  <div style="display:flex; gap:14px;">
-    <div style="flex:1;">
-      <ul>
-        <li><strong>Parameter:</strong> launch angle \(\theta\) (rad), uniform prior on \([0.05,\,\tfrac{\pi}{2}-0.05]\).</li>
-        <li><strong>Simulator:</strong> projectile, \(v_0 = 10\,\mathrm{m/s}\), \(g = 9.81\). Landing position
-          \[ x = \frac{v_0^2}{g}\sin(2\theta) + \mathcal{N}(0,\sigma^2),\quad \sigma = 0.30. \]
-        </li>
-        <li><strong>Observation:</strong> one \(x_\mathrm{obs}\), generated once from \(\theta_\mathrm{true} = 0.60\) rad.</li>
-        <li><strong>Why 1D/1D:</strong> the posterior can be plotted live and overlaid on the analytic truth.</li>
-        <li>\(\sin(2\theta)\) is symmetric around \(\theta=\pi/4\): \(\theta\mapsto r(\theta)\) is two-to-one, so the posterior is <strong>bimodal</strong>. Every demo below should recover a two-peaked red curve.</li>
-      </ul>
-      <p style="font-size:0.85em; color:#7f8c8d; margin-top:8px;">Reference notebook: <a href="../notebooks/lec1b_abc_demos.ipynb"><code>notebooks/lec1b_abc_demos.ipynb</code></a> (Python).</p>
-    </div>
-    <div style="flex:1; display:flex; flex-direction:column; gap:6px;">
-      <div id="sim-forward" style="width:100%; height:230px;"></div>
-      <div id="sim-post"    style="width:100%; height:230px;"></div>
-    </div>
-  </div>
-</section>
-
-<!-- ============================================================ -->
-<!-- 5 — DEMO 1: REJECTION ABC (interactive)                      -->
-<!-- ============================================================ -->
-<section>
-  <h2>Demo 1 — Rejection ABC</h2>
+  <h2>Demo 1 &mdash; Rejection ABC</h2>
   <div class="ctrl-row">
     <label>\(N\) total sims = <span id="d1-n-val">2000</span>
       <input type="range" id="d1-n" min="100" max="20000" step="100" value="2000" style="width:200px;"></label>
@@ -154,7 +158,7 @@
     <div id="d1-post"    style="flex:1; height:350px;"></div>
   </div>
   <p style="text-align:center; font-size:0.85em; color:#7f8c8d; margin-top:2px;">
-    Left: \(N\) prior draws (grey) and the top-\(M\) kept (orange) by distance to \(x_\mathrm{obs}\). Right: histogram of accepted \(\theta\) vs reference posterior.
+    Left: \(N\) prior draws (grey) and the top-\(M\) kept (orange) by distance to \(x_\mathrm{obs}\). Right: histogram of accepted \(\theta\) vs reference posterior. The readout reports \(\varepsilon_\mathrm{eff} = \max_{i \in \mathrm{kept}} |x_i - x_\mathrm{obs}|\).
   </p>
 </section>
 
@@ -162,76 +166,97 @@
 <!-- 6 — DEMO 1 KEY MESSAGE                                       -->
 <!-- ============================================================ -->
 <section>
-  <h2>Demo 1 — what just happened</h2>
-  <div style="display:flex; gap:14px;">
-    <div class="box box-blue" style="flex:1;">
-      <strong>Small \(M\)</strong> → noisy histogram. Two real peaks drown in Monte Carlo noise.
-    </div>
-    <div class="box box-orange" style="flex:1;">
-      <strong>Large \(M\) (near \(N\))</strong> → "accept everything"; the histogram leaks back toward the prior.
-    </div>
-    <div class="box box-green" style="flex:1;">
-      <strong>Small \(N\)</strong> → very few sims near \(x_\mathrm{obs}\); even the top-\(M\) are far. Wasted simulator calls.
-    </div>
+  <h2>Demo 1 &mdash; what just happened</h2>
+  <ul style="font-size:1.0em; line-height:1.7;">
+    <li class="fragment"><strong>Small \(M\)</strong> &rarr; noisy histogram. The two real peaks drown in Monte Carlo noise.</li>
+    <li class="fragment"><strong>Large \(M\) (near \(N\))</strong> &rarr; "accept everything"; the histogram leaks back toward the prior.</li>
+    <li class="fragment"><strong>Small \(N\)</strong> &rarr; very few sims land near \(x_\mathrm{obs}\); even the top-\(M\) are far. Wasted simulator calls.</li>
+    <li class="fragment">To sharpen the posterior we must shrink \(\varepsilon_\mathrm{eff}\). To shrink it we must throw more sims. This is the <strong>sample-efficiency cliff</strong>.</li>
+  </ul>
+  <div class="box fragment" style="margin-top:14px;">
+    <strong>Open question.</strong> Each retained sample uses one simulator call. The thousands of rejected ones contribute nothing. Is there a way to use them?
   </div>
-  <p style="margin-top:14px;">To sharpen the posterior we must shrink the effective acceptance radius. To shrink it we must throw more sims. To throw more sims we burn the simulator budget. This is the <strong>sample-efficiency cliff</strong>.</p>
-  <div class="box" style="margin-top:8px;">
-    <strong>Open question.</strong> Each retained sample uses 1 simulator call. The thousands of rejected ones contribute nothing. Is there a way to use them?
-  </div>
-  <p style="font-size:0.85em; color:#7f8c8d; margin-top:4px;">Beaumont, Zhang &amp; Balding 2002; Marin et al. 2012, "Approximate Bayesian Computational methods," Stat. Comput. 22.</p>
+  <p style="font-size:0.85em; color:#7f8c8d; margin-top:6px;">Beaumont, Zhang &amp; Balding 2002; Marin et al. 2012, "Approximate Bayesian Computational methods," Stat. Comput. 22.</p>
 </section>
 
 <!-- ============================================================ -->
-<!-- 7 — DEMO 2: SUMMARY STATISTIC                                -->
+<!-- 7 — MULTIPLE THROWS PER theta (visualisation)                -->
 <!-- ============================================================ -->
 <section>
-  <h2>Demo 2 — Add a summary statistic</h2>
+  <h2>Setting up Demo 2 &mdash; many throws, one angle</h2>
+  <div style="display:flex; gap:14px;">
+    <div style="flex:0 0 36%;">
+      <p>What if we throw the ball \(n_\mathrm{balls}\) times at the <em>same</em> launch angle \(\theta\) and observe \(n_\mathrm{balls}\) landing positions \((x_1, \dots, x_{n_\mathrm{balls}})\)?</p>
+      <p>Each landing carries its own measurement noise. A natural <strong>summary</strong> is the mean:</p>
+      <div class="box" style="text-align:center; margin:8px 0;">
+        \[ s(x_1,\dots,x_{n_\mathrm{balls}}) \;=\; \frac{1}{n_\mathrm{balls}} \sum_{k=1}^{n_\mathrm{balls}} x_k \]
+      </div>
+      <p>Its variance shrinks by \(1/n_\mathrm{balls}\): the summary is a <em>sharper observation</em> of the same angle.</p>
+    </div>
+    <div style="flex:1; display:flex; flex-direction:column; gap:6px;">
+      <div id="multi-traj" style="width:100%; height:200px;"></div>
+      <div id="multi-hist" style="width:100%; height:200px;"></div>
+    </div>
+  </div>
+  <div class="ctrl-row" style="margin-top:6px;">
+    <label>launch angle \(\theta\) = <span id="multi-th-val">0.60</span> rad
+      <input type="range" id="multi-th" min="0.05" max="1.52" step="0.01" value="0.60" style="width:190px;"></label>
+    <label>\(n_\mathrm{balls}\) = <span id="multi-nb-val">10</span>
+      <input type="range" id="multi-nb" min="1" max="50" step="1" value="10" style="width:160px;"></label>
+    <button id="multi-resample">⟳ Resample</button>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<!-- 8 — DEMO 2: SUMMARY STATISTIC                                -->
+<!-- ============================================================ -->
+<section>
+  <h2>Demo 2 &mdash; ABC with a summary statistic</h2>
   <div class="ctrl-row">
+    <label><input type="checkbox" id="d2-use" checked>use summary \(s\) (mean of \(n_\mathrm{balls}\) throws)</label>
     <label>\(N\) = <span id="d2-n-val">2000</span>
-      <input type="range" id="d2-n" min="100" max="20000" step="100" value="2000" style="width:180px;"></label>
+      <input type="range" id="d2-n" min="100" max="20000" step="100" value="2000" style="width:160px;"></label>
     <label>\(M\) = <span id="d2-m-val">200</span>
-      <input type="range" id="d2-m" min="5" max="2000" step="5" value="200" style="width:140px;"></label>
-    <label>\(n_\mathrm{balls}\) per \(\theta\) = <span id="d2-nb-val">10</span>
-      <input type="range" id="d2-nb" min="1" max="100" step="1" value="10" style="width:140px;"></label>
+      <input type="range" id="d2-m" min="5" max="2000" step="5" value="200" style="width:130px;"></label>
+    <label>\(n_\mathrm{balls}\) = <span id="d2-nb-val">10</span>
+      <input type="range" id="d2-nb" min="1" max="50" step="1" value="10" style="width:120px;"></label>
     <button id="d2-resample">⟳ Resample</button>
   </div>
-  <div style="display:flex; gap:8px; margin-top:6px;">
-    <div id="d2-post-left"  style="flex:1; height:340px;"></div>
-    <div id="d2-post-right" style="flex:1; height:340px;"></div>
-  </div>
+  <div id="d2-post" style="width:100%; height:360px; margin-top:6px;"></div>
   <p style="text-align:center; font-size:0.85em; color:#7f8c8d; margin-top:2px;">
-    Same algorithm; the summary is the mean of \(n_\mathrm{balls}\) throws per \(\theta\). Left: \(n_\mathrm{balls}=1\) (= Demo 1). Right: current slider value. The reference curve also tightens because the effective likelihood is \(\mathcal N(x_\mathrm{obs}; r(\theta), \sigma^2/n_\mathrm{balls})\).
+    Toggle off: summary is the raw single landing position (= Demo 1, \(n_\mathrm{balls}\) ignored).
+    Toggle on: summary is the mean of \(n_\mathrm{balls}\) landings per \(\theta\), and the reference shrinks because the effective likelihood is \(\mathcal N(x_\mathrm{obs};\, r(\theta),\, \sigma^2/n_\mathrm{balls})\).
   </p>
 </section>
 
 <!-- ============================================================ -->
-<!-- 8 — DEMO 2 KEY MESSAGE                                       -->
+<!-- 9 — DEMO 2 KEY MESSAGE                                       -->
 <!-- ============================================================ -->
 <section>
-  <h2>Demo 2 — what just happened</h2>
-  <ul>
-    <li>Variance of the summary scales as \(\sigma^2/n_\mathrm{balls}\). The effective acceptance radius shrinks at fixed \(M/N\).</li>
-    <li>At the same simulator budget (\(N\) calls — counting each ball as one), <strong>a well-chosen summary buys orders of magnitude</strong> in sample efficiency.</li>
-    <li>The posterior <em>sharpens past the truth</em> as \(n_\mathrm{balls}\) grows, because the data are more informative. This is correct, not a bug.</li>
+  <h2>Demo 2 &mdash; what just happened</h2>
+  <ul style="font-size:1.0em; line-height:1.7;">
+    <li class="fragment">Variance of the summary scales as \(\sigma^2/n_\mathrm{balls}\). The effective acceptance radius \(\varepsilon_\mathrm{eff}\) shrinks at fixed \(M/N\).</li>
+    <li class="fragment">At the same simulator budget (counting each ball as one call), <strong>a well-chosen summary buys orders of magnitude</strong> in sample efficiency.</li>
+    <li class="fragment">The posterior <em>sharpens past the truth</em> as \(n_\mathrm{balls}\) grows, because the data are more informative. This is correct, not a bug.</li>
   </ul>
-  <div class="box box-orange" style="margin-top:10px;">
+  <div class="box box-orange fragment" style="margin-top:10px;">
     <strong>Open question (the one that does not go away).</strong>
     Here we chose the summary by hand: "take the mean." Easy, because the simulator is one-dimensional and we know what is informative.
-    <p style="margin:6px 0 0 0;">When \(x\) is a 256×256 image, a waveform, a sky map, a graph — <em>which</em> function of \(x\) should we condition on? Hand-engineered summaries are how classical SBI dies.</p>
+    <p style="margin:6px 0 0 0;">When \(x\) is a 256&times;256 image, a waveform, a sky map, a graph &mdash; <em>which</em> function of \(x\) should we condition on? Hand-engineered summaries are how classical SBI dies.</p>
   </div>
   <p style="font-size:0.85em; color:#7f8c8d; margin-top:6px;">Fearnhead &amp; Prangle 2012 (semi-automatic summaries); Joyce &amp; Marjoram 2008 (sufficiency in ABC); Chen et al. 2023 (review of neural summaries).</p>
 </section>
 
 <!-- ============================================================ -->
-<!-- 9 — DEMO 3: KDE IN (theta, x)-SPACE                          -->
+<!-- 10 — DEMO 3: KDE IN (theta, x)-SPACE                         -->
 <!-- ============================================================ -->
 <section>
-  <h2>Demo 3 — KDE in \((\theta, x)\)-space</h2>
+  <h2>Demo 3 &mdash; KDE in \((\theta, x)\)-space</h2>
   <div class="ctrl-row">
     <label>\(N\) = <span id="d3-n-val">800</span>
-      <input type="range" id="d3-n" min="100" max="5000" step="50" value="800" style="width:180px;"></label>
-    <label>bandwidth \(h\) = <span id="d3-h-val">1.00</span>×Scott
-      <input type="range" id="d3-h" min="0.2" max="3.0" step="0.05" value="1.0" style="width:160px;"></label>
+      <input type="range" id="d3-n" min="100" max="3000" step="50" value="800" style="width:180px;"></label>
+    <label>bandwidth \(h_x = \sigma\times\)<span id="d3-h-val">1.00</span>
+      <input type="range" id="d3-h" min="0.3" max="3.0" step="0.05" value="1.0" style="width:160px;"></label>
     <button id="d3-resample">⟳ Resample</button>
   </div>
   <div style="display:flex; gap:8px; margin-top:6px;">
@@ -239,97 +264,80 @@
     <div id="d3-post"    style="flex:1; height:340px;"></div>
   </div>
   <p style="text-align:center; font-size:0.85em; color:#7f8c8d; margin-top:2px;">
-    No accept/reject. Build a Gaussian KDE on all \(N\) pairs \((\theta_i, x_i)\), draw a vertical slice at \(x_\mathrm{obs}\) (dashed line, left), renormalise over \(\theta\) — that is the posterior (right).
+    Left: Gaussian KDE contours on \(p(\theta, x)\) over all \(N\) sims, with \(x_\mathrm{obs}\) marked. Right: weighted histogram \(w_i = K_{h_x}(x_\mathrm{obs}-x_i)\) and its smoothed KDE slice, vs the reference posterior. No accept/reject, no \(\varepsilon\).
   </p>
 </section>
 
 <!-- ============================================================ -->
-<!-- 10 — DEMO 3 KEY MESSAGE                                      -->
+<!-- 11 — DEMO 3 KEY MESSAGE                                      -->
 <!-- ============================================================ -->
 <section>
-  <h2>Demo 3 — the \(\varepsilon \to 0\) limit done right</h2>
-  <ul>
-    <li>Uses <strong>all</strong> \(N\) simulations. No rejected sims.</li>
-    <li>No \(\varepsilon\) to tune. The bandwidth \(h\) plays a related role, but it is chosen automatically (Scott's rule, here scaled by the slider).</li>
-    <li>At the same \(N\) as Demo 1, the bimodal structure is recovered cleanly instead of histogrammed-against.</li>
+  <h2>Demo 3 &mdash; the \(\varepsilon \to 0\) limit done right</h2>
+  <ul style="font-size:1.0em; line-height:1.7;">
+    <li class="fragment">Uses <strong>all</strong> \(N\) simulations &mdash; nothing rejected.</li>
+    <li class="fragment">No \(\varepsilon\) to tune. The bandwidth \(h_x\) plays a related role but is chosen automatically; for this 1D simulator, \(h_x \approx \sigma\) (the noise level) is the right answer.</li>
+    <li class="fragment">At the same \(N\) as Demo 1, the bimodal structure is recovered cleanly instead of histogrammed-against.</li>
   </ul>
-  <div class="box box-green" style="margin-top:8px;">
+  <div class="box box-green fragment" style="margin-top:8px;">
     <strong>Conceptually:</strong> we are <em>modelling the joint density</em> \(p(\theta, x)\) on the simulation cloud, then conditioning at \(x_\mathrm{obs}\). Bayes' theorem on a density model. This is the seed idea of every neural-SBI method that follows: replace ABC's accept/reject by a learned density.
   </div>
-  <p style="margin-top:8px;">So why is this not the end of the school?</p>
+  <p class="fragment" style="margin-top:8px;">So why is this not the end of the school? &mdash; first one more comparison.</p>
   <p style="font-size:0.85em; color:#7f8c8d; margin-top:6px;">Blum 2010, "Approximate Bayesian Computation: a nonparametric perspective," JASA 105; Silverman 1986 (KDE).</p>
 </section>
 
 <!-- ============================================================ -->
-<!-- 11 — DEMO 3b: CURSE OF DIMENSIONALITY                        -->
+<!-- 12 — MCMC vs AMORTISED ABC (the punchline)                   -->
 <!-- ============================================================ -->
 <section>
-  <h2>Demo 3b — what kills the KDE</h2>
+  <h2>MCMC vs amortised ABC &mdash; same answer, different cost</h2>
   <div class="ctrl-row">
-    <label>\(N\) = <span id="d3b-n-val">2000</span>
-      <input type="range" id="d3b-n" min="200" max="10000" step="100" value="2000" style="width:160px;"></label>
-    <label>extra <em>uninformative</em> dimensions added to \(x\): <span id="d3b-d-val">0</span>
-      <input type="range" id="d3b-d" min="0" max="30" step="1" value="0" style="width:200px;"></label>
-    <button id="d3b-resample">⟳ Resample</button>
+    <label>observed landing \(x_\mathrm{obs}\) = <span id="amort-xobs-val">9.50</span> m
+      <input type="range" id="amort-xobs" min="3.5" max="10.4" step="0.05" value="9.50" style="width:260px;"></label>
+    <button id="amort-mcmc-run">▶ run MCMC (500 steps)</button>
+    <span id="amort-status" style="color:#7f8c8d;"></span>
   </div>
-  <div id="d3b-post" style="width:100%; height:380px; margin-top:6px;"></div>
-  <p style="text-align:center; font-size:0.85em; color:#7f8c8d; margin-top:2px;">
-    Each added \(x\)-component is pure Gaussian noise, independent of \(\theta\) — it carries <em>zero information</em>. The reference posterior does not change. But the KDE estimate degrades rapidly.
-  </p>
+  <div style="display:flex; gap:8px; margin-top:6px;">
+    <div id="amort-mcmc" style="flex:1; height:300px;"></div>
+    <div id="amort-kde"  style="flex:1; height:300px;"></div>
+  </div>
+  <div style="display:flex; gap:14px; margin-top:6px; font-size:0.92em;">
+    <div class="box box-blue" style="flex:1; margin:0;">
+      <strong>MCMC (likelihood-based).</strong> Use the explicit \(\mathcal{L}(\theta)=\mathcal{N}(x_\mathrm{obs}; r(\theta),\sigma^2)\). For every new \(x_\mathrm{obs}\) we must <em>re-run</em> a chain from scratch.
+    </div>
+    <div class="box box-green" style="flex:1; margin:0;">
+      <strong>Amortised KDE (joint-density).</strong> Estimate \(p(\theta, x)\) <em>once</em> from 2000 sims, then any new \(x_\mathrm{obs}\) is a free slice. Cost paid up front.
+    </div>
+  </div>
 </section>
 
 <!-- ============================================================ -->
-<!-- 12 — KEY MESSAGE: TWO FAILURES                               -->
+<!-- 13 — STAIRCASE RECAP + HANDOFF                               -->
 <!-- ============================================================ -->
 <section>
-  <h2>Two failures — the school in one figure</h2>
-  <div style="display:flex; gap:14px;">
-    <div class="box box-orange" style="flex:1;">
-      <strong>Failure 1 — Summary identification.</strong>
-      <p style="margin:6px 0;">When \(x\) is high-dimensional, structured, or just unobvious, <em>which</em> function of \(x\) should we use? Hand-picking does not scale.</p>
-      <p style="margin:6px 0 0 0; color:#1a3a6e;">→ Neural summary / embedding networks. <strong>Lecture 4.</strong></p>
-    </div>
-    <div class="box box-purple" style="flex:1;">
-      <strong>Failure 2 — Density estimation in high D.</strong>
-      <p style="margin:6px 0;">Even with a good summary, KDE's bandwidth-per-dimension argument falls apart: the curse of dimensionality.</p>
-      <p style="margin:6px 0 0 0; color:#1a3a6e;">→ Normalising flows, conditional density estimators, NPE / NLE. <strong>Lectures 2–3.</strong></p>
-    </div>
-  </div>
-  <div class="box" style="margin-top:14px;">
-    <strong>The neural bridge.</strong> Replace KDE's product-of-Gaussian-bumps by a <em>learned</em> conditional density \(q_\phi(\theta\mid x)\) — a neural network whose inputs are summary features of \(x\) (also learned) and whose outputs parameterise a flexible distribution over \(\theta\). One network, trained end-to-end on simulator output, attacks both failures at once.
-  </div>
-  <p style="text-align:center; margin-top:10px; font-size:1.0em;">
-    The rest of the school builds this network, piece by piece.
-  </p>
-</section>
-
-<!-- ============================================================ -->
-<!-- 13 — SUMMARY / HANDOFF                                       -->
-<!-- ============================================================ -->
-<section>
-  <h2>Where we are, where we are going</h2>
+  <h2>Three demos, in one breath &mdash; and what comes next</h2>
   <div style="display:flex; gap:18px;">
     <div style="flex:1;">
-      <h3 style="margin-top:0; font-size:1.0em;">Today, in one line each</h3>
-      <ul>
-        <li><strong>Rejection ABC</strong> works in principle, drowns in Monte Carlo cost in practice.</li>
-        <li><strong>Summaries</strong> rescue sample efficiency — when we know what to summarise.</li>
-        <li><strong>KDE on the joint cloud</strong> uses all sims, has no \(\varepsilon\), and points straight at neural conditional density estimation.</li>
-        <li>Two named failures: <strong>summary identification</strong> and <strong>high-D density estimation</strong>.</li>
-      </ul>
+      <h3 style="margin-top:0; font-size:1.0em;">The staircase, in retrospect</h3>
+      <ol>
+        <li><strong>Rejection ABC.</strong> Works in principle, drowns in Monte Carlo cost in practice.</li>
+        <li><strong>+ Summary statistic.</strong> Rescues sample efficiency &mdash; when we know what to summarise.</li>
+        <li><strong>KDE on \((\theta, x)\).</strong> Uses every sim, no \(\varepsilon\), and is <em>amortised</em>: pay once, infer for any \(x_\mathrm{obs}\).</li>
+      </ol>
+      <p style="margin-top:10px;">The conceptual jump &mdash; from "filter samples" to "model the joint density" &mdash; is the seed of every neural SBI method that follows.</p>
     </div>
     <div style="flex:1;">
-      <h3 style="margin-top:0; font-size:1.0em;">Next up</h3>
-      <ul>
-        <li><strong>Lecture 2.</strong> Build the conditional density \(q_\phi(\theta\mid x)\), Gaussian-head first. \(\chi^2\) is hiding a density model — we make it explicit, then make it neural.</li>
-        <li><strong>Lecture 3.</strong> Replace the Gaussian head with a <strong>normalising flow</strong> → NPE. Flow matching, diffusion as side companions. DINGO.</li>
-        <li><strong>Lecture 4.</strong> Learn the summary too: CNNs, transformers, GNNs as embedding networks.</li>
-      </ul>
+      <h3 style="margin-top:0; font-size:1.0em;">Where classical ABC dies, and where we go</h3>
+      <div class="box box-orange" style="margin:6px 0; padding:8px 12px;">
+        <strong>Hand-picked summaries don't scale</strong> when \(x\) is an image, a waveform, a graph.
+        <span style="color:#1a3a6e;">&rarr; Neural summary / embedding networks. <strong>Lecture 4.</strong></span>
+      </div>
+      <div class="box box-purple" style="margin:6px 0; padding:8px 12px;">
+        <strong>KDE on the joint dies in high D.</strong> A kernel cannot model \(p(\theta, x)\) when \(\dim\theta\) or \(\dim x\) is large.
+        <span style="color:#1a3a6e;">&rarr; Replace KDE by a <em>learned</em> conditional density \(q_\phi(\theta\mid x)\). <strong>Lectures 2&ndash;3.</strong></span>
+      </div>
+      <p style="margin-top:10px; font-size:0.95em;">Classical ABC is the rejection-sampling skeleton of the whole field. Everything we add from here is a way to spend simulator calls more wisely.</p>
     </div>
   </div>
-  <p style="text-align:center; margin-top:18px; font-size:1.05em;">
-    Classical ABC is the rejection-sampling skeleton of the whole field. Everything we add from here is a way to spend simulator calls more wisely.
-  </p>
 </section>
 
 </div>
@@ -361,7 +369,7 @@ Reveal.initialize({
 document.querySelectorAll('.reveal .slides > section').forEach(function(slide) {
   const footer = document.createElement('div');
   footer.className = 'slide-footer';
-  footer.innerHTML = '<a href="index.html" style="color:#bdc3c7; text-decoration:none; pointer-events:auto;">&larr; Index</a><span>ML4PhA 2026 &mdash; Lecture 1b</span><span>Christoph Weniger &mdash; GRAPPA / UvA</span>';
+  footer.innerHTML = '<a href="index.html" style="color:#bdc3c7; text-decoration:none; pointer-events:auto;">&larr; Index</a><span>ML4APP 2026 &mdash; Lecture 1b</span><span>Christoph Weniger &mdash; GRAPPA / UvA</span>';
   slide.appendChild(footer);
 });
 
@@ -373,7 +381,7 @@ const LAY_BASE = {
 function baseLayout(opts={}) { return Object.assign({}, LAY_BASE, opts); }
 
 // ============================================================
-// Ball-throw simulator (shared across all demos)
+// Ball-throw simulator (shared)
 // ============================================================
 const V0 = 10.0, GVAL = 9.81, SIGMA = 0.3;
 const PRIOR_LO = 0.05, PRIOR_HI = Math.PI/2 - 0.05;
@@ -382,9 +390,8 @@ const RMAX = (V0*V0/GVAL);  // 10.19
 
 function rangeMean(theta) { return (V0*V0/GVAL) * Math.sin(2*theta); }
 
-// Build the global x_obs once, from a fixed seed, so every demo agrees.
-// Seed chosen so the noise sample lands close to zero — then x_obs < r_max
-// and the posterior is visibly bimodal (the pedagogical point).
+// Build the global x_obs once. Seed chosen so noise is small (≈ -0.003σ)
+// so the posterior is visibly bimodal.
 const X_OBS = (function() {
   const rng = createRNG(43);
   return rangeMean(THETA_TRUE) + SIGMA * gaussN(rng);
@@ -397,30 +404,25 @@ const THETA_GRID = (function() {
   for (let i=0;i<NG;i++) g[i] = PRIOR_LO + (PRIOR_HI-PRIOR_LO)*i/(NG-1);
   return g;
 })();
-function refPosterior(nBalls) {
-  // p(theta | x_obs) prop to N(x_obs; r(theta), sigma^2/nBalls)
+function refPosterior(nBalls, x_obs) {
+  if (x_obs === undefined) x_obs = X_OBS;
   const var_ = SIGMA*SIGMA / nBalls;
   const p = new Array(NG);
   let pmax = -Infinity;
   for (let i=0;i<NG;i++) {
     const mu = rangeMean(THETA_GRID[i]);
-    p[i] = -0.5 * (X_OBS-mu)*(X_OBS-mu) / var_;
+    p[i] = -0.5 * (x_obs-mu)*(x_obs-mu) / var_;
     if (p[i] > pmax) pmax = p[i];
   }
-  let sum = 0;
-  for (let i=0;i<NG;i++) { p[i] = Math.exp(p[i]-pmax); sum += p[i]; }
-  // trapezoidal normalisation
+  for (let i=0;i<NG;i++) p[i] = Math.exp(p[i]-pmax);
   const dth = THETA_GRID[1]-THETA_GRID[0];
   let area = 0;
   for (let i=0;i<NG-1;i++) area += 0.5*(p[i]+p[i+1])*dth;
-  for (let i=0;i<NG;i++) p[i] /= area;
+  if (area > 0) for (let i=0;i<NG;i++) p[i] /= area;
   return p;
 }
 const REF_POST_1 = refPosterior(1);
 
-// ============================================================
-// Helper: sample N prior draws, simulate N landings (mean over nBalls)
-// ============================================================
 function simulateCloud(N, nBalls, seed) {
   const rng = createRNG(seed);
   const theta = new Array(N), x = new Array(N);
@@ -434,19 +436,120 @@ function simulateCloud(N, nBalls, seed) {
   return {theta, x};
 }
 
-// Top-M by distance to x_obs
-function topM(theta, x, M) {
-  const N = theta.length;
+// Top-M indices by distance to a target value (x_obs by default)
+function topMidx(x, target, M) {
+  const N = x.length;
   const idx = new Array(N);
   for (let i=0;i<N;i++) idx[i] = i;
-  // partial sort by |x - X_OBS|
-  idx.sort(function(a,b){ return Math.abs(x[a]-X_OBS) - Math.abs(x[b]-X_OBS); });
-  const keep = idx.slice(0, M);
-  return keep;
+  idx.sort(function(a,b){ return Math.abs(x[a]-target) - Math.abs(x[b]-target); });
+  return idx.slice(0, M);
+}
+
+// Trajectory generator for given theta, returning {xs, ys, t_land}
+function trajectory(theta, nPts) {
+  const vx = V0*Math.cos(theta), vy = V0*Math.sin(theta);
+  const tLand = 2*vy/GVAL;
+  const xs = new Array(nPts), ys = new Array(nPts);
+  for (let i=0;i<nPts;i++) {
+    const t = tLand*i/(nPts-1);
+    xs[i] = vx*t;
+    ys[i] = vy*t - 0.5*GVAL*t*t;
+  }
+  return {xs, ys, tLand, xLand:vx*tLand};
 }
 
 // ============================================================
-// SLIDE 4 — Simulator overview (static)
+// SLIDE 2 — Cannon visualisation
+// ============================================================
+(function(){
+  const xRange = [-0.5, RMAX+1.0];
+  const yMax = Math.pow(V0,2)/(2*GVAL) + 0.3;  // max height at theta=pi/2
+  function draw() {
+    const slider = document.getElementById('cannon-th');
+    if (!slider) return;
+    const theta = parseFloat(slider.value);
+    const thetaSib = Math.PI/2 - theta;
+    document.getElementById('cannon-th-val').textContent = theta.toFixed(2);
+    document.getElementById('cannon-deg-val').textContent = Math.round(theta*180/Math.PI);
+    const traj1 = trajectory(theta, 80);
+    const traj2 = trajectory(thetaSib, 80);
+
+    // Faded ghost trajectories at preset angles
+    const ghostAngles = [0.25, 0.5, 0.75, 1.0, 1.3];
+    const ghostTraces = ghostAngles.map(a => {
+      const t = trajectory(a, 50);
+      return { x:t.xs, y:t.ys, mode:'lines', name:'',
+        line:{color:'rgba(127,140,141,0.18)', width:1}, hoverinfo:'skip', showlegend:false };
+    });
+
+    const xLand = traj1.xLand;
+    // Noise band on landing: ±2σ
+    const noiseBand = {
+      x:[xLand-2*SIGMA, xLand+2*SIGMA, xLand+2*SIGMA, xLand-2*SIGMA, xLand-2*SIGMA],
+      y:[-0.3, -0.3, 0.3, 0.3, -0.3],
+      mode:'lines', fill:'toself', fillcolor:'rgba(192,57,43,0.18)',
+      line:{width:0}, name:'measurement ±2σ', hoverinfo:'skip'
+    };
+    // Sibling angle ghost (highlighted faintly to show bimodality)
+    const sibTrace = {
+      x:traj2.xs, y:traj2.ys, mode:'lines',
+      name:'θ\' = π/2 − θ (same landing!)',
+      line:{color:'rgba(142,68,173,0.55)', width:2, dash:'dot'}
+    };
+    // Bold trajectory at slider angle
+    const mainTrace = {
+      x:traj1.xs, y:traj1.ys, mode:'lines',
+      name:'θ = '+theta.toFixed(2)+' rad',
+      line:{color:'#2980b9', width:3.5}
+    };
+    // Cannon graphic at origin
+    const cannon = {
+      x:[0, 0.6*Math.cos(theta)], y:[0, 0.6*Math.sin(theta)],
+      mode:'lines', line:{color:'#2c3e50', width:7},
+      name:'cannon', hoverinfo:'skip', showlegend:false
+    };
+    // Landing dot
+    const landDot = {
+      x:[xLand], y:[0], mode:'markers',
+      name:'landing x = '+xLand.toFixed(2)+' m',
+      marker:{size:11, color:'#c0392b', symbol:'circle', line:{color:'#900', width:1}}
+    };
+    // Ground line
+    const ground = {
+      x:xRange, y:[0,0], mode:'lines',
+      line:{color:'#34495e', width:1.2}, hoverinfo:'skip', showlegend:false
+    };
+    // Angle arc + label
+    const arcN = 24, arcR = 0.9;
+    const arcX = [], arcY = [];
+    for (let i=0;i<=arcN;i++){
+      const a = theta*i/arcN;
+      arcX.push(arcR*Math.cos(a)); arcY.push(arcR*Math.sin(a));
+    }
+    const arc = {
+      x:arcX, y:arcY, mode:'lines', line:{color:'#7f8c8d', width:1, dash:'dot'},
+      hoverinfo:'skip', showlegend:false
+    };
+
+    Plotly.react('cannon-plot', [
+      ground, ...ghostTraces, noiseBand, sibTrace, mainTrace, cannon, landDot, arc
+    ], baseLayout({
+      margin:{t:20, r:15, b:36, l:48},
+      xaxis:{title:'horizontal distance (m)', range:xRange, zeroline:false},
+      yaxis:{title:'height (m)', range:[-0.6, yMax]},
+      legend:{x:0.02, y:0.98, bgcolor:'rgba(255,255,255,0.7)', font:{size:11}},
+      annotations:[
+        {x:1.3, y:0.4, text:'θ', showarrow:false, font:{size:14, color:'#2c3e50'}}
+      ]
+    }), {displayModeBar:false});
+  }
+  document.getElementById('cannon-th').addEventListener('input', draw);
+  function init(e){ if (e.currentSlide.querySelector('#cannon-plot')) draw(); }
+  Reveal.on('slidechanged', init); Reveal.on('ready', init);
+})();
+
+// ============================================================
+// SLIDE 3 — Simulator equations + reference posterior
 // ============================================================
 (function(){
   function draw(e) {
@@ -471,7 +574,7 @@ function topM(theta, x, M) {
     }), {displayModeBar:false});
     const ymax = Math.max.apply(null, REF_POST_1)*1.15;
     Plotly.react('sim-post', [
-      { x:xs, y:REF_POST_1, mode:'lines', name:'p(θ|x_obs)',
+      { x:THETA_GRID, y:REF_POST_1, mode:'lines', name:'p(θ|x_obs)',
         line:{color:'#c0392b', width:3}, fill:'tozeroy', fillcolor:'rgba(192,57,43,0.1)' },
       { x:[THETA_TRUE, THETA_TRUE], y:[0, ymax],
         mode:'lines', name:'θ_true',
@@ -508,27 +611,29 @@ function topM(theta, x, M) {
     document.getElementById('d1-n-val').textContent = N;
     document.getElementById('d1-m-val').textContent = M;
     const sim = getCloud(N);
-    const keep = topM(sim.theta, sim.x, M);
+    const keep = topMidx(sim.x, X_OBS, M);
     const accT = keep.map(i=>sim.theta[i]);
     const accX = keep.map(i=>sim.x[i]);
+    const epsEff = Math.max.apply(null, accX.map(v=>Math.abs(v-X_OBS)));
     document.getElementById('d1-readout').textContent =
-      'acceptance M/N = '+(M/N).toFixed(3)+', max |x−x_obs| in kept set = '+
-      Math.max.apply(null, accX.map(v=>Math.abs(v-X_OBS))).toFixed(3);
+      'M/N = '+(M/N).toFixed(3)+',   ε_eff = '+epsEff.toFixed(3)+' m';
 
-    // Left: scatter
     Plotly.react('d1-scatter', [
       { x:sim.theta, y:sim.x, mode:'markers', name:'all sims',
         marker:{size:3, color:'rgba(127,140,141,0.45)'} },
       { x:accT, y:accX, mode:'markers', name:'kept (top M)',
         marker:{size:5, color:'#e67e22'} },
       { x:[PRIOR_LO, PRIOR_HI], y:[X_OBS, X_OBS], mode:'lines', name:'x_obs',
-        line:{color:'#2c3e50', dash:'dash', width:1.5} }
+        line:{color:'#2c3e50', dash:'dash', width:1.5} },
+      { x:[PRIOR_LO, PRIOR_HI], y:[X_OBS-epsEff, X_OBS-epsEff], mode:'lines',
+        name:'ε_eff band', line:{color:'rgba(230,126,34,0.7)', width:1, dash:'dot'} },
+      { x:[PRIOR_LO, PRIOR_HI], y:[X_OBS+epsEff, X_OBS+epsEff], mode:'lines',
+        name:'', showlegend:false, line:{color:'rgba(230,126,34,0.7)', width:1, dash:'dot'} }
     ], baseLayout({
       xaxis:{title:'θ (rad)', range:[PRIOR_LO, PRIOR_HI]},
       yaxis:{title:'x (m)',   range:[-0.5, RMAX+0.5]}
     }), {displayModeBar:false});
 
-    // Right: posterior histogram
     Plotly.react('d1-post', [
       { x: accT, type:'histogram', name:'ABC posterior',
         histnorm:'probability density', autobinx:false,
@@ -554,7 +659,78 @@ function topM(theta, x, M) {
 })();
 
 // ============================================================
-// SLIDE 7 — Demo 2: summary statistic
+// SLIDE 7 — Multiple throws per theta (visualisation)
+// ============================================================
+(function(){
+  let seed = 99;
+  const xRange = [-0.5, RMAX+1.0];
+  const yMax = Math.pow(V0,2)/(2*GVAL) + 0.3;
+  function draw() {
+    const theta = parseFloat(document.getElementById('multi-th').value);
+    const nb    = parseInt(document.getElementById('multi-nb').value);
+    document.getElementById('multi-th-val').textContent = theta.toFixed(2);
+    document.getElementById('multi-nb-val').textContent = nb;
+
+    const traj = trajectory(theta, 60);
+    const meanX = traj.xLand;
+    // n_balls noisy landings
+    const rng = createRNG(seed);
+    const landings = new Array(nb);
+    for (let i=0;i<nb;i++) landings[i] = meanX + SIGMA*gaussN(rng);
+    const summary = landings.reduce((a,b)=>a+b, 0) / nb;
+
+    // Top plot: trajectory + scattered landing dots
+    Plotly.react('multi-traj', [
+      { x:xRange, y:[0,0], mode:'lines',
+        line:{color:'#34495e', width:1.2}, hoverinfo:'skip', showlegend:false },
+      { x:traj.xs, y:traj.ys, mode:'lines', name:'trajectory (θ='+theta.toFixed(2)+')',
+        line:{color:'#2980b9', width:2.5} },
+      { x:landings, y:new Array(nb).fill(-0.20), mode:'markers',
+        name:'landings (n='+nb+')',
+        marker:{size:8, color:'rgba(192,57,43,0.7)', symbol:'circle', line:{color:'#900', width:0.5}} },
+      { x:[summary], y:[-0.55], mode:'markers',
+        name:'summary (mean) s = '+summary.toFixed(2)+' m',
+        marker:{size:14, color:'#1a3a6e', symbol:'triangle-up'} }
+    ], baseLayout({
+      title:{text:'Trajectory and '+nb+' noisy landings', font:{size:12, color:'#2c3e50'}, x:0.02, xanchor:'left'},
+      margin:{t:22, r:12, b:34, l:46},
+      xaxis:{title:'x (m)', range:xRange},
+      yaxis:{title:'height (m)', range:[-0.9, yMax]},
+      legend:{x:0.02, y:0.98, font:{size:11}, bgcolor:'rgba(255,255,255,0.6)'}
+    }), {displayModeBar:false});
+
+    // Bottom plot: histogram of landings + true mean
+    const sigmaSummary = SIGMA / Math.sqrt(nb);
+    Plotly.react('multi-hist', [
+      { x: landings, type:'histogram',
+        histnorm:'probability density', autobinx:false,
+        xbins:{start:meanX-4*SIGMA, end:meanX+4*SIGMA, size:8*SIGMA/30},
+        marker:{color:'rgba(192,57,43,0.45)', line:{color:'#900', width:0.3}},
+        name:'landings' },
+      { x:[meanX, meanX], y:[0, 4/SIGMA], mode:'lines',
+        name:'r(θ) (true mean)', line:{color:'#2c3e50', dash:'dash', width:1.4} },
+      { x:[summary, summary], y:[0, 4/SIGMA], mode:'lines',
+        name:'sample mean s', line:{color:'#1a3a6e', width:2} }
+    ], baseLayout({
+      title:{text:'Landings — distribution centred on r(θ), width σ; mean has width σ/√n = '+sigmaSummary.toFixed(3),
+             font:{size:11, color:'#2c3e50'}, x:0.02, xanchor:'left'},
+      margin:{t:22, r:12, b:34, l:46},
+      xaxis:{title:'x (m)', range:[meanX-4*SIGMA, meanX+4*SIGMA]},
+      yaxis:{title:'density', rangemode:'tozero'},
+      legend:{x:0.02, y:0.98, font:{size:11}, bgcolor:'rgba(255,255,255,0.6)'}
+    }), {displayModeBar:false});
+  }
+  document.getElementById('multi-th').addEventListener('input', draw);
+  document.getElementById('multi-nb').addEventListener('input', draw);
+  document.getElementById('multi-resample').onclick = function() {
+    seed = (seed*1664525 + 1013904223) | 0; draw();
+  };
+  function init(e) { if (e.currentSlide.querySelector('#multi-traj')) draw(); }
+  Reveal.on('slidechanged', init); Reveal.on('ready', init);
+})();
+
+// ============================================================
+// SLIDE 8 — Demo 2: ABC with summary statistic + toggle
 // ============================================================
 (function(){
   let seed = 23;
@@ -562,47 +738,56 @@ function topM(theta, x, M) {
     const N  = parseInt(document.getElementById('d2-n').value);
     let M    = parseInt(document.getElementById('d2-m').value);
     const nb = parseInt(document.getElementById('d2-nb').value);
+    const useSummary = document.getElementById('d2-use').checked;
     M = Math.min(M, N);
     document.getElementById('d2-n-val').textContent  = N;
     document.getElementById('d2-m-val').textContent  = M;
     document.getElementById('d2-nb-val').textContent = nb;
 
-    function panel(divId, nBalls, color, label) {
-      const sim = simulateCloud(N, nBalls, seed);
-      const keep = topM(sim.theta, sim.x, M);
-      const accT = keep.map(i=>sim.theta[i]);
-      const refP = refPosterior(nBalls);
-      const ymax = Math.max.apply(null, refP)*1.15;
-      Plotly.react(divId, [
-        { x: accT, type:'histogram', name:'ABC ('+label+')',
-          histnorm:'probability density', autobinx:false,
-          xbins:{start:PRIOR_LO, end:PRIOR_HI, size:(PRIOR_HI-PRIOR_LO)/40},
-          marker:{color:color, line:{color:'#555', width:0.3}} },
-        { x: THETA_GRID, y: refP, mode:'lines', name:'reference',
-          line:{color:'#c0392b', width:3} },
-        { x:[THETA_TRUE, THETA_TRUE], y:[0, ymax], mode:'lines', name:'θ_true',
-          line:{color:'#2c3e50', dash:'dash', width:1.2} }
-      ], baseLayout({
-        title:{text:label, font:{size:13, color:'#2c3e50'}},
-        xaxis:{title:'θ (rad)', range:[PRIOR_LO, PRIOR_HI]},
-        yaxis:{title:'density', rangemode:'tozero'}
-      }), {displayModeBar:false});
-    }
-    panel('d2-post-left',  1,  'rgba(127,140,141,0.55)', 'n_balls = 1 (Demo 1)');
-    panel('d2-post-right', nb, 'rgba(39,174,96,0.55)',   'n_balls = '+nb);
+    // Enable/disable the n_balls slider visually
+    document.getElementById('d2-nb').disabled = !useSummary;
+
+    const effNb = useSummary ? nb : 1;
+    const sim = simulateCloud(N, effNb, seed);
+    const keep = topMidx(sim.x, X_OBS, M);
+    const accT = keep.map(i=>sim.theta[i]);
+    const refP = refPosterior(effNb);
+    const ymax = Math.max.apply(null, refP)*1.15;
+    const label = useSummary
+      ? 'with summary (n_balls = '+nb+')'
+      : 'no summary (n_balls = 1 = Demo 1)';
+    const color = useSummary ? 'rgba(39,174,96,0.55)' : 'rgba(127,140,141,0.55)';
+    const edge  = useSummary ? '#1e7e3f' : '#666';
+
+    Plotly.react('d2-post', [
+      { x: accT, type:'histogram', name:'ABC posterior',
+        histnorm:'probability density', autobinx:false,
+        xbins:{start:PRIOR_LO, end:PRIOR_HI, size:(PRIOR_HI-PRIOR_LO)/45},
+        marker:{color:color, line:{color:edge, width:0.4}} },
+      { x: THETA_GRID, y: refP, mode:'lines', name:'reference (n_balls = '+effNb+')',
+        line:{color:'#c0392b', width:3} },
+      { x:[THETA_TRUE, THETA_TRUE], y:[0, ymax], mode:'lines', name:'θ_true',
+        line:{color:'#2c3e50', dash:'dash', width:1.2} }
+    ], baseLayout({
+      title:{text:label, font:{size:13, color:'#2c3e50'}, x:0.02, xanchor:'left'},
+      margin:{t:28, r:20, b:40, l:50},
+      xaxis:{title:'θ (rad)', range:[PRIOR_LO, PRIOR_HI]},
+      yaxis:{title:'density', rangemode:'tozero'}
+    }), {displayModeBar:false});
   }
-  document.getElementById('d2-n').addEventListener('input', draw);
-  document.getElementById('d2-m').addEventListener('input', draw);
-  document.getElementById('d2-nb').addEventListener('input', draw);
+  ['d2-n','d2-m','d2-nb'].forEach(id =>
+    document.getElementById(id).addEventListener('input', draw));
+  document.getElementById('d2-use').addEventListener('change', draw);
   document.getElementById('d2-resample').onclick = function() {
     seed = (seed*1664525 + 1013904223) | 0; draw();
   };
-  function init(e) { if (e.currentSlide.querySelector('#d2-post-left')) draw(); }
+  function init(e) { if (e.currentSlide.querySelector('#d2-post')) draw(); }
   Reveal.on('slidechanged', init); Reveal.on('ready', init);
 })();
 
 // ============================================================
-// SLIDE 9 — Demo 3: KDE in (theta, x)-space
+// SLIDE 10 — Demo 3: KDE on (theta, x)
+// Left: scatter + KDE contours. Right: weighted histogram + KDE slice.
 // ============================================================
 (function(){
   let seed = 41;
@@ -622,13 +807,15 @@ function topM(theta, x, M) {
     document.getElementById('d3-n-val').textContent = N;
     document.getElementById('d3-h-val').textContent = hScale.toFixed(2);
     const sim = getCloud(N);
-    // Scott's rule for 2D: h_d = sigma_d * N^(-1/(d+4)), d=2
-    const sT = std(sim.theta), sX = std(sim.x);
-    const fac = hScale * Math.pow(N, -1/6);
-    const hT = sT*fac, hX = sX*fac;
+    // h_x is anchored to the noise level σ (the physically meaningful scale),
+    // scaled by the slider. h_theta is set narrow enough to resolve the
+    // bimodal posterior peaks (peak width ≈ σ/|r'(θ)| ≈ 0.04 rad here);
+    // Scott's rule based on std(θ) would over-smooth and merge the peaks.
+    const sT = std(sim.theta);
+    const hT = Math.max(0.025, 0.30 * sT * Math.pow(N, -1/6));
+    const hX = SIGMA * hScale;
 
-    // KDE conditional: p(theta | x_obs) ∝ sum_i K_hT(theta - theta_i) * K_hX(x_obs - x_i)
-    // The x-kernel becomes per-sample weight w_i = exp(-0.5 ((x_obs - x_i)/hX)^2).
+    // Per-sample weight at x_obs (1D Gaussian kernel in x)
     const wts = new Array(N);
     let wsum = 0;
     for (let i=0;i<N;i++) {
@@ -636,11 +823,11 @@ function topM(theta, x, M) {
       wts[i] = Math.exp(-0.5*dx*dx);
       wsum += wts[i];
     }
+    // 1D KDE smooth slice
     const post = new Array(NG).fill(0);
     if (wsum > 0) {
       for (let i=0;i<N;i++) {
-        const wi = wts[i];
-        if (wi < 1e-12) continue;
+        const wi = wts[i]; if (wi < 1e-12) continue;
         const ti = sim.theta[i];
         for (let g=0;g<NG;g++) {
           const dt = (THETA_GRID[g] - ti) / hT;
@@ -650,34 +837,79 @@ function topM(theta, x, M) {
       const dth = THETA_GRID[1]-THETA_GRID[0];
       let area = 0;
       for (let g=0;g<NG-1;g++) area += 0.5*(post[g]+post[g+1])*dth;
-      if (area>0) for (let g=0;g<NG;g++) post[g] /= area;
+      if (area > 0) for (let g=0;g<NG;g++) post[g] /= area;
+    }
+    // Weighted histogram for the right panel
+    const nBins = 40;
+    const binW = (PRIOR_HI-PRIOR_LO)/nBins;
+    const histVals = new Array(nBins).fill(0);
+    const histX = new Array(nBins);
+    for (let b=0;b<nBins;b++) histX[b] = PRIOR_LO + (b+0.5)*binW;
+    let histSum = 0;
+    for (let i=0;i<N;i++) {
+      const t = sim.theta[i];
+      let b = Math.floor((t-PRIOR_LO)/binW);
+      if (b<0) b=0; if (b>=nBins) b=nBins-1;
+      histVals[b] += wts[i];
+      histSum += wts[i];
+    }
+    if (histSum > 0) for (let b=0;b<nBins;b++) histVals[b] /= (histSum*binW);
+
+    // Left: 2D KDE contours on a coarse grid
+    const NX = 50, NY = 40;
+    const thetaG = new Array(NX);
+    for (let i=0;i<NX;i++) thetaG[i] = PRIOR_LO + (PRIOR_HI-PRIOR_LO)*i/(NX-1);
+    const xLo = 0, xHi = RMAX + 0.5;
+    const xG = new Array(NY);
+    for (let j=0;j<NY;j++) xG[j] = xLo + (xHi-xLo)*j/(NY-1);
+    const Z = new Array(NY);
+    for (let j=0;j<NY;j++) Z[j] = new Array(NX).fill(0);
+    for (let i=0;i<N;i++) {
+      const ti = sim.theta[i], xi = sim.x[i];
+      for (let a=0;a<NX;a++) {
+        const dt = (thetaG[a]-ti)/hT;
+        const kt = Math.exp(-0.5*dt*dt);
+        if (kt < 1e-6) continue;
+        for (let b=0;b<NY;b++) {
+          const dx = (xG[b]-xi)/hX;
+          Z[b][a] += kt * Math.exp(-0.5*dx*dx);
+        }
+      }
     }
 
-    // Left: scatter with x_obs slice
     Plotly.react('d3-scatter', [
+      { x:thetaG, y:xG, z:Z, type:'contour',
+        showscale:false, colorscale:[[0,'rgba(39,174,96,0)'],[0.3,'rgba(39,174,96,0.25)'],[1,'rgba(39,174,96,0.85)']],
+        contours:{coloring:'fill', showlines:false}, hoverinfo:'skip',
+        name:'KDE p(θ,x)' },
       { x:sim.theta, y:sim.x, mode:'markers', name:'sims',
-        marker:{size:3, color:'rgba(41,128,185,0.45)'} },
-      { x:THETA_GRID, y:THETA_GRID.map(rangeMean), mode:'lines', name:'r(θ)',
-        line:{color:'#e67e22', width:1.5} },
+        marker:{size:3, color:'rgba(41,128,185,0.55)'} },
       { x:[PRIOR_LO, PRIOR_HI], y:[X_OBS, X_OBS], mode:'lines', name:'x_obs',
-        line:{color:'#2c3e50', dash:'dash', width:1.5} }
+        line:{color:'#c0392b', dash:'dash', width:2} }
     ], baseLayout({
       xaxis:{title:'θ (rad)', range:[PRIOR_LO, PRIOR_HI]},
-      yaxis:{title:'x (m)',   range:[-0.5, RMAX+0.5]}
+      yaxis:{title:'x (m)',   range:[xLo, xHi]}
     }), {displayModeBar:false});
 
-    // Right: KDE slice vs reference
-    const ymax = Math.max(Math.max.apply(null,REF_POST_1), Math.max.apply(null,post))*1.15;
+    const ymax = Math.max(
+      Math.max.apply(null, REF_POST_1),
+      Math.max.apply(null, post),
+      Math.max.apply(null, histVals)
+    )*1.15;
     Plotly.react('d3-post', [
+      { x: histX, y: histVals, type:'bar', name:'weighted histogram',
+        marker:{color:'rgba(39,174,96,0.45)', line:{color:'#1e7e3f', width:0.4}},
+        hoverinfo:'skip' },
       { x:THETA_GRID, y:post, mode:'lines', name:'KDE slice',
-        line:{color:'#27ae60', width:3} },
+        line:{color:'#1e7e3f', width:3} },
       { x:THETA_GRID, y:REF_POST_1, mode:'lines', name:'reference',
         line:{color:'#c0392b', width:2.5, dash:'dash'} },
       { x:[THETA_TRUE, THETA_TRUE], y:[0, ymax], mode:'lines', name:'θ_true',
         line:{color:'#2c3e50', dash:'dash', width:1.2} }
     ], baseLayout({
       xaxis:{title:'θ (rad)', range:[PRIOR_LO, PRIOR_HI]},
-      yaxis:{title:'p(θ | x_obs)', rangemode:'tozero'}
+      yaxis:{title:'p(θ | x_obs)', rangemode:'tozero'},
+      barmode:'overlay'
     }), {displayModeBar:false});
   }
   document.getElementById('d3-n').addEventListener('input', draw);
@@ -690,91 +922,169 @@ function topM(theta, x, M) {
 })();
 
 // ============================================================
-// SLIDE 11 — Demo 3b: curse of dimensionality
+// SLIDE 12 — MCMC vs amortised KDE
+// Left: MCMC samples + likelihood, recomputed on each x_obs change.
+// Right: 2D KDE on a pre-simulated joint, sliced at x_obs (instant).
 // ============================================================
 (function(){
-  let seed = 67;
-  function draw() {
-    const N    = parseInt(document.getElementById('d3b-n').value);
-    const nDum = parseInt(document.getElementById('d3b-d').value);
-    document.getElementById('d3b-n-val').textContent = N;
-    document.getElementById('d3b-d-val').textContent = nDum;
+  // Pre-build a 2000-sim cloud once. This is the "training set" for the
+  // amortised method; new x_obs values just slice it.
+  const N_AMORT = 2000;
+  const cloud = simulateCloud(N_AMORT, 1, 4242);
+  const sT = (function(){ let m=0; for(let i=0;i<N_AMORT;i++) m+=cloud.theta[i]; m/=N_AMORT;
+    let v=0; for(let i=0;i<N_AMORT;i++) v+=(cloud.theta[i]-m)**2; return Math.sqrt(v/N_AMORT); })();
+  // Narrow bandwidth on theta so the bimodal slice is resolved (see slide 10).
+  const hT = Math.max(0.025, 0.30 * sT * Math.pow(N_AMORT, -1/6));
+  const hX = SIGMA;  // anchored to noise level
 
-    // Reproduce simulator + dummies under a single rng for the slice value too
-    const rng = createRNG(seed);
-    const theta = new Array(N);
-    const xtrue = new Array(N);
-    const dummies = nDum>0 ? new Array(N) : null;
-    for (let i=0;i<N;i++) {
-      theta[i] = PRIOR_LO + (PRIOR_HI-PRIOR_LO)*rng();
-      xtrue[i] = rangeMean(theta[i]) + SIGMA*gaussN(rng);
-      if (nDum>0) {
-        const v = new Array(nDum);
-        for (let k=0;k<nDum;k++) v[k] = gaussN(rng);
-        dummies[i] = v;
-      }
-    }
-    // x_obs is the real X_OBS padded with zeros (the "observed" dummies)
-    // total dim d = 1 + nDum + 1 (theta)
-    const d = 2 + nDum;
-    // Scott's rule, per-dim bandwidths from sample std
-    let sT=0,mT=0; for (let i=0;i<N;i++) mT+=theta[i]; mT/=N; for (let i=0;i<N;i++) sT+=(theta[i]-mT)**2; sT=Math.sqrt(sT/N);
-    let sX=0,mX=0; for (let i=0;i<N;i++) mX+=xtrue[i]; mX/=N; for (let i=0;i<N;i++) sX+=(xtrue[i]-mX)**2; sX=Math.sqrt(sX/N);
-    const fac = Math.pow(N, -1/(d+4));
-    const hT = sT*fac, hX = sX*fac, hD = 1.0*fac; // dummies have std≈1
-
-    // Weight per sample combines x-kernel and dummy-kernels (target dummy obs = 0)
-    const wts = new Array(N); let wmax = -Infinity;
-    for (let i=0;i<N;i++) {
-      const dx = (X_OBS - xtrue[i]) / hX;
-      let l = -0.5*dx*dx;
-      if (nDum>0) {
-        for (let k=0;k<nDum;k++) {
-          const dd = (0 - dummies[i][k]) / hD;
-          l += -0.5*dd*dd;
-        }
-      }
-      wts[i] = l;
-      if (l > wmax) wmax = l;
-    }
-    let wsum = 0;
-    for (let i=0;i<N;i++) { wts[i] = Math.exp(wts[i]-wmax); wsum += wts[i]; }
-
+  function kdeSlice(x_obs) {
     const post = new Array(NG).fill(0);
-    if (wsum > 1e-12) {
-      for (let i=0;i<N;i++) {
-        const wi = wts[i]; if (wi < 1e-12) continue;
-        const ti = theta[i];
-        for (let g=0;g<NG;g++) {
-          const dt = (THETA_GRID[g] - ti) / hT;
-          post[g] += wi * Math.exp(-0.5*dt*dt);
-        }
+    let wsum = 0;
+    for (let i=0;i<N_AMORT;i++) {
+      const dx = (x_obs - cloud.x[i]) / hX;
+      const wi = Math.exp(-0.5*dx*dx);
+      if (wi < 1e-12) continue;
+      wsum += wi;
+      const ti = cloud.theta[i];
+      for (let g=0;g<NG;g++) {
+        const dt = (THETA_GRID[g] - ti) / hT;
+        post[g] += wi * Math.exp(-0.5*dt*dt);
       }
+    }
+    if (wsum > 0) {
       const dth = THETA_GRID[1]-THETA_GRID[0];
       let area = 0;
       for (let g=0;g<NG-1;g++) area += 0.5*(post[g]+post[g+1])*dth;
-      if (area>0) for (let g=0;g<NG;g++) post[g] /= area;
+      if (area > 0) for (let g=0;g<NG;g++) post[g] /= area;
     }
-    const ymax = Math.max(Math.max.apply(null,REF_POST_1), Math.max.apply(null,post)) * 1.15;
-    Plotly.react('d3b-post', [
-      { x:THETA_GRID, y:post, mode:'lines',
-        name:'KDE, dim(x) = '+(1+nDum),
-        line:{color:'#8e44ad', width:3} },
-      { x:THETA_GRID, y:REF_POST_1, mode:'lines', name:'reference',
-        line:{color:'#c0392b', width:2.5, dash:'dash'} },
-      { x:[THETA_TRUE, THETA_TRUE], y:[0, ymax], mode:'lines', name:'θ_true',
-        line:{color:'#2c3e50', dash:'dash', width:1.2} }
-    ], baseLayout({
+    return post;
+  }
+
+  // Simple 1D Metropolis-Hastings sampler on theta given x_obs
+  function runMCMC(x_obs, nSteps, seed) {
+    function logL(th) {
+      if (th < PRIOR_LO || th > PRIOR_HI) return -Infinity;
+      const r = rangeMean(th);
+      return -0.5 * (x_obs-r)*(x_obs-r) / (SIGMA*SIGMA);
+    }
+    const rng = createRNG(seed);
+    let theta = PRIOR_LO + (PRIOR_HI-PRIOR_LO) * 0.5;
+    let cur = logL(theta);
+    const samples = [];
+    const sigmaProp = 0.20;
+    let accepted = 0;
+    for (let i=0;i<nSteps;i++) {
+      const prop = theta + sigmaProp * gaussN(rng);
+      const lp = logL(prop);
+      if (Math.log(rng()+1e-12) < lp - cur) {
+        theta = prop; cur = lp; accepted++;
+      }
+      if (i >= Math.floor(nSteps*0.2)) samples.push(theta);
+    }
+    return {samples, accRate: accepted/nSteps};
+  }
+
+  let mcmcSamples = [];
+  let mcmcStatus = '';
+
+  function draw() {
+    const xObs = parseFloat(document.getElementById('amort-xobs').value);
+    document.getElementById('amort-xobs-val').textContent = xObs.toFixed(2);
+
+    // Likelihood curve at this x_obs
+    const likeCurve = THETA_GRID.map(th => {
+      const r = rangeMean(th);
+      return Math.exp(-0.5 * (xObs-r)*(xObs-r) / (SIGMA*SIGMA));
+    });
+    // Normalise the likelihood as a density over theta (for visual scale)
+    let area = 0;
+    const dth = THETA_GRID[1]-THETA_GRID[0];
+    for (let i=0;i<NG-1;i++) area += 0.5*(likeCurve[i]+likeCurve[i+1])*dth;
+    const likeNorm = area > 0 ? likeCurve.map(v=>v/area) : likeCurve;
+
+    // KDE amortised slice
+    const t0 = performance.now();
+    const post = kdeSlice(xObs);
+    const tKDE = performance.now() - t0;
+
+    const ymaxL = Math.max.apply(null, likeNorm)*1.15;
+
+    // Left panel: likelihood + MCMC histogram (if available)
+    const tracesL = [
+      { x:THETA_GRID, y:likeNorm, mode:'lines',
+        name:'likelihood L(θ) ∝ N(x_obs; r(θ), σ²)',
+        line:{color:'#2980b9', width:3}, fill:'tozeroy',
+        fillcolor:'rgba(41,128,185,0.12)' }
+    ];
+    if (mcmcSamples.length && mcmcStatus === xObs.toFixed(2)) {
+      tracesL.push({
+        x: mcmcSamples, type:'histogram', name:'MCMC samples',
+        histnorm:'probability density', autobinx:false,
+        xbins:{start:PRIOR_LO, end:PRIOR_HI, size:(PRIOR_HI-PRIOR_LO)/45},
+        marker:{color:'rgba(41,128,185,0.45)', line:{color:'#1f5a86', width:0.4}}
+      });
+    } else {
+      // grey hint that MCMC has not been run for this x_obs
+      tracesL.push({
+        x:[null], y:[null], mode:'markers', name:'MCMC: press ▶',
+        marker:{size:0.1, color:'rgba(0,0,0,0)'}
+      });
+    }
+    Plotly.react('amort-mcmc', tracesL, baseLayout({
+      title:{text:'MCMC (re-run for each x_obs)',
+             font:{size:12, color:'#2c3e50'}, x:0.02, xanchor:'left'},
+      margin:{t:24, r:12, b:34, l:46},
       xaxis:{title:'θ (rad)', range:[PRIOR_LO, PRIOR_HI]},
-      yaxis:{title:'p(θ | x_obs)', rangemode:'tozero'}
+      yaxis:{title:'density', rangemode:'tozero', range:[0, ymaxL]},
+      legend:{x:0.02, y:0.98, font:{size:11}, bgcolor:'rgba(255,255,255,0.6)'}
+    }), {displayModeBar:false});
+
+    // Right panel: amortised KDE slice
+    const ymaxR = Math.max(Math.max.apply(null, post)*1.15, ymaxL);
+    Plotly.react('amort-kde', [
+      { x:THETA_GRID, y:post, mode:'lines',
+        name:'KDE slice p(θ|x_obs)',
+        line:{color:'#27ae60', width:3}, fill:'tozeroy',
+        fillcolor:'rgba(39,174,96,0.18)' }
+    ], baseLayout({
+      title:{text:'Amortised KDE (slice of joint, '+tKDE.toFixed(1)+' ms)',
+             font:{size:12, color:'#2c3e50'}, x:0.02, xanchor:'left'},
+      margin:{t:24, r:12, b:34, l:46},
+      xaxis:{title:'θ (rad)', range:[PRIOR_LO, PRIOR_HI]},
+      yaxis:{title:'density', rangemode:'tozero', range:[0, ymaxR]},
+      showlegend:false
     }), {displayModeBar:false});
   }
-  document.getElementById('d3b-n').addEventListener('input', draw);
-  document.getElementById('d3b-d').addEventListener('input', draw);
-  document.getElementById('d3b-resample').onclick = function() {
-    seed = (seed*1664525 + 1013904223) | 0; draw();
+
+  document.getElementById('amort-xobs').addEventListener('input', function() {
+    // Invalidate MCMC samples — they were drawn for a different x_obs.
+    mcmcSamples = [];
+    mcmcStatus = '';
+    document.getElementById('amort-status').textContent =
+      'MCMC chain invalidated — press ▶ to re-run for new x_obs.';
+    draw();
+  });
+  document.getElementById('amort-mcmc-run').onclick = function() {
+    const xObs = parseFloat(document.getElementById('amort-xobs').value);
+    document.getElementById('amort-status').textContent = 'running 500 MH steps…';
+    setTimeout(function(){
+      const t0 = performance.now();
+      const r = runMCMC(xObs, 500, 7);
+      const dt = performance.now() - t0;
+      mcmcSamples = r.samples;
+      mcmcStatus = xObs.toFixed(2);
+      document.getElementById('amort-status').textContent =
+        '500 MH steps, '+dt.toFixed(1)+' ms, acc rate '+(r.accRate*100).toFixed(0)+'%';
+      draw();
+    }, 10);
   };
-  function init(e) { if (e.currentSlide.querySelector('#d3b-post')) draw(); }
+  function init(e) {
+    if (!e.currentSlide.querySelector('#amort-mcmc')) return;
+    mcmcSamples = []; mcmcStatus = '';
+    document.getElementById('amort-status').textContent =
+      'press ▶ to run MCMC for this x_obs';
+    draw();
+  }
   Reveal.on('slidechanged', init); Reveal.on('ready', init);
 })();
 
