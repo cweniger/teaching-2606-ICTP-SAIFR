@@ -84,9 +84,10 @@
         <strong>Why this example.</strong> The map \(\theta \mapsto x\) is two-to-one: \(\theta\) and \(\tfrac{\pi}{2}-\theta\) land at the same expected position. The posterior is generically <strong>bimodal</strong>. Move the slider.
       </div>
       <div class="ctrl-row" style="margin-top:8px;">
-        <label>\(\theta\) = <span id="cannon-th-val">0.60</span> rad
-          (<span id="cannon-deg-val">34</span>&deg;)
-          <input type="range" id="cannon-th" min="0.05" max="1.52" step="0.01" value="0.60" style="width:180px;"></label>
+        <label>
+          <input type="range" id="cannon-th" min="0.05" max="1.52" step="0.01" value="0.60" style="width:170px; vertical-align:middle;">
+          &nbsp;\(\theta\) = <span id="cannon-th-val" style="display:inline-block; min-width:2.4em;">0.60</span> rad (<span id="cannon-deg-val" style="display:inline-block; min-width:1.8em;">34</span>&deg;)
+        </label>
       </div>
     </div>
     <div style="flex:1;">
@@ -146,10 +147,10 @@
 <section>
   <h2>Demo 1 &mdash; Rejection ABC</h2>
   <div class="ctrl-row">
-    <label>\(N\) total sims = <span id="d1-n-val">2000</span>
-      <input type="range" id="d1-n" min="100" max="20000" step="100" value="2000" style="width:200px;"></label>
-    <label>\(M\) keep = <span id="d1-m-val">200</span>
-      <input type="range" id="d1-m" min="5" max="2000" step="5" value="200" style="width:160px;"></label>
+    <label><input type="range" id="d1-n" min="100" max="20000" step="100" value="2000" style="width:180px; vertical-align:middle;">
+      &nbsp;\(N\) = <span id="d1-n-val" style="display:inline-block; min-width:3.4em;">2000</span></label>
+    <label><input type="range" id="d1-m" min="5" max="2000" step="5" value="200" style="width:140px; vertical-align:middle;">
+      &nbsp;\(M\) = <span id="d1-m-val" style="display:inline-block; min-width:2.8em;">200</span></label>
     <button id="d1-resample">⟳ Resample</button>
     <span id="d1-readout" style="color:#7f8c8d;"></span>
   </div>
@@ -199,10 +200,10 @@
     </div>
   </div>
   <div class="ctrl-row" style="margin-top:6px;">
-    <label>launch angle \(\theta\) = <span id="multi-th-val">0.60</span> rad
-      <input type="range" id="multi-th" min="0.05" max="1.52" step="0.01" value="0.60" style="width:190px;"></label>
-    <label>\(n_\mathrm{balls}\) = <span id="multi-nb-val">10</span>
-      <input type="range" id="multi-nb" min="1" max="50" step="1" value="10" style="width:160px;"></label>
+    <label><input type="range" id="multi-th" min="0.05" max="1.52" step="0.01" value="0.60" style="width:170px; vertical-align:middle;">
+      &nbsp;\(\theta\) = <span id="multi-th-val" style="display:inline-block; min-width:2.4em;">0.60</span> rad</label>
+    <label><input type="range" id="multi-nb" min="1" max="50" step="1" value="10" style="width:140px; vertical-align:middle;">
+      &nbsp;\(n_\mathrm{balls}\) = <span id="multi-nb-val" style="display:inline-block; min-width:1.8em;">10</span></label>
     <button id="multi-resample">⟳ Resample</button>
   </div>
 </section>
@@ -213,19 +214,19 @@
 <section>
   <h2>Demo 2 &mdash; ABC with a summary statistic</h2>
   <div class="ctrl-row">
-    <label><input type="checkbox" id="d2-use" checked>use summary \(s\) (mean of \(n_\mathrm{balls}\) throws)</label>
-    <label>\(N\) = <span id="d2-n-val">2000</span>
-      <input type="range" id="d2-n" min="100" max="20000" step="100" value="2000" style="width:160px;"></label>
-    <label>\(M\) = <span id="d2-m-val">200</span>
-      <input type="range" id="d2-m" min="5" max="2000" step="5" value="200" style="width:130px;"></label>
-    <label>\(n_\mathrm{balls}\) = <span id="d2-nb-val">10</span>
-      <input type="range" id="d2-nb" min="1" max="50" step="1" value="10" style="width:120px;"></label>
+    <label><input type="checkbox" id="d2-use" checked>&nbsp;use summary \(s = \tfrac{1}{n}\sum_k x_k\)</label>
+    <label><input type="range" id="d2-n" min="100" max="20000" step="100" value="2000" style="width:140px; vertical-align:middle;">
+      &nbsp;\(N\) = <span id="d2-n-val" style="display:inline-block; min-width:3.4em;">2000</span></label>
+    <label><input type="range" id="d2-m" min="5" max="2000" step="5" value="200" style="width:130px; vertical-align:middle;">
+      &nbsp;\(M\) = <span id="d2-m-val" style="display:inline-block; min-width:2.8em;">200</span></label>
+    <label><input type="range" id="d2-nb" min="1" max="50" step="1" value="10" style="width:120px; vertical-align:middle;">
+      &nbsp;\(n_\mathrm{balls}\) = <span id="d2-nb-val" style="display:inline-block; min-width:1.8em;">10</span></label>
     <button id="d2-resample">⟳ Resample</button>
   </div>
-  <div id="d2-post" style="width:100%; height:360px; margin-top:6px;"></div>
-  <p style="text-align:center; font-size:0.85em; color:#7f8c8d; margin-top:2px;">
-    Toggle off: summary is the raw single landing position (= Demo 1, \(n_\mathrm{balls}\) ignored).
-    Toggle on: summary is the mean of \(n_\mathrm{balls}\) landings per \(\theta\), and the reference shrinks because the effective likelihood is \(\mathcal N(x_\mathrm{obs};\, r(\theta),\, \sigma^2/n_\mathrm{balls})\).
+  <div id="d2-post" style="width:100%; height:340px; margin-top:6px;"></div>
+  <p style="text-align:center; font-size:0.82em; color:#7f8c8d; margin-top:2px;">
+    Toggle <strong>on</strong>: distance \(d = |\bar x_i - \bar x_\mathrm{obs}|\), \(\varepsilon_\mathrm{eff}\) shrinks as \(\sigma/\sqrt{n_\mathrm{balls}}\).
+    Toggle <strong>off</strong>: distance is the raw \(L^2\) over the full landing vector, \(d=\sqrt{\sum_k (x_{i,k}-x_{\mathrm{obs},k})^2}\); \(\varepsilon_\mathrm{eff}\) <em>grows</em> with \(n_\mathrm{balls}\). The reference (red) is the same in both cases: it depends only on \(\bar x_\mathrm{obs}\).
   </p>
 </section>
 
@@ -253,10 +254,12 @@
 <section>
   <h2>Demo 3 &mdash; KDE in \((\theta, x)\)-space</h2>
   <div class="ctrl-row">
-    <label>\(N\) = <span id="d3-n-val">800</span>
-      <input type="range" id="d3-n" min="100" max="3000" step="50" value="800" style="width:180px;"></label>
-    <label>bandwidth \(h_x = \sigma\times\)<span id="d3-h-val">1.00</span>
-      <input type="range" id="d3-h" min="0.3" max="3.0" step="0.05" value="1.0" style="width:160px;"></label>
+    <label><input type="range" id="d3-n" min="100" max="3000" step="50" value="800" style="width:130px; vertical-align:middle;">
+      &nbsp;\(N\) = <span id="d3-n-val" style="display:inline-block; min-width:2.6em;">800</span></label>
+    <label><input type="range" id="d3-h" min="0.3" max="3.0" step="0.05" value="1.0" style="width:120px; vertical-align:middle;">
+      &nbsp;\(h_x = \sigma\!\cdot\!\)<span id="d3-h-val" style="display:inline-block; min-width:2.6em;">1.00</span></label>
+    <label><input type="range" id="d3-xobs" min="3.5" max="10.4" step="0.05" value="9.50" style="width:160px; vertical-align:middle;">
+      &nbsp;\(x_\mathrm{obs}\) = <span id="d3-xobs-val" style="display:inline-block; min-width:2.8em;">9.50</span> m</label>
     <button id="d3-resample">⟳ Resample</button>
   </div>
   <div style="display:flex; gap:8px; margin-top:6px;">
@@ -286,27 +289,28 @@
 </section>
 
 <!-- ============================================================ -->
-<!-- 12 — MCMC vs AMORTISED ABC (the punchline)                   -->
+<!-- 12 — SBI vs LBI: 2x2 panel comparison (the punchline)        -->
 <!-- ============================================================ -->
 <section>
-  <h2>MCMC vs amortised ABC &mdash; same answer, different cost</h2>
-  <div class="ctrl-row">
-    <label>observed landing \(x_\mathrm{obs}\) = <span id="amort-xobs-val">9.50</span> m
-      <input type="range" id="amort-xobs" min="3.5" max="10.4" step="0.05" value="9.50" style="width:260px;"></label>
+  <h2>SBI vs LBI &mdash; two routes to the same posterior</h2>
+  <div style="text-align:center; font-size:0.95em; margin:-4px 0 4px;">
+    \( p(\theta\mid x_\mathrm{obs}) \;\propto\; \underbrace{p(x_\mathrm{obs}\mid\theta)}_{\text{likelihood}} \cdot \underbrace{p(\theta)}_{\text{prior (uniform here)}} \)
+  </div>
+  <div class="ctrl-row" style="justify-content:center;">
+    <label><input type="range" id="amort-xobs" min="3.5" max="10.4" step="0.05" value="9.50" style="width:260px; vertical-align:middle;">
+      &nbsp;\(x_\mathrm{obs}\) = <span id="amort-xobs-val" style="display:inline-block; min-width:2.8em;">9.50</span> m</label>
     <button id="amort-mcmc-run">▶ run MCMC (500 steps)</button>
-    <span id="amort-status" style="color:#7f8c8d;"></span>
+    <span id="amort-status" style="color:#7f8c8d; font-size:0.9em;"></span>
   </div>
-  <div style="display:flex; gap:8px; margin-top:6px;">
-    <div id="amort-mcmc" style="flex:1; height:300px;"></div>
-    <div id="amort-kde"  style="flex:1; height:300px;"></div>
-  </div>
-  <div style="display:flex; gap:14px; margin-top:6px; font-size:0.92em;">
-    <div class="box box-blue" style="flex:1; margin:0;">
-      <strong>MCMC (likelihood-based).</strong> Use the explicit \(\mathcal{L}(\theta)=\mathcal{N}(x_\mathrm{obs}; r(\theta),\sigma^2)\). For every new \(x_\mathrm{obs}\) we must <em>re-run</em> a chain from scratch.
-    </div>
-    <div class="box box-green" style="flex:1; margin:0;">
-      <strong>Amortised KDE (joint-density).</strong> Estimate \(p(\theta, x)\) <em>once</em> from 2000 sims, then any new \(x_\mathrm{obs}\) is a free slice. Cost paid up front.
-    </div>
+  <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:6px;">
+    <div style="text-align:center; font-size:0.85em; font-weight:600; color:#1e7e3f;">SBI &mdash; KDE of \(N=2000\) training sims</div>
+    <div style="text-align:center; font-size:0.85em; font-weight:600; color:#2980b9;">LBI &mdash; analytic likelihood surface</div>
+    <div id="sbi-top" style="height:185px;"></div>
+    <div id="lbi-top" style="height:185px;"></div>
+    <div style="text-align:center; font-size:0.85em; font-weight:600; color:#1e7e3f;">posterior = KDE slice at \(x_\mathrm{obs}\) &mdash; <em>free</em>, amortised</div>
+    <div style="text-align:center; font-size:0.85em; font-weight:600; color:#2980b9;">posterior = MCMC at \(x_\mathrm{obs}\) &mdash; <em>re-run</em> per query</div>
+    <div id="sbi-bot" style="height:170px;"></div>
+    <div id="lbi-bot" style="height:170px;"></div>
   </div>
 </section>
 
@@ -397,6 +401,19 @@ const X_OBS = (function() {
   return rangeMean(THETA_TRUE) + SIGMA * gaussN(rng);
 })();
 
+// X_OBS as a full vector of up to MAX_NB noisy landings at theta_true,
+// for the "no summary" branch of Demo 2.  X_OBS_VEC[0] is rebuilt from the
+// same seed-43 RNG as X_OBS so that the scalar value matches what the
+// 1-ball slides have always used.
+const MAX_NB = 50;
+const X_OBS_VEC = (function() {
+  const rng = createRNG(43);
+  const mu = rangeMean(THETA_TRUE);
+  const v = new Array(MAX_NB);
+  for (let k=0;k<MAX_NB;k++) v[k] = mu + SIGMA*gaussN(rng);
+  return v;
+})();
+
 // theta grid used for the reference posterior plots
 const NG = 401;
 const THETA_GRID = (function() {
@@ -434,6 +451,24 @@ function simulateCloud(N, nBalls, seed) {
     x[i] = s / nBalls;
   }
   return {theta, x};
+}
+
+// Full version that keeps each individual landing (for the L^2 distance
+// branch of Demo 2).  Returns {theta, x, xbar} where x[i] is an array of
+// nBalls landings and xbar[i] is their mean.
+function simulateCloudFull(N, nBalls, seed) {
+  const rng = createRNG(seed);
+  const theta = new Array(N), x = new Array(N), xbar = new Array(N);
+  for (let i=0;i<N;i++) {
+    theta[i] = PRIOR_LO + (PRIOR_HI-PRIOR_LO)*rng();
+    const mu = rangeMean(theta[i]);
+    const vec = new Array(nBalls);
+    let s = 0;
+    for (let k=0;k<nBalls;k++) { vec[k] = mu + SIGMA*gaussN(rng); s += vec[k]; }
+    x[i] = vec;
+    xbar[i] = s / nBalls;
+  }
+  return {theta, x, xbar};
 }
 
 // Top-M indices by distance to a target value (x_obs by default)
@@ -731,9 +766,17 @@ function trajectory(theta, nPts) {
 
 // ============================================================
 // SLIDE 8 — Demo 2: ABC with summary statistic + toggle
+// "Use summary on"  -> distance = |mean(x_i) - mean(x_obs)|
+// "Use summary off" -> distance = L2 norm in n_balls-D space.
+// In both cases the *reference* posterior depends only on the
+// sufficient statistic mean(x_obs), with variance σ²/n_balls.
 // ============================================================
 (function(){
   let seed = 23;
+  // Posterior-mode width in θ (peak FWHM ≈ this in either direction).
+  // r'(θ) ≈ 2 v0²/g cos(2θ) ≈ 7.4 at θ=0.6 / 0.97.
+  const R_PRIME = 2*(V0*V0/GVAL)*Math.cos(2*THETA_TRUE);
+  const MODE_SIGMA_1 = SIGMA / Math.abs(R_PRIME);  // ≈ 0.04 rad
   function draw() {
     const N  = parseInt(document.getElementById('d2-n').value);
     let M    = parseInt(document.getElementById('d2-m').value);
@@ -744,27 +787,55 @@ function trajectory(theta, nPts) {
     document.getElementById('d2-m-val').textContent  = M;
     document.getElementById('d2-nb-val').textContent = nb;
 
-    // Enable/disable the n_balls slider visually
-    document.getElementById('d2-nb').disabled = !useSummary;
+    // Always simulate n_balls landings per θ.  The toggle only switches
+    // the distance metric, not the simulator output.
+    const sim = simulateCloudFull(N, nb, seed);
+    const xObsVec = X_OBS_VEC.slice(0, nb);
+    let xObsBar = 0;
+    for (let k=0;k<nb;k++) xObsBar += xObsVec[k];
+    xObsBar /= nb;
 
-    const effNb = useSummary ? nb : 1;
-    const sim = simulateCloud(N, effNb, seed);
-    const keep = topMidx(sim.x, X_OBS, M);
+    // Distance per i
+    const dists = new Array(N);
+    if (useSummary) {
+      for (let i=0;i<N;i++) dists[i] = Math.abs(sim.xbar[i] - xObsBar);
+    } else {
+      for (let i=0;i<N;i++) {
+        let s = 0;
+        const vec = sim.x[i];
+        for (let k=0;k<nb;k++) { const d = vec[k]-xObsVec[k]; s += d*d; }
+        dists[i] = Math.sqrt(s);
+      }
+    }
+    const idx = new Array(N); for (let i=0;i<N;i++) idx[i] = i;
+    idx.sort(function(a,b){ return dists[a]-dists[b]; });
+    const keep = idx.slice(0, M);
     const accT = keep.map(i=>sim.theta[i]);
-    const refP = refPosterior(effNb);
+    const epsEff = dists[keep[M-1]];
+
+    // Reference posterior — depends only on mean(x_obs) and variance σ²/n.
+    const refP = refPosterior(nb, xObsBar);
     const ymax = Math.max.apply(null, refP)*1.15;
+
+    // Adaptive bin size: target ≈ 2 bins per posterior-mode σ.
+    const modeSigma = MODE_SIGMA_1 / Math.sqrt(nb);
+    const binW = Math.max(0.004, 0.5*modeSigma);
+    const nBins = Math.min(150, Math.max(20,
+      Math.round((PRIOR_HI-PRIOR_LO)/binW)));
+    const binSize = (PRIOR_HI-PRIOR_LO)/nBins;
+
     const label = useSummary
-      ? 'with summary (n_balls = '+nb+')'
-      : 'no summary (n_balls = 1 = Demo 1)';
+      ? 'with summary s = x̄    (ε_eff = '+epsEff.toFixed(3)+' m)'
+      : 'no summary, L² distance (ε_eff = '+epsEff.toFixed(3)+' m, grows with n)';
     const color = useSummary ? 'rgba(39,174,96,0.55)' : 'rgba(127,140,141,0.55)';
     const edge  = useSummary ? '#1e7e3f' : '#666';
 
     Plotly.react('d2-post', [
       { x: accT, type:'histogram', name:'ABC posterior',
         histnorm:'probability density', autobinx:false,
-        xbins:{start:PRIOR_LO, end:PRIOR_HI, size:(PRIOR_HI-PRIOR_LO)/45},
-        marker:{color:color, line:{color:edge, width:0.4}} },
-      { x: THETA_GRID, y: refP, mode:'lines', name:'reference (n_balls = '+effNb+')',
+        xbins:{start:PRIOR_LO, end:PRIOR_HI, size:binSize},
+        marker:{color:color, line:{color:edge, width:0.3}} },
+      { x: THETA_GRID, y: refP, mode:'lines', name:'reference',
         line:{color:'#c0392b', width:3} },
       { x:[THETA_TRUE, THETA_TRUE], y:[0, ymax], mode:'lines', name:'θ_true',
         line:{color:'#2c3e50', dash:'dash', width:1.2} }
@@ -772,7 +843,7 @@ function trajectory(theta, nPts) {
       title:{text:label, font:{size:13, color:'#2c3e50'}, x:0.02, xanchor:'left'},
       margin:{t:28, r:20, b:40, l:50},
       xaxis:{title:'θ (rad)', range:[PRIOR_LO, PRIOR_HI]},
-      yaxis:{title:'density', rangemode:'tozero'}
+      yaxis:{title:'density', rangemode:'tozero', range:[0, ymax]}
     }), {displayModeBar:false});
   }
   ['d2-n','d2-m','d2-nb'].forEach(id =>
@@ -804,8 +875,10 @@ function trajectory(theta, nPts) {
   function draw() {
     const N = parseInt(document.getElementById('d3-n').value);
     const hScale = parseFloat(document.getElementById('d3-h').value);
+    const xObs = parseFloat(document.getElementById('d3-xobs').value);
     document.getElementById('d3-n-val').textContent = N;
     document.getElementById('d3-h-val').textContent = hScale.toFixed(2);
+    document.getElementById('d3-xobs-val').textContent = xObs.toFixed(2);
     const sim = getCloud(N);
     // h_x is anchored to the noise level σ (the physically meaningful scale),
     // scaled by the slider. h_theta is set narrow enough to resolve the
@@ -819,7 +892,7 @@ function trajectory(theta, nPts) {
     const wts = new Array(N);
     let wsum = 0;
     for (let i=0;i<N;i++) {
-      const dx = (X_OBS - sim.x[i]) / hX;
+      const dx = (xObs - sim.x[i]) / hX;
       wts[i] = Math.exp(-0.5*dx*dx);
       wsum += wts[i];
     }
@@ -884,15 +957,16 @@ function trajectory(theta, nPts) {
         name:'KDE p(θ,x)' },
       { x:sim.theta, y:sim.x, mode:'markers', name:'sims',
         marker:{size:3, color:'rgba(41,128,185,0.55)'} },
-      { x:[PRIOR_LO, PRIOR_HI], y:[X_OBS, X_OBS], mode:'lines', name:'x_obs',
+      { x:[PRIOR_LO, PRIOR_HI], y:[xObs, xObs], mode:'lines', name:'x_obs',
         line:{color:'#c0392b', dash:'dash', width:2} }
     ], baseLayout({
       xaxis:{title:'θ (rad)', range:[PRIOR_LO, PRIOR_HI]},
       yaxis:{title:'x (m)',   range:[xLo, xHi]}
     }), {displayModeBar:false});
 
+    const refPx = refPosterior(1, xObs);
     const ymax = Math.max(
-      Math.max.apply(null, REF_POST_1),
+      Math.max.apply(null, refPx),
       Math.max.apply(null, post),
       Math.max.apply(null, histVals)
     )*1.15;
@@ -902,7 +976,7 @@ function trajectory(theta, nPts) {
         hoverinfo:'skip' },
       { x:THETA_GRID, y:post, mode:'lines', name:'KDE slice',
         line:{color:'#1e7e3f', width:3} },
-      { x:THETA_GRID, y:REF_POST_1, mode:'lines', name:'reference',
+      { x:THETA_GRID, y:refPx, mode:'lines', name:'reference',
         line:{color:'#c0392b', width:2.5, dash:'dash'} },
       { x:[THETA_TRUE, THETA_TRUE], y:[0, ymax], mode:'lines', name:'θ_true',
         line:{color:'#2c3e50', dash:'dash', width:1.2} }
@@ -914,6 +988,7 @@ function trajectory(theta, nPts) {
   }
   document.getElementById('d3-n').addEventListener('input', draw);
   document.getElementById('d3-h').addEventListener('input', draw);
+  document.getElementById('d3-xobs').addEventListener('input', draw);
   document.getElementById('d3-resample').onclick = function() {
     seed = (seed*1664525 + 1013904223) | 0; cache.key=null; draw();
   };
@@ -922,59 +997,100 @@ function trajectory(theta, nPts) {
 })();
 
 // ============================================================
-// SLIDE 12 — MCMC vs amortised KDE
-// Left: MCMC samples + likelihood, recomputed on each x_obs change.
-// Right: 2D KDE on a pre-simulated joint, sliced at x_obs (instant).
+// SLIDE 12 — SBI vs LBI in a 2x2 grid
+// Top row: where samples / surfaces come from.
+//   SBI (left)  : training sims with KDE contours (estimate of p(θ,x))
+//   LBI (right) : analytic likelihood surface L(θ,x) = N(x; r(θ), σ²)
+// Bottom row: extracted posterior at x_obs.
+//   SBI (left)  : KDE slice — free, amortised
+//   LBI (right) : likelihood curve + MCMC histogram (after ▶)
 // ============================================================
 (function(){
-  // Pre-build a 2000-sim cloud once. This is the "training set" for the
-  // amortised method; new x_obs values just slice it.
+  // ---------- pre-built training cloud + KDE bandwidths ----------
   const N_AMORT = 2000;
   const cloud = simulateCloud(N_AMORT, 1, 4242);
   const sT = (function(){ let m=0; for(let i=0;i<N_AMORT;i++) m+=cloud.theta[i]; m/=N_AMORT;
     let v=0; for(let i=0;i<N_AMORT;i++) v+=(cloud.theta[i]-m)**2; return Math.sqrt(v/N_AMORT); })();
-  // Narrow bandwidth on theta so the bimodal slice is resolved (see slide 10).
   const hT = Math.max(0.025, 0.30 * sT * Math.pow(N_AMORT, -1/6));
-  const hX = SIGMA;  // anchored to noise level
+  const hX = SIGMA;
 
+  // ---------- precompute the 2D KDE contour grid (SBI top) ----------
+  const NXC = 60, NYC = 40;
+  const xLo = 0, xHi = RMAX + 0.5;
+  const thetaC = new Array(NXC), xCgrid = new Array(NYC);
+  for (let i=0;i<NXC;i++) thetaC[i] = PRIOR_LO + (PRIOR_HI-PRIOR_LO)*i/(NXC-1);
+  for (let j=0;j<NYC;j++) xCgrid[j] = xLo + (xHi-xLo)*j/(NYC-1);
+  const Zkde = new Array(NYC);
+  for (let j=0;j<NYC;j++) Zkde[j] = new Array(NXC).fill(0);
+  for (let i=0;i<N_AMORT;i++) {
+    const ti = cloud.theta[i], xi = cloud.x[i];
+    for (let a=0;a<NXC;a++) {
+      const dt = (thetaC[a]-ti)/hT;
+      const kt = Math.exp(-0.5*dt*dt);
+      if (kt < 1e-6) continue;
+      for (let b=0;b<NYC;b++) {
+        const dx = (xCgrid[b]-xi)/hX;
+        Zkde[b][a] += kt * Math.exp(-0.5*dx*dx);
+      }
+    }
+  }
+
+  // ---------- precompute the analytic likelihood surface (LBI top) ----------
+  const Zlike = new Array(NYC);
+  for (let j=0;j<NYC;j++) {
+    Zlike[j] = new Array(NXC);
+    const x = xCgrid[j];
+    for (let a=0;a<NXC;a++) {
+      const r = rangeMean(thetaC[a]);
+      Zlike[j][a] = Math.exp(-0.5*(x-r)*(x-r)/(SIGMA*SIGMA));
+    }
+  }
+
+  // ---------- helpers ----------
   function kdeSlice(x_obs) {
     const post = new Array(NG).fill(0);
-    let wsum = 0;
     for (let i=0;i<N_AMORT;i++) {
       const dx = (x_obs - cloud.x[i]) / hX;
       const wi = Math.exp(-0.5*dx*dx);
       if (wi < 1e-12) continue;
-      wsum += wi;
       const ti = cloud.theta[i];
       for (let g=0;g<NG;g++) {
         const dt = (THETA_GRID[g] - ti) / hT;
         post[g] += wi * Math.exp(-0.5*dt*dt);
       }
     }
-    if (wsum > 0) {
-      const dth = THETA_GRID[1]-THETA_GRID[0];
-      let area = 0;
-      for (let g=0;g<NG-1;g++) area += 0.5*(post[g]+post[g+1])*dth;
-      if (area > 0) for (let g=0;g<NG;g++) post[g] /= area;
-    }
+    const dth = THETA_GRID[1]-THETA_GRID[0];
+    let area = 0;
+    for (let g=0;g<NG-1;g++) area += 0.5*(post[g]+post[g+1])*dth;
+    if (area > 0) for (let g=0;g<NG;g++) post[g] /= area;
     return post;
   }
-
-  // Simple 1D Metropolis-Hastings sampler on theta given x_obs
+  function likeCurve(x_obs) {
+    const c = new Array(NG);
+    for (let g=0;g<NG;g++) {
+      const r = rangeMean(THETA_GRID[g]);
+      c[g] = Math.exp(-0.5*(x_obs-r)*(x_obs-r)/(SIGMA*SIGMA));
+    }
+    const dth = THETA_GRID[1]-THETA_GRID[0];
+    let area = 0;
+    for (let g=0;g<NG-1;g++) area += 0.5*(c[g]+c[g+1])*dth;
+    if (area > 0) for (let g=0;g<NG;g++) c[g] /= area;
+    return c;
+  }
   function runMCMC(x_obs, nSteps, seed) {
     function logL(th) {
       if (th < PRIOR_LO || th > PRIOR_HI) return -Infinity;
       const r = rangeMean(th);
-      return -0.5 * (x_obs-r)*(x_obs-r) / (SIGMA*SIGMA);
+      return -0.5*(x_obs-r)*(x_obs-r)/(SIGMA*SIGMA);
     }
     const rng = createRNG(seed);
-    let theta = PRIOR_LO + (PRIOR_HI-PRIOR_LO) * 0.5;
+    let theta = PRIOR_LO + (PRIOR_HI-PRIOR_LO)*0.5;
     let cur = logL(theta);
     const samples = [];
     const sigmaProp = 0.20;
     let accepted = 0;
     for (let i=0;i<nSteps;i++) {
-      const prop = theta + sigmaProp * gaussN(rng);
+      const prop = theta + sigmaProp*gaussN(rng);
       const lp = logL(prop);
       if (Math.log(rng()+1e-12) < lp - cur) {
         theta = prop; cur = lp; accepted++;
@@ -985,83 +1101,92 @@ function trajectory(theta, nPts) {
   }
 
   let mcmcSamples = [];
-  let mcmcStatus = '';
+  let mcmcKey = '';
+
+  // ---------- shared layout helper for the four panels ----------
+  function topLayout(title) {
+    return baseLayout({
+      title:{text:title, font:{size:11, color:'#2c3e50'}, x:0.02, xanchor:'left'},
+      margin:{t:22, r:10, b:30, l:42},
+      xaxis:{title:{text:'θ (rad)', font:{size:11}}, range:[PRIOR_LO, PRIOR_HI]},
+      yaxis:{title:{text:'x (m)',   font:{size:11}}, range:[xLo, xHi]},
+      showlegend:false
+    });
+  }
+  function botLayout(title, ymax) {
+    return baseLayout({
+      title:{text:title, font:{size:11, color:'#2c3e50'}, x:0.02, xanchor:'left'},
+      margin:{t:22, r:10, b:30, l:42},
+      xaxis:{title:{text:'θ (rad)', font:{size:11}}, range:[PRIOR_LO, PRIOR_HI]},
+      yaxis:{title:{text:'density', font:{size:11}}, rangemode:'tozero', range:[0, ymax]},
+      showlegend:false
+    });
+  }
 
   function draw() {
     const xObs = parseFloat(document.getElementById('amort-xobs').value);
     document.getElementById('amort-xobs-val').textContent = xObs.toFixed(2);
 
-    // Likelihood curve at this x_obs
-    const likeCurve = THETA_GRID.map(th => {
-      const r = rangeMean(th);
-      return Math.exp(-0.5 * (xObs-r)*(xObs-r) / (SIGMA*SIGMA));
-    });
-    // Normalise the likelihood as a density over theta (for visual scale)
-    let area = 0;
-    const dth = THETA_GRID[1]-THETA_GRID[0];
-    for (let i=0;i<NG-1;i++) area += 0.5*(likeCurve[i]+likeCurve[i+1])*dth;
-    const likeNorm = area > 0 ? likeCurve.map(v=>v/area) : likeCurve;
+    // ---- SBI top: KDE contours + training sims + x_obs line ----
+    Plotly.react('sbi-top', [
+      { x:thetaC, y:xCgrid, z:Zkde, type:'contour',
+        showscale:false,
+        colorscale:[[0,'rgba(39,174,96,0)'],[0.25,'rgba(39,174,96,0.2)'],[1,'rgba(39,174,96,0.8)']],
+        contours:{coloring:'fill', showlines:false}, hoverinfo:'skip' },
+      { x:cloud.theta, y:cloud.x, mode:'markers',
+        marker:{size:2, color:'rgba(30,30,30,0.35)'}, hoverinfo:'skip' },
+      { x:[PRIOR_LO, PRIOR_HI], y:[xObs, xObs], mode:'lines',
+        line:{color:'#c0392b', dash:'dash', width:2}, hoverinfo:'skip' }
+    ], topLayout('p(θ, x) estimated from sims'), {displayModeBar:false});
 
-    // KDE amortised slice
+    // ---- LBI top: analytic likelihood surface + x_obs line ----
+    Plotly.react('lbi-top', [
+      { x:thetaC, y:xCgrid, z:Zlike, type:'contour',
+        showscale:false,
+        colorscale:[[0,'rgba(41,128,185,0)'],[0.25,'rgba(41,128,185,0.18)'],[1,'rgba(41,128,185,0.85)']],
+        contours:{coloring:'fill', showlines:false}, hoverinfo:'skip' },
+      { x:[PRIOR_LO, PRIOR_HI], y:[xObs, xObs], mode:'lines',
+        line:{color:'#c0392b', dash:'dash', width:2}, hoverinfo:'skip' }
+    ], topLayout('L(θ, x) = N(x; r(θ), σ²)'), {displayModeBar:false});
+
+    // ---- bottom panels: posteriors ----
     const t0 = performance.now();
-    const post = kdeSlice(xObs);
+    const postKDE = kdeSlice(xObs);
     const tKDE = performance.now() - t0;
+    const postL = likeCurve(xObs);
+    const ymax = Math.max(
+      Math.max.apply(null, postKDE),
+      Math.max.apply(null, postL)
+    )*1.18;
 
-    const ymaxL = Math.max.apply(null, likeNorm)*1.15;
+    Plotly.react('sbi-bot', [
+      { x:THETA_GRID, y:postKDE, mode:'lines',
+        line:{color:'#1e7e3f', width:3}, fill:'tozeroy',
+        fillcolor:'rgba(39,174,96,0.18)', hoverinfo:'skip' }
+    ], botLayout('KDE slice (' + tKDE.toFixed(1) + ' ms; one-time cost amortised)', ymax),
+       {displayModeBar:false});
 
-    // Left panel: likelihood + MCMC histogram (if available)
-    const tracesL = [
-      { x:THETA_GRID, y:likeNorm, mode:'lines',
-        name:'likelihood L(θ) ∝ N(x_obs; r(θ), σ²)',
-        line:{color:'#2980b9', width:3}, fill:'tozeroy',
-        fillcolor:'rgba(41,128,185,0.12)' }
+    const tracesB = [
+      { x:THETA_GRID, y:postL, mode:'lines',
+        line:{color:'#2980b9', width:2.5}, hoverinfo:'skip' }
     ];
-    if (mcmcSamples.length && mcmcStatus === xObs.toFixed(2)) {
-      tracesL.push({
-        x: mcmcSamples, type:'histogram', name:'MCMC samples',
+    if (mcmcSamples.length && mcmcKey === xObs.toFixed(2)) {
+      tracesB.push({
+        x:mcmcSamples, type:'histogram',
         histnorm:'probability density', autobinx:false,
-        xbins:{start:PRIOR_LO, end:PRIOR_HI, size:(PRIOR_HI-PRIOR_LO)/45},
-        marker:{color:'rgba(41,128,185,0.45)', line:{color:'#1f5a86', width:0.4}}
-      });
-    } else {
-      // grey hint that MCMC has not been run for this x_obs
-      tracesL.push({
-        x:[null], y:[null], mode:'markers', name:'MCMC: press ▶',
-        marker:{size:0.1, color:'rgba(0,0,0,0)'}
+        xbins:{start:PRIOR_LO, end:PRIOR_HI, size:(PRIOR_HI-PRIOR_LO)/60},
+        marker:{color:'rgba(41,128,185,0.5)', line:{color:'#1f5a86', width:0.3}},
+        hoverinfo:'skip'
       });
     }
-    Plotly.react('amort-mcmc', tracesL, baseLayout({
-      title:{text:'MCMC (re-run for each x_obs)',
-             font:{size:12, color:'#2c3e50'}, x:0.02, xanchor:'left'},
-      margin:{t:24, r:12, b:34, l:46},
-      xaxis:{title:'θ (rad)', range:[PRIOR_LO, PRIOR_HI]},
-      yaxis:{title:'density', rangemode:'tozero', range:[0, ymaxL]},
-      legend:{x:0.02, y:0.98, font:{size:11}, bgcolor:'rgba(255,255,255,0.6)'}
-    }), {displayModeBar:false});
-
-    // Right panel: amortised KDE slice
-    const ymaxR = Math.max(Math.max.apply(null, post)*1.15, ymaxL);
-    Plotly.react('amort-kde', [
-      { x:THETA_GRID, y:post, mode:'lines',
-        name:'KDE slice p(θ|x_obs)',
-        line:{color:'#27ae60', width:3}, fill:'tozeroy',
-        fillcolor:'rgba(39,174,96,0.18)' }
-    ], baseLayout({
-      title:{text:'Amortised KDE (slice of joint, '+tKDE.toFixed(1)+' ms)',
-             font:{size:12, color:'#2c3e50'}, x:0.02, xanchor:'left'},
-      margin:{t:24, r:12, b:34, l:46},
-      xaxis:{title:'θ (rad)', range:[PRIOR_LO, PRIOR_HI]},
-      yaxis:{title:'density', rangemode:'tozero', range:[0, ymaxR]},
-      showlegend:false
-    }), {displayModeBar:false});
+    Plotly.react('lbi-bot', tracesB, botLayout('likelihood curve + MCMC samples (when ▶ run)', ymax),
+       {displayModeBar:false});
   }
 
   document.getElementById('amort-xobs').addEventListener('input', function() {
-    // Invalidate MCMC samples — they were drawn for a different x_obs.
-    mcmcSamples = [];
-    mcmcStatus = '';
+    mcmcSamples = []; mcmcKey = '';
     document.getElementById('amort-status').textContent =
-      'MCMC chain invalidated — press ▶ to re-run for new x_obs.';
+      'x_obs changed — MCMC chain invalidated; press ▶ to re-run.';
     draw();
   });
   document.getElementById('amort-mcmc-run').onclick = function() {
@@ -1072,15 +1197,15 @@ function trajectory(theta, nPts) {
       const r = runMCMC(xObs, 500, 7);
       const dt = performance.now() - t0;
       mcmcSamples = r.samples;
-      mcmcStatus = xObs.toFixed(2);
+      mcmcKey = xObs.toFixed(2);
       document.getElementById('amort-status').textContent =
-        '500 MH steps, '+dt.toFixed(1)+' ms, acc rate '+(r.accRate*100).toFixed(0)+'%';
+        '500 MH steps · ' + dt.toFixed(1) + ' ms · acc ' + (r.accRate*100).toFixed(0) + '%';
       draw();
     }, 10);
   };
   function init(e) {
-    if (!e.currentSlide.querySelector('#amort-mcmc')) return;
-    mcmcSamples = []; mcmcStatus = '';
+    if (!e.currentSlide.querySelector('#sbi-top')) return;
+    mcmcSamples = []; mcmcKey = '';
     document.getElementById('amort-status').textContent =
       'press ▶ to run MCMC for this x_obs';
     draw();
