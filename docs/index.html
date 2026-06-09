@@ -103,6 +103,17 @@
     pointer-events: auto;
   }
   .lecture-card .pdf-link:hover { text-decoration: underline; }
+  .lecture-card .colab-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 12px;
+    font-size: 0.85em;
+    color: #3498db;
+    pointer-events: auto;
+  }
+  .lecture-card .colab-link img { height: 20px; display: block; }
+  .lecture-card .colab-link:hover { text-decoration: underline; }
   .lecture-card .tag {
     font-size: 0.75em;
     background: #dce1e3;
@@ -188,6 +199,12 @@
           <span class="tag">SGD</span>
           <span class="tag">Gaussian-head NPE</span>
         </div>
+      </a>
+      <a class="colab-link"
+         href="https://colab.research.google.com/github/cweniger/teaching-2606-ICTP-SAIFR/blob/main/notebooks/s1_pytorch_and_npe.ipynb"
+         target="_blank">
+        <img src="https://colab.research.google.com/assets/colab-badge.svg" alt="Open In Colab">
+        <span>Hands-on session 1 notebook &mdash; PyTorch crash + Gaussian-head NPE</span>
       </a>
     </li>
     <li>
