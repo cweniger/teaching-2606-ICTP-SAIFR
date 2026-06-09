@@ -120,45 +120,57 @@
 <section>
   <h2>Running example &mdash; a cannon on flat ground</h2>
   <div style="display:flex; gap:14px; margin-top:4px;">
-    <div style="flex:0 0 38%;">
-      <p>A cannon fires a ball at <strong>launch angle</strong> \(\theta\), fixed speed \(v_0 = 10\) m/s, gravity \(g = 9.81\). We <em>see</em> only the noisy landing position \(x\).</p>
-      <p style="margin-top:6px;"><strong>Inference question:</strong> given one observed \(x_\mathrm{obs}\), what was \(\theta\)?</p>
-      <div class="box box-orange" style="margin-top:8px;">
-        <strong>Why this example.</strong> The map \(\theta \mapsto x\) is two-to-one: \(\theta\) and \(\tfrac{\pi}{2}-\theta\) land at the same expected position. The posterior is generically <strong>bimodal</strong>. Move the slider.
+    <div style="flex:0 0 32%; text-align:left;">
+      <p style="font-size:0.95em;">A cannon fires a ball at launch angle \(\theta\) with initial speed \(v\) (also uncertain). We observe only the noisy landing position \(x\), denoted \(x_\mathrm{obs}\) below.</p>
+      <div class="box" style="margin-top:8px; padding:8px 12px; font-size:0.88em;">
+        \[ p(x\mid v,\theta) \;=\; \mathcal{N}\!\left(x;\; \mu(v,\theta),\; \sigma_\mathrm{obs}^2\right) \]
+        \[ p(v) \;=\; \mathcal{N}\!\left(v;\; \mu_v,\; \sigma_v^2\right) \]
+        \[ p(\theta) \;=\; \mathcal{U}(5°,\, 85°) \]
+        <p style="font-size:0.85em; color:#555; margin:4px 0 0;">with \(\mu_v = 10\) m/s, \(\sigma_v = 0.2\) m/s, \(\sigma_\mathrm{obs} = 0.5\) m.</p>
       </div>
-      <div class="ctrl-row" style="margin-top:8px;">
+      <p style="margin-top:6px; font-size:0.9em; color:#555;">Note: \(\theta \leftrightarrow \tfrac{\pi}{2}-\theta\) gives the same expected landing &mdash; the posterior is generically <strong>bimodal</strong>.</p>
+    </div>
+    <div style="flex:1 1 0; min-width:0; overflow:hidden;">
+      <div id="cannon-plot" style="width:100%; max-width:100%; height:380px;"></div>
+      <div class="ctrl-row" style="justify-content:center; margin-top:8px;">
         <label>
-          <input type="range" id="cannon-th" min="0.05" max="1.52" step="0.01" value="0.60" style="width:170px; vertical-align:middle;">
+          <input type="range" id="cannon-th" min="0.0873" max="1.4835" step="0.01" value="0.60" style="width:220px; vertical-align:middle;">
           &nbsp;\(\theta\) = <span id="cannon-th-val" style="display:inline-block; min-width:2.4em;">0.60</span> rad (<span id="cannon-deg-val" style="display:inline-block; min-width:1.8em;">34</span>&deg;)
         </label>
       </div>
-    </div>
-    <div style="flex:1;">
-      <div id="cannon-plot" style="width:100%; height:430px;"></div>
+      <div class="ctrl-row" style="justify-content:center; margin-top:6px;">
+        <button id="cannon-resample-noise">&#x21bb; Resample v &amp; noise</button>
+        <button id="cannon-resample-all">&#x21bb; Resample everything (incl. &theta;)</button>
+      </div>
     </div>
   </div>
 </section>
 
 <!-- ============================================================ -->
-<!-- 3 — SIMULATOR EQUATIONS + REFERENCE POSTERIOR                -->
+<!-- 3 — FORWARD MODEL: SIMULATOR vs LIKELIHOOD                   -->
 <!-- ============================================================ -->
 <section>
-  <h2>The simulator, written down</h2>
+  <h2>Forward model &mdash; simulator vs likelihood</h2>
   <div style="display:flex; gap:14px;">
-    <div style="flex:1;">
-      <ul>
-        <li><strong>Parameter:</strong> \(\theta \in [0.05,\,\tfrac{\pi}{2}-0.05]\) rad, uniform prior.</li>
-        <li><strong>Forward model:</strong>
-          \[ x = \underbrace{\frac{v_0^2}{g}\sin(2\theta)}_{r(\theta)} + \varepsilon,\quad \varepsilon \sim \mathcal{N}(0,\sigma^2),\quad \sigma = 0.30\,\mathrm{m}. \]
-        </li>
-        <li><strong>Observation:</strong> one \(x_\mathrm{obs}\), generated once from \(\theta_\mathrm{true} = 0.60\) rad.</li>
-        <li>Closed-form likelihood: \(p(x\mid\theta) = \mathcal{N}(x;\, r(\theta),\, \sigma^2)\). For ABC we will <em>not</em> use it &mdash; only sample from the simulator. The reference posterior (right, fine grid) is our benchmark.</li>
-      </ul>
-      <p style="font-size:0.78em; color:#7f8c8d; margin-top:6px;">Reference notebook: <a href="../notebooks/lec1b_abc_demos.ipynb"><code>notebooks/lec1b_abc_demos.ipynb</code></a>.</p>
+    <div style="flex:1; display:flex; flex-direction:column;">
+      <h3 style="margin:0 0 4px; font-size:1.0em; color:#1e7e3f;">Simulator (forward sampling)</h3>
+      <div class="box box-green" style="margin:0 0 6px; padding:8px 12px; font-size:0.9em;">
+        \[ \mu(v,\theta) \;=\; \frac{v^2}{g}\sin(2\theta) \]
+        \[ \theta \sim p(\theta),\ \ v \sim p(v),\ \ x \sim \mathcal{N}\!\left(\mu(v,\theta),\, \sigma_\mathrm{obs}^2\right) \]
+      </div>
+      <div id="fwd-scatter" style="width:100%; height:260px;"></div>
+      <div class="ctrl-row" style="justify-content:center; margin-top:4px;">
+        <button id="fwd-resample">&#x21bb; Resample 1000 sims</button>
+      </div>
+      <p style="text-align:center; font-size:0.85em; color:#1e7e3f; margin:4px 0 0;"><em>Requires sampling distributions in order.</em></p>
     </div>
-    <div style="flex:1; display:flex; flex-direction:column; gap:6px;">
-      <div id="sim-forward" style="width:100%; height:200px;"></div>
-      <div id="sim-post"    style="width:100%; height:200px;"></div>
+    <div style="flex:1; display:flex; flex-direction:column;">
+      <h3 style="margin:0 0 4px; font-size:1.0em; color:#2980b9;">Likelihood (analytic)</h3>
+      <div class="box box-blue" style="margin:0 0 6px; padding:8px 12px; font-size:0.9em;">
+        \[ p(x \mid \theta) \;=\; \int p(x \mid v, \theta)\, p(v)\, dv \]
+      </div>
+      <div id="lik-plot" style="width:100%; height:260px;"></div>
+      <p style="text-align:center; font-size:0.85em; color:#2980b9; margin:4px 0 0;"><em>Requires integration over \(v\).</em></p>
     </div>
   </div>
 </section>
@@ -167,20 +179,22 @@
 <!-- 4 — WHAT IS ABC                                              -->
 <!-- ============================================================ -->
 <section>
-  <h2>Approximate Bayesian Computation &mdash; the loop</h2>
-  <p>When we can run the simulator but cannot or do not want to write down \(p(x\mid\theta)\), the simplest possible inference loop is:</p>
+  <h2>Rejection ABC &mdash; the loop</h2>
+  <p style="text-align:left;">Given the simulator output, a conceptually simple and clean approach to obtain samples from the posterior is:</p>
   <div class="box" style="text-align:left;">
-    <pre style="margin:6px 0; font-size:0.95em;"><code>for i in 1..N:
+<pre style="margin:0; font-size:0.95em;"><code>for i in 1..N:
     &theta;_i &sim; p(&theta;)                     # draw from the prior
-    x_i  &sim; p(x | &theta;_i)              # run the simulator
+    v_i &sim; p(v)                       # draw the nuisance
+    x_i &sim; p(x | v_i, &theta;_i)            # run the simulator
     if d(x_i, x_obs) &lt; &epsilon;:           # accept if close enough
         keep &theta;_i</code></pre>
-    <p style="margin:6px 0 0 0;">The kept \(\theta\)'s are samples from an approximation to \(p(\theta\mid x_\mathrm{obs})\) &mdash; exact only in the limit \(\varepsilon \to 0\), \(N \to \infty\).</p>
   </div>
   <ul>
-    <li>Three knobs: <strong>prior</strong>, <strong>simulator</strong>, <strong>distance</strong> \(d\) and tolerance \(\varepsilon\).</li>
-    <li>For the live demos we replace \(\varepsilon\) by "keep top-\(M\) closest of \(N\)". Same idea, never an empty plot.</li>
+    <li>The kept \(\theta\)'s are samples from an approximation to \(p(\theta\mid x_\mathrm{obs})\) &mdash; exact only in the limit \(\varepsilon \to 0\), \(N \to \infty\).</li>
+    <li><strong>Ingredients:</strong> prior, simulator.</li>
+    <li><strong>Analysis choice:</strong> distance \(d\) and tolerance \(\varepsilon\).</li>
   </ul>
+  <p style="text-align:center; margin-top:10px; color:#7f8c8d; font-size:0.9em;">(For the live demos we replace \(\varepsilon\) by "keep top-\(M\) closest of \(N\)".)</p>
   <p style="font-size:0.85em; color:#7f8c8d; margin-top:6px;">Rubin 1984 (the loop on paper); Pritchard et al. 1999 (the name "ABC"); Sisson, Fan &amp; Beaumont 2018 (Handbook of ABC).</p>
 </section>
 
@@ -229,25 +243,25 @@
 <section>
   <h2>Setting up Demo 2 &mdash; many throws, one angle</h2>
   <div style="display:flex; gap:14px;">
-    <div style="flex:0 0 36%;">
+    <div style="flex:0 0 36%; text-align:left;">
       <p>What if we throw the ball \(n_\mathrm{balls}\) times at the <em>same</em> launch angle \(\theta\) and observe \(n_\mathrm{balls}\) landing positions \((x_1, \dots, x_{n_\mathrm{balls}})\)?</p>
-      <p>Each landing carries its own measurement noise. A natural <strong>summary</strong> is the mean:</p>
-      <div class="box" style="text-align:center; margin:8px 0;">
-        \[ s(x_1,\dots,x_{n_\mathrm{balls}}) \;=\; \frac{1}{n_\mathrm{balls}} \sum_{k=1}^{n_\mathrm{balls}} x_k \]
-      </div>
-      <p>Its variance shrinks by \(1/n_\mathrm{balls}\): the summary is a <em>sharper observation</em> of the same angle.</p>
+      <p>Each landing carries its own measurement noise. A natural <strong>summary</strong> is the mean; its variance shrinks by \(1/n_\mathrm{balls}\).</p>
     </div>
-    <div style="flex:1; display:flex; flex-direction:column; gap:6px;">
-      <div id="multi-traj" style="width:100%; height:200px;"></div>
-      <div id="multi-hist" style="width:100%; height:200px;"></div>
+    <div style="flex:1 1 0; min-width:0; overflow:hidden;">
+      <div id="multi-traj" style="width:100%; max-width:100%; height:340px;"></div>
+      <div class="ctrl-row" style="justify-content:center; margin-top:8px;">
+        <label>
+          <input type="range" id="multi-th" min="0.0873" max="1.4835" step="0.01" value="0.60" style="width:220px; vertical-align:middle;">
+          &nbsp;\(\theta\) = <span id="multi-th-val" style="display:inline-block; min-width:2.4em;">0.60</span> rad
+        </label>
+      </div>
+      <div class="ctrl-row" style="justify-content:center; margin-top:6px;">
+        <button id="multi-resample">&#x21bb; Resample v &amp; noise</button>
+      </div>
     </div>
   </div>
-  <div class="ctrl-row" style="margin-top:6px;">
-    <label><input type="range" id="multi-th" min="0.05" max="1.52" step="0.01" value="0.60" style="width:170px; vertical-align:middle;">
-      &nbsp;\(\theta\) = <span id="multi-th-val" style="display:inline-block; min-width:2.4em;">0.60</span> rad</label>
-    <label><input type="range" id="multi-nb" min="1" max="50" step="1" value="10" style="width:140px; vertical-align:middle;">
-      &nbsp;\(n_\mathrm{balls}\) = <span id="multi-nb-val" style="display:inline-block; min-width:1.8em;">10</span></label>
-    <button id="multi-resample">⟳ Resample</button>
+  <div class="box" style="margin:10px auto 0; max-width:520px; text-align:center;">
+    \[ s(x_1,\dots,x_{n_\mathrm{balls}}) \;=\; \frac{1}{n_\mathrm{balls}} \sum_{k=1}^{n_\mathrm{balls}} x_k \]
   </div>
 </section>
 
@@ -269,7 +283,7 @@
   <div id="d2-post" style="width:100%; height:340px; margin-top:6px;"></div>
   <p style="text-align:center; font-size:0.82em; color:#7f8c8d; margin-top:2px;">
     Toggle <strong>on</strong>: distance \(d = |\bar x_i - \bar x_\mathrm{obs}|\), \(\varepsilon_\mathrm{eff}\) shrinks as \(\sigma/\sqrt{n_\mathrm{balls}}\).
-    Toggle <strong>off</strong>: distance is the raw \(L^2\) over the full landing vector, \(d=\sqrt{\sum_k (x_{i,k}-x_{\mathrm{obs},k})^2}\); \(\varepsilon_\mathrm{eff}\) <em>grows</em> with \(n_\mathrm{balls}\). The reference (red) is the same in both cases: it depends only on \(\bar x_\mathrm{obs}\).
+    Toggle <strong>off</strong>: distance is the max over the raw landing vector, \(d=\max_k |x_{i,k}-x_{\mathrm{obs},k}|\); \(\varepsilon_\mathrm{eff}\) grows slowly (\(\propto \sigma\sqrt{\ln n_\mathrm{balls}}\)). The reference (red) is the same in both cases: it depends only on \(\bar x_\mathrm{obs}\).
   </p>
 </section>
 
@@ -281,12 +295,11 @@
   <ul style="font-size:1.0em; line-height:1.7;">
     <li class="fragment">Variance of the summary scales as \(\sigma^2/n_\mathrm{balls}\). The effective acceptance radius \(\varepsilon_\mathrm{eff}\) shrinks at fixed \(M/N\).</li>
     <li class="fragment">At the same simulator budget (counting each ball as one call), <strong>a well-chosen summary buys orders of magnitude</strong> in sample efficiency.</li>
-    <li class="fragment">The posterior <em>sharpens past the truth</em> as \(n_\mathrm{balls}\) grows, because the data are more informative. This is correct, not a bug.</li>
   </ul>
   <div class="box box-orange fragment" style="margin-top:10px;">
     <strong>Open question (the one that does not go away).</strong>
     Here we chose the summary by hand: "take the mean." Easy, because the simulator is one-dimensional and we know what is informative.
-    <p style="margin:6px 0 0 0;">When \(x\) is a 256&times;256 image, a waveform, a sky map, a graph &mdash; <em>which</em> function of \(x\) should we condition on? Hand-engineered summaries are how classical SBI dies.</p>
+    <p style="margin:6px 0 0 0;">When \(x\) is a 256&times;256 image, a waveform, a sky map, a graph &mdash; <em>which</em> function of \(x\) should we condition on? Hand-engineered summaries are difficult to obtain; that's how classical SBI died in practice.</p>
   </div>
   <p style="font-size:0.85em; color:#7f8c8d; margin-top:6px;">Fearnhead &amp; Prangle 2012 (semi-automatic summaries); Joyce &amp; Marjoram 2008 (sufficiency in ABC); Chen et al. 2023 (review of neural summaries).</p>
 </section>
@@ -327,7 +340,6 @@
   <div class="box box-green fragment" style="margin-top:8px;">
     <strong>Conceptually:</strong> we are <em>modelling the joint density</em> \(p(\theta, x)\) on the simulation cloud, then conditioning at \(x_\mathrm{obs}\). Bayes' theorem on a density model. This is the seed idea of every neural-SBI method that follows: replace ABC's accept/reject by a learned density.
   </div>
-  <p class="fragment" style="margin-top:8px;">So why is this not the end of the school? &mdash; first one more comparison.</p>
   <p style="font-size:0.85em; color:#7f8c8d; margin-top:6px;">Blum 2010, "Approximate Bayesian Computation: a nonparametric perspective," JASA 105; Silverman 1986 (KDE).</p>
 </section>
 
@@ -475,6 +487,17 @@ document.querySelectorAll('.reveal .slides > section').forEach(function(slide) {
   slide.appendChild(footer);
 });
 
+// MathJax3 typesets all slides at page load using whatever container
+// dimensions exist at that moment. Slides that weren't visible initialise
+// with wrong/zero dimensions, and glyph positions cached then come out
+// clipped when the slide is later shown. Force a re-typeset of the
+// becoming-current slide on every navigation.
+Reveal.on('slidechanged', function(e) {
+  if (window.MathJax && window.MathJax.typesetPromise) {
+    window.MathJax.typesetPromise([e.currentSlide]).catch(function(){});
+  }
+});
+
 const LAY_BASE = {
   paper_bgcolor:'rgba(0,0,0,0)', plot_bgcolor:'rgba(0,0,0,0)',
   font:{size:13}, margin:{t:30, r:20, b:40, l:55},
@@ -593,10 +616,52 @@ function trajectory(theta, nPts) {
 
 // ============================================================
 // SLIDE 2 — Cannon visualisation
+// Probability model:  v ~ N(10, 1^2);  theta ~ U(5°, 85°);
+//                     x | v,theta ~ N((v^2/g) sin(2theta), 0.5^2)
+// Two resample buttons:
+//  - "v & noise":     resample v and epsilon, keep theta_true and slider
+//  - "everything":    resample v, theta and epsilon; jump slider to theta_true
 // ============================================================
 (function(){
-  const xRange = [-0.5, RMAX+1.0];
-  const yMax = Math.pow(V0,2)/(2*GVAL) + 0.3;  // max height at theta=pi/2
+  const V_MEAN = 10.0, V_STD = 0.2, NOISE_STD = 0.5;
+  const TH_MIN = 5*Math.PI/180, TH_MAX = 85*Math.PI/180;
+  // Plot bounds sized for v up to ~ mean + 3 sigma
+  const V_HI = V_MEAN + 3*V_STD;
+  const xRange = [-0.5, (V_HI*V_HI)/GVAL + 1.0];
+  const yMax  = (V_HI*V_HI)/(2*GVAL) + 0.3;
+
+  const rng = createRNG(7);
+  let v_true, theta_true, eps, x_obs;
+
+  function trajV(theta, v, nPts) {
+    const vx = v*Math.cos(theta), vy = v*Math.sin(theta);
+    const tLand = 2*vy/GVAL;
+    const xs = new Array(nPts), ys = new Array(nPts);
+    for (let i=0;i<nPts;i++) {
+      const t = tLand*i/(nPts-1);
+      xs[i] = vx*t;
+      ys[i] = vy*t - 0.5*GVAL*t*t;
+    }
+    return {xs, ys, tLand, xLand: vx*tLand};
+  }
+
+  function sampleVnoise() {
+    // resample v and the measurement noise; recompute x_obs at current theta_true
+    v_true = V_MEAN + V_STD*gaussN(rng);
+    eps    = NOISE_STD*gaussN(rng);
+    x_obs  = (v_true*v_true/GVAL)*Math.sin(2*theta_true) + eps;
+  }
+  function sampleAll() {
+    theta_true = TH_MIN + (TH_MAX - TH_MIN)*rng();
+    sampleVnoise();
+    const slider = document.getElementById('cannon-th');
+    if (slider) slider.value = theta_true.toFixed(3);
+  }
+
+  // initial state — pick a θ that shows bimodality clearly
+  theta_true = 0.60;
+  sampleVnoise();
+
   function draw() {
     const slider = document.getElementById('cannon-th');
     if (!slider) return;
@@ -604,55 +669,43 @@ function trajectory(theta, nPts) {
     const thetaSib = Math.PI/2 - theta;
     document.getElementById('cannon-th-val').textContent = theta.toFixed(2);
     document.getElementById('cannon-deg-val').textContent = Math.round(theta*180/Math.PI);
-    const traj1 = trajectory(theta, 80);
-    const traj2 = trajectory(thetaSib, 80);
 
-    // Faded ghost trajectories at preset angles
+    const traj1 = trajV(theta,    v_true, 80);
+    const traj2 = trajV(thetaSib, v_true, 80);
+
+    // Faded ghost trajectories at preset angles, drawn at v_mean
     const ghostAngles = [0.25, 0.5, 0.75, 1.0, 1.3];
     const ghostTraces = ghostAngles.map(a => {
-      const t = trajectory(a, 50);
+      const t = trajV(a, V_MEAN, 50);
       return { x:t.xs, y:t.ys, mode:'lines', name:'',
         line:{color:'rgba(127,140,141,0.18)', width:1}, hoverinfo:'skip', showlegend:false };
     });
 
-    const xLand = traj1.xLand;
-    // Noise band on landing: ±2σ
-    const noiseBand = {
-      x:[xLand-2*SIGMA, xLand+2*SIGMA, xLand+2*SIGMA, xLand-2*SIGMA, xLand-2*SIGMA],
-      y:[-0.3, -0.3, 0.3, 0.3, -0.3],
-      mode:'lines', fill:'toself', fillcolor:'rgba(192,57,43,0.18)',
-      line:{width:0}, name:'measurement ±2σ', hoverinfo:'skip'
-    };
-    // Sibling angle ghost (highlighted faintly to show bimodality)
     const sibTrace = {
       x:traj2.xs, y:traj2.ys, mode:'lines',
-      name:'θ\' = π/2 − θ (same landing!)',
+      name:'θ\' = π/2 − θ',
       line:{color:'rgba(142,68,173,0.55)', width:2, dash:'dot'}
     };
-    // Bold trajectory at slider angle
     const mainTrace = {
       x:traj1.xs, y:traj1.ys, mode:'lines',
-      name:'θ = '+theta.toFixed(2)+' rad',
+      name:'θ = '+theta.toFixed(2)+' rad (v = '+v_true.toFixed(2)+' m/s)',
       line:{color:'#2980b9', width:3.5}
     };
-    // Cannon graphic at origin
     const cannon = {
       x:[0, 0.6*Math.cos(theta)], y:[0, 0.6*Math.sin(theta)],
       mode:'lines', line:{color:'#2c3e50', width:7},
       name:'cannon', hoverinfo:'skip', showlegend:false
     };
-    // Landing dot
-    const landDot = {
-      x:[xLand], y:[0], mode:'markers',
-      name:'landing x = '+xLand.toFixed(2)+' m',
-      marker:{size:11, color:'#c0392b', symbol:'circle', line:{color:'#900', width:1}}
+    // Observation: red cross on the ground
+    const obsCross = {
+      x:[x_obs], y:[0], mode:'markers',
+      name:'x_obs = '+x_obs.toFixed(2)+' m',
+      marker:{size:18, color:'#c0392b', symbol:'x-thin', line:{color:'#c0392b', width:4}}
     };
-    // Ground line
     const ground = {
       x:xRange, y:[0,0], mode:'lines',
       line:{color:'#34495e', width:1.2}, hoverinfo:'skip', showlegend:false
     };
-    // Angle arc + label
     const arcN = 24, arcR = 0.9;
     const arcX = [], arcY = [];
     for (let i=0;i<=arcN;i++){
@@ -665,8 +718,9 @@ function trajectory(theta, nPts) {
     };
 
     Plotly.react('cannon-plot', [
-      ground, ...ghostTraces, noiseBand, sibTrace, mainTrace, cannon, landDot, arc
+      ground, ...ghostTraces, sibTrace, mainTrace, cannon, obsCross, arc
     ], baseLayout({
+      autosize:true,
       margin:{t:20, r:15, b:36, l:48},
       xaxis:{title:'horizontal distance (m)', range:xRange, zeroline:false},
       yaxis:{title:'height (m)', range:[-0.6, yMax]},
@@ -674,52 +728,111 @@ function trajectory(theta, nPts) {
       annotations:[
         {x:1.3, y:0.4, text:'θ', showarrow:false, font:{size:14, color:'#2c3e50'}}
       ]
-    }), {displayModeBar:false});
+    }), {displayModeBar:false, responsive:true});
+    Plotly.Plots.resize('cannon-plot');
   }
+
   document.getElementById('cannon-th').addEventListener('input', draw);
+  document.getElementById('cannon-resample-noise').onclick = function(){ sampleVnoise(); draw(); };
+  document.getElementById('cannon-resample-all').onclick   = function(){ sampleAll();    draw(); };
+
   function init(e){ if (e.currentSlide.querySelector('#cannon-plot')) draw(); }
   Reveal.on('slidechanged', init); Reveal.on('ready', init);
 })();
 
 // ============================================================
-// SLIDE 3 — Simulator equations + reference posterior
+// SLIDE 3 — Forward model: simulator vs likelihood
+// Left:  1000-sample scatter of (θ, x) from the joint p(θ,v,x).
+// Right: marginal likelihood p(x_obs | θ) at a fixed x_obs,
+//        obtained by trapezoidal integration over v.
 // ============================================================
 (function(){
-  function draw(e) {
-    if (!e.currentSlide.querySelector('#sim-forward')) return;
-    const xs = THETA_GRID;
-    const rline = xs.map(rangeMean);
-    const upper = rline.map(v=>v+SIGMA), lower = rline.map(v=>v-SIGMA);
-    Plotly.react('sim-forward', [
-      { x:xs.concat(xs.slice().reverse()),
-        y:upper.concat(lower.slice().reverse()),
-        fill:'toself', fillcolor:'rgba(41,128,185,0.15)', line:{width:0},
-        name:'r(θ) ± σ', hoverinfo:'skip' },
-      { x:xs, y:rline, mode:'lines', name:'r(θ)', line:{color:'#2980b9', width:2.5} },
-      { x:[PRIOR_LO, PRIOR_HI], y:[X_OBS, X_OBS], mode:'lines', name:'x_obs',
-        line:{color:'#2c3e50', dash:'dash', width:1.5} }
+  const V_MEAN = 10.0, V_STD = 0.2, NOISE_STD = 0.5;
+  const TH_MIN = 5*Math.PI/180, TH_MAX = 85*Math.PI/180;
+  const NSIM = 1000;
+  const X_OBS_5 = 9.0;  // fixed observation for this slide
+  let seed = 31;
+
+  function muVT(v, theta) { return (v*v/GVAL) * Math.sin(2*theta); }
+
+  function sampleScatter() {
+    const rng = createRNG(seed);
+    const th = new Array(NSIM), xs = new Array(NSIM);
+    for (let i=0;i<NSIM;i++) {
+      th[i] = TH_MIN + (TH_MAX - TH_MIN)*rng();
+      const v = V_MEAN + V_STD*gaussN(rng);
+      const eps = NOISE_STD*gaussN(rng);
+      xs[i] = muVT(v, th[i]) + eps;
+    }
+    return {th, xs};
+  }
+
+  // Marginal likelihood p(x_obs | θ) = ∫ N(x_obs; μ(v,θ), σ²) N(v; μ_v, σ_v²) dv
+  // Trapezoidal on v in [μ_v - 5σ_v, μ_v + 5σ_v].
+  const NV = 121;
+  const V_LO = V_MEAN - 5*V_STD, V_HI = V_MEAN + 5*V_STD;
+  const DV = (V_HI - V_LO)/(NV - 1);
+  function pXgivenTheta(xObs, theta) {
+    let p = 0;
+    for (let i=0;i<NV;i++) {
+      const v = V_LO + i*DV;
+      const mu = muVT(v, theta);
+      const pX = Math.exp(-0.5*Math.pow((xObs - mu)/NOISE_STD, 2)) / (NOISE_STD*Math.sqrt(2*Math.PI));
+      const pV = Math.exp(-0.5*Math.pow((v - V_MEAN)/V_STD, 2)) / (V_STD*Math.sqrt(2*Math.PI));
+      const w  = (i===0 || i===NV-1) ? 0.5 : 1.0;
+      p += w * pX * pV;
+    }
+    return p * DV;
+  }
+
+  // θ grid for the likelihood curve
+  const NTH = 401;
+  const THG = new Array(NTH);
+  for (let i=0;i<NTH;i++) THG[i] = TH_MIN + (TH_MAX - TH_MIN)*i/(NTH-1);
+
+  function drawScatter() {
+    const s = sampleScatter();
+    Plotly.react('fwd-scatter', [
+      { x:s.th, y:s.xs, mode:'markers',
+        name:'sims', marker:{size:3.2, color:'rgba(39,174,96,0.55)'} },
+      { x:[TH_MIN, TH_MAX], y:[X_OBS_5, X_OBS_5], mode:'lines',
+        name:'x_obs = '+X_OBS_5.toFixed(2)+' m',
+        line:{color:'#c0392b', dash:'dash', width:1.5} }
     ], baseLayout({
-      title:{text:'Forward model', font:{size:12, color:'#2c3e50'}, x:0.02, xanchor:'left'},
-      margin:{t:24, r:12, b:34, l:46},
-      xaxis:{title:'θ (rad)', range:[PRIOR_LO, PRIOR_HI]},
-      yaxis:{title:'x (m)'},
-      showlegend:false
+      title:{text:'1000 simulations of (θ, x)', font:{size:12, color:'#2c3e50'}, x:0.02, xanchor:'left'},
+      margin:{t:24, r:10, b:36, l:46},
+      xaxis:{title:'θ (rad)', range:[TH_MIN, TH_MAX]},
+      yaxis:{title:'x (m)', range:[-0.5, 11.5]},
+      legend:{x:0.02, y:0.98, font:{size:10}, bgcolor:'rgba(255,255,255,0.7)'}
     }), {displayModeBar:false});
-    const ymax = Math.max.apply(null, REF_POST_1)*1.15;
-    Plotly.react('sim-post', [
-      { x:THETA_GRID, y:REF_POST_1, mode:'lines', name:'p(θ|x_obs)',
-        line:{color:'#c0392b', width:3}, fill:'tozeroy', fillcolor:'rgba(192,57,43,0.1)' },
-      { x:[THETA_TRUE, THETA_TRUE], y:[0, ymax],
-        mode:'lines', name:'θ_true',
-        line:{color:'#2c3e50', dash:'dash', width:1.2} }
+  }
+
+  function drawLikelihood() {
+    const lik = THG.map(th => pXgivenTheta(X_OBS_5, th));
+    const ymax = Math.max.apply(null, lik) * 1.15;
+    Plotly.react('lik-plot', [
+      { x:THG, y:lik, mode:'lines', name:'p(x_obs | θ)',
+        line:{color:'#2980b9', width:3}, fill:'tozeroy', fillcolor:'rgba(41,128,185,0.12)' }
     ], baseLayout({
-      title:{text:'Reference posterior (bimodal)', font:{size:12, color:'#2c3e50'}, x:0.02, xanchor:'left'},
-      margin:{t:24, r:12, b:34, l:46},
-      xaxis:{title:'θ (rad)', range:[PRIOR_LO, PRIOR_HI]},
-      yaxis:{title:'p(θ|x_obs)', rangemode:'tozero'},
+      title:{text:'p(x_obs | θ) at x_obs = '+X_OBS_5.toFixed(2)+' m', font:{size:12, color:'#2c3e50'}, x:0.02, xanchor:'left'},
+      margin:{t:24, r:10, b:36, l:46},
+      xaxis:{title:'θ (rad)', range:[TH_MIN, TH_MAX]},
+      yaxis:{title:'likelihood', rangemode:'tozero', range:[0, ymax]},
       showlegend:false
     }), {displayModeBar:false});
   }
+
+  function draw(e) {
+    if (!e.currentSlide.querySelector('#fwd-scatter')) return;
+    drawScatter();
+    drawLikelihood();
+  }
+
+  document.getElementById('fwd-resample').onclick = function() {
+    seed = (seed*1664525 + 1013904223) | 0;
+    drawScatter();
+  };
+
   Reveal.on('slidechanged', draw); Reveal.on('ready', draw);
 })();
 
@@ -792,69 +905,80 @@ function trajectory(theta, nPts) {
 })();
 
 // ============================================================
-// SLIDE 7 — Multiple throws per theta (visualisation)
+// SLIDE 7 — n=5 throws at one fixed θ
+// Each throw uses its own v_k ~ N(μ_v, σ_v²) and ε_k ~ N(0, σ_obs²).
+// Show 5 trajectories + 5 red-cross landings + the summary mean s.
 // ============================================================
 (function(){
+  const V_MEAN_7 = 10.0, V_STD_7 = 0.2, NOISE_STD_7 = 0.5;
+  const N_THROWS = 5;
+  const V_HI_7 = V_MEAN_7 + 3*V_STD_7;
+  const xRange = [-0.5, (V_HI_7*V_HI_7)/GVAL + 1.0];
+  const yMax  = (V_HI_7*V_HI_7)/(2*GVAL) + 0.3;
   let seed = 99;
-  const xRange = [-0.5, RMAX+1.0];
-  const yMax = Math.pow(V0,2)/(2*GVAL) + 0.3;
+
+  function trajV(theta, v, nPts) {
+    const vx = v*Math.cos(theta), vy = v*Math.sin(theta);
+    const tLand = 2*vy/GVAL;
+    const xs = new Array(nPts), ys = new Array(nPts);
+    for (let i=0;i<nPts;i++) {
+      const t = tLand*i/(nPts-1);
+      xs[i] = vx*t;
+      ys[i] = vy*t - 0.5*GVAL*t*t;
+    }
+    return {xs, ys, xLand: vx*tLand};
+  }
+
   function draw() {
     const theta = parseFloat(document.getElementById('multi-th').value);
-    const nb    = parseInt(document.getElementById('multi-nb').value);
     document.getElementById('multi-th-val').textContent = theta.toFixed(2);
-    document.getElementById('multi-nb-val').textContent = nb;
 
-    const traj = trajectory(theta, 60);
-    const meanX = traj.xLand;
-    // n_balls noisy landings
     const rng = createRNG(seed);
-    const landings = new Array(nb);
-    for (let i=0;i<nb;i++) landings[i] = meanX + SIGMA*gaussN(rng);
-    const summary = landings.reduce((a,b)=>a+b, 0) / nb;
+    const trajs = [], landings = [];
+    for (let k=0; k<N_THROWS; k++) {
+      const v_k = V_MEAN_7 + V_STD_7*gaussN(rng);
+      const eps_k = NOISE_STD_7*gaussN(rng);
+      const t = trajV(theta, v_k, 60);
+      trajs.push(t);
+      landings.push(t.xLand + eps_k);
+    }
+    const summary = landings.reduce((a,b)=>a+b, 0) / N_THROWS;
 
-    // Top plot: trajectory + scattered landing dots
-    Plotly.react('multi-traj', [
+    // Build traces: ground, 5 trajectories, 5 red-cross landings, summary marker
+    const traces = [
       { x:xRange, y:[0,0], mode:'lines',
-        line:{color:'#34495e', width:1.2}, hoverinfo:'skip', showlegend:false },
-      { x:traj.xs, y:traj.ys, mode:'lines', name:'trajectory (θ='+theta.toFixed(2)+')',
-        line:{color:'#2980b9', width:2.5} },
-      { x:landings, y:new Array(nb).fill(-0.20), mode:'markers',
-        name:'landings (n='+nb+')',
-        marker:{size:8, color:'rgba(192,57,43,0.7)', symbol:'circle', line:{color:'#900', width:0.5}} },
-      { x:[summary], y:[-0.55], mode:'markers',
-        name:'summary (mean) s = '+summary.toFixed(2)+' m',
-        marker:{size:14, color:'#1a3a6e', symbol:'triangle-up'} }
-    ], baseLayout({
-      title:{text:'Trajectory and '+nb+' noisy landings', font:{size:12, color:'#2c3e50'}, x:0.02, xanchor:'left'},
+        line:{color:'#34495e', width:1.2}, hoverinfo:'skip', showlegend:false }
+    ];
+    for (let k=0; k<N_THROWS; k++) {
+      traces.push({
+        x:trajs[k].xs, y:trajs[k].ys, mode:'lines',
+        name: k===0 ? (N_THROWS+' trajectories (θ='+theta.toFixed(2)+')') : '',
+        showlegend: k===0,
+        line:{color:'rgba(41,128,185,0.7)', width:2}
+      });
+    }
+    traces.push({
+      x:landings, y:new Array(N_THROWS).fill(0), mode:'markers',
+      name:'landings x_k',
+      marker:{size:14, color:'#c0392b', symbol:'x-thin', line:{color:'#c0392b', width:3}}
+    });
+    traces.push({
+      x:[summary], y:[-0.55], mode:'markers',
+      name:'summary  s = '+summary.toFixed(2)+' m',
+      marker:{size:14, color:'#2c3e50', symbol:'triangle-up'}
+    });
+
+    Plotly.react('multi-traj', traces, baseLayout({
+      autosize:true,
+      title:{text:N_THROWS+' throws at the same θ', font:{size:12, color:'#2c3e50'}, x:0.02, xanchor:'left'},
       margin:{t:22, r:12, b:34, l:46},
-      xaxis:{title:'x (m)', range:xRange},
+      xaxis:{title:'horizontal distance (m)', range:xRange},
       yaxis:{title:'height (m)', range:[-0.9, yMax]},
       legend:{x:0.02, y:0.98, font:{size:11}, bgcolor:'rgba(255,255,255,0.6)'}
-    }), {displayModeBar:false});
-
-    // Bottom plot: histogram of landings + true mean
-    const sigmaSummary = SIGMA / Math.sqrt(nb);
-    Plotly.react('multi-hist', [
-      { x: landings, type:'histogram',
-        histnorm:'probability density', autobinx:false,
-        xbins:{start:meanX-4*SIGMA, end:meanX+4*SIGMA, size:8*SIGMA/30},
-        marker:{color:'rgba(192,57,43,0.45)', line:{color:'#900', width:0.3}},
-        name:'landings' },
-      { x:[meanX, meanX], y:[0, 4/SIGMA], mode:'lines',
-        name:'r(θ) (true mean)', line:{color:'#2c3e50', dash:'dash', width:1.4} },
-      { x:[summary, summary], y:[0, 4/SIGMA], mode:'lines',
-        name:'sample mean s', line:{color:'#1a3a6e', width:2} }
-    ], baseLayout({
-      title:{text:'Landings — distribution centred on r(θ), width σ; mean has width σ/√n = '+sigmaSummary.toFixed(3),
-             font:{size:11, color:'#2c3e50'}, x:0.02, xanchor:'left'},
-      margin:{t:22, r:12, b:34, l:46},
-      xaxis:{title:'x (m)', range:[meanX-4*SIGMA, meanX+4*SIGMA]},
-      yaxis:{title:'density', rangemode:'tozero'},
-      legend:{x:0.02, y:0.98, font:{size:11}, bgcolor:'rgba(255,255,255,0.6)'}
-    }), {displayModeBar:false});
+    }), {displayModeBar:false, responsive:true});
+    Plotly.Plots.resize('multi-traj');
   }
   document.getElementById('multi-th').addEventListener('input', draw);
-  document.getElementById('multi-nb').addEventListener('input', draw);
   document.getElementById('multi-resample').onclick = function() {
     seed = (seed*1664525 + 1013904223) | 0; draw();
   };
@@ -898,11 +1022,15 @@ function trajectory(theta, nPts) {
     if (useSummary) {
       for (let i=0;i<N;i++) dists[i] = Math.abs(sim.xbar[i] - xObsBar);
     } else {
+      // L∞ (max) distance over the full landing vector
       for (let i=0;i<N;i++) {
-        let s = 0;
+        let m = 0;
         const vec = sim.x[i];
-        for (let k=0;k<nb;k++) { const d = vec[k]-xObsVec[k]; s += d*d; }
-        dists[i] = Math.sqrt(s);
+        for (let k=0;k<nb;k++) {
+          const d = Math.abs(vec[k]-xObsVec[k]);
+          if (d > m) m = d;
+        }
+        dists[i] = m;
       }
     }
     const idx = new Array(N); for (let i=0;i<N;i++) idx[i] = i;
@@ -924,7 +1052,7 @@ function trajectory(theta, nPts) {
 
     const label = useSummary
       ? 'with summary s = x̄    (ε_eff = '+epsEff.toFixed(3)+' m)'
-      : 'no summary, L² distance (ε_eff = '+epsEff.toFixed(3)+' m, grows with n)';
+      : 'no summary, max distance  (ε_eff = '+epsEff.toFixed(3)+' m, grows with n)';
     const color = useSummary ? 'rgba(39,174,96,0.55)' : 'rgba(127,140,141,0.55)';
     const edge  = useSummary ? '#1e7e3f' : '#666';
 
