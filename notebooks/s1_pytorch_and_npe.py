@@ -197,10 +197,8 @@ plt.show()
 # same five-step loop.
 
 
-# %% [markdown]
-# <details><summary>Reference solution</summary>
-
 # %%
+# @title Reference solution { display-mode: "form" }
 y_train_2 = torch.cos(2 * x_train)
 model_2 = TinyMLP(in_dim=1, hidden=32, out_dim=1)
 opt_2 = optim.Adam(model_2.parameters(), lr=1e-3)
@@ -216,9 +214,6 @@ with torch.no_grad():
              "C1--", label="MLP fit")
     plt.legend(); plt.xlabel("x"); plt.ylabel("y"); plt.title(r"$y=\cos(2x)$ fit")
     plt.tight_layout(); plt.show()
-
-# %% [markdown]
-# </details>
 
 # %% [markdown]
 # ---
@@ -333,10 +328,8 @@ class GaussianHead(nn.Module):
         raise NotImplementedError("implement GaussianHead.forward")
 
 
-# %% [markdown]
-# <details><summary>Reference solution</summary>
-
 # %%
+# @title Reference solution { display-mode: "form" }
 class GaussianHead(nn.Module):  # noqa: F811
     def __init__(self, in_dim=1, hidden=64):
         super().__init__()
@@ -357,8 +350,6 @@ class GaussianHead(nn.Module):  # noqa: F811
 
 
 # %% [markdown]
-# </details>
-#
 # ### 2.4 — Gaussian negative log-likelihood
 #
 # **Exercise 2.B.** Implement the per-sample Gaussian NLL,
@@ -376,18 +367,14 @@ def gaussian_nll(theta, mu, log_var):
     raise NotImplementedError("implement gaussian_nll")
 
 
-# %% [markdown]
-# <details><summary>Reference solution</summary>
-
 # %%
+# @title Reference solution { display-mode: "form" }
 def gaussian_nll(theta, mu, log_var):  # noqa: F811
     var = torch.exp(log_var)
     return 0.5 * (((theta - mu) ** 2) / var + log_var).mean()
 
 
 # %% [markdown]
-# </details>
-#
 # ### 2.5 — Train the model
 #
 # Same five-step loop you wrote in Block 1, now with the Gaussian NLL,
@@ -489,10 +476,8 @@ plt.tight_layout(); plt.show()
 # TODO — your code here.
 
 
-# %% [markdown]
-# <details><summary>Reference solution</summary>
-
 # %%
+# @title Reference solution { display-mode: "form" }
 fig, ax = plt.subplots(figsize=(5.5, 3))
 for theta_t, col in zip([0.30, 0.55, 0.72], ["C0", "C2", "C3"]):
     xo = float(sim.simulate_summary(np.array([theta_t]), n_balls=N_BALLS,
@@ -511,9 +496,6 @@ for theta_t, col in zip([0.30, 0.55, 0.72], ["C0", "C2", "C3"]):
 ax.set_xlabel(r"$\theta$"); ax.set_ylabel("density")
 ax.set_title("amortised Gaussian-head posteriors")
 ax.legend(); fig.tight_layout(); plt.show()
-
-# %% [markdown]
-# </details>
 
 # %% [markdown]
 # ### 2.7 — Prior dependence
