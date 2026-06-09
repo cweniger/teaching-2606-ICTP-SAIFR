@@ -16,38 +16,36 @@
     box-sizing: border-box;
     height: 700px !important;
   }
+  .reveal .slides section.stack {
+    background: none;
+    box-shadow: none;
+    padding: 0;
+    height: auto !important;
+  }
   .reveal { font-family: 'Inter', sans-serif; font-weight: 400; }
   .reveal h1, .reveal h2, .reveal h3 { color: #2c3e50; font-family: 'Space Grotesk', sans-serif; font-weight: 700; }
-  .reveal h1, .reveal h2, .reveal h3 { text-transform: none; }
   .reveal h2 { font-size: 1.2em; margin-bottom: 0.3em; text-align: left; }
   .reveal .subtitle { font-size: 0.6em; color: #7f8c8d; margin-top: 0.5em; }
-  .reveal section { font-size: 0.6em; }
+  .reveal section { font-size: 0.66em; }
+  .reveal section.stack { font-size: 1em; }
   .reveal p { margin: 0.3em 0; }
   .reveal ul { text-align: left; margin: 0.3em 0; }
   .reveal li { margin: 0.15em 0; }
-  .reveal .highlight { color: #1a3a6e; font-weight: bold; }
+  .reveal .highlight { color: #e74c3c; font-weight: bold; }
   .reveal .MathJax { font-size: 0.95em; }
-  /* MathJax3 writes an inline font-size (e.g. 123.4% on display math) on
-     mjx-container, which beats external CSS unless we use !important.
-     Without this, shrinking the body via .reveal section { font-size }
-     leaves equations the same size and they overflow narrow columns. */
-  .reveal mjx-container { font-size: 0.85em !important; }
-  .reveal mjx-container, .reveal mjx-container * { color: #8b1a1a !important; }
-  .reveal section p strong,
-  .reveal section li strong,
-  .reveal section td strong { color: #1a3a6e; }
   .reveal .box, .reveal .box-blue, .reveal .box-orange,
   .reveal .box-green, .reveal .box-purple {
-    background: #f4f6f8;
-    border-left: 4px solid #1a3a6e;
-    border-radius: 6px;
-    padding: 12px 16px;
-    margin: 10px 0;
-    text-align: left;
+    background: #ecf0f1; border-radius: 10px; padding: 12px 16px;
+    margin: 10px 0; text-align: left;
   }
-  .reveal .box-orange { border-left-color: #e67e22; }
-  .reveal .box-green  { border-left-color: #27ae60; }
-  .reveal .box-purple { border-left-color: #8e44ad; }
+  .reveal .box-blue   { border-left: 4px solid #2980b9; }
+  .reveal .box-orange { border-left: 4px solid #e67e22; }
+  .reveal .box-green  { border-left: 4px solid #27ae60; }
+  .reveal .box-purple { border-left: 4px solid #8e44ad; }
+  .sec-btn {
+    flex: 1; padding: 12px; border: 2px solid #ecf0f1; border-radius: 8px;
+    background: #f8f9fa; cursor: default; font-size: 1em; text-align: center;
+  }
   .slide-footer {
     position: absolute; bottom: 8px; left: 40px; right: 40px;
     font-size: 10px; color: #bdc3c7;
@@ -70,10 +68,50 @@
 <!-- ============================================================ -->
 <section>
   <h1 style="font-size:1.5em;">Machine Learning for<br>Astroparticle Physics</h1>
-  <p style="font-family:'Space Grotesk',sans-serif; font-size:0.85em; font-weight:500; color:#34495e; margin:6px 0 18px;">A Crash-Course in Simulation-Based Inference</p>
-  <h3>Lecture 1b: Classic ABC</h3>
-  <p class="subtitle">A running example, three live demos, and the bridge to neural SBI</p>
+  <h3>Lecture 1b: Classic Approximate Bayesian Computation (ABC)</h3>
+  <p class="subtitle">A Crash-Course in Simulation-Based Inference</p>
   <p class="subtitle">Christoph Weniger &mdash; University of Amsterdam (GRAPPA)</p>
+</section>
+
+<!-- ============================================================ -->
+<!-- ROADMAP                                                      -->
+<!-- ============================================================ -->
+<section>
+  <h2>Today's Roadmap</h2>
+  <div style="display:flex; gap:8px; margin-top:20px;">
+    <div class="box box-blue" style="flex:1; text-align:center;">
+      <strong style="color:#2980b9;">1</strong><br>
+      Rejection ABC<br><span style="font-size:0.85em;">The simulator loop, the &epsilon; tolerance, the sample-efficiency cliff</span>
+    </div>
+    <div style="align-self:center; font-size:1.4em; color:#bdc3c7;">&rarr;</div>
+    <div class="box box-orange" style="flex:1; text-align:center;">
+      <strong style="color:#e67e22;">2</strong><br>
+      Summary statistics<br><span style="font-size:0.85em;">Why a good summary buys orders of magnitude &mdash; and why we can't always pick one</span>
+    </div>
+    <div style="align-self:center; font-size:1.4em; color:#bdc3c7;">&rarr;</div>
+    <div class="box box-green" style="flex:1; text-align:center;">
+      <strong style="color:#27ae60;">3</strong><br>
+      KDE on the joint<br><span style="font-size:0.85em;">The &epsilon;&nbsp;&rarr;&nbsp;0 limit done right, and the seed of neural SBI</span>
+    </div>
+  </div>
+  <div class="box fragment" style="margin-top:25px; text-align:center; font-size:1.0em;">
+    <strong>The thread:</strong> one running example (a cannon ball), three demos that climb a staircase.<br>
+    Each step fixes the previous step's failure mode, and points at <strong style="color:#e74c3c;">where classical ABC dies</strong>.
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<!-- SECTION DIVIDER — Three demos on a ball throw                -->
+<!-- ============================================================ -->
+<section>
+  <div style="display:flex; align-items:center; justify-content:center; height:100%;">
+    <div style="text-align:center;">
+      <div style="width:200px; height:4px; background:linear-gradient(90deg,#2980b9,#e74c3c); margin:0 auto 25px;"></div>
+      <h1 style="font-size:2em; margin:0;">Three demos on a ball throw</h1>
+      <p style="font-size:1.1em; color:#7f8c8d; margin-top:15px;">From accept/reject, to summary statistics, to modelling the joint density.</p>
+      <div style="width:200px; height:4px; background:linear-gradient(90deg,#2980b9,#e74c3c); margin:25px auto 0;"></div>
+    </div>
+  </div>
 </section>
 
 <!-- ============================================================ -->
@@ -338,15 +376,70 @@
       <h3 style="margin-top:0; font-size:1.0em;">Where classical ABC dies, and where we go</h3>
       <div class="box box-orange" style="margin:6px 0; padding:8px 12px;">
         <strong>Hand-picked summaries don't scale</strong> when \(x\) is an image, a waveform, a graph.
-        <span style="color:#1a3a6e;">&rarr; Neural summary / embedding networks. <strong>Lecture 4.</strong></span>
+        <span style="color:#e74c3c;">&rarr; Neural summary / embedding networks. <strong>Lecture 4.</strong></span>
       </div>
       <div class="box box-purple" style="margin:6px 0; padding:8px 12px;">
         <strong>KDE on the joint dies in high D.</strong> A kernel cannot model \(p(\theta, x)\) when \(\dim\theta\) or \(\dim x\) is large.
-        <span style="color:#1a3a6e;">&rarr; Replace KDE by a <em>learned</em> conditional density \(q_\phi(\theta\mid x)\). <strong>Lectures 2&ndash;3.</strong></span>
+        <span style="color:#e74c3c;">&rarr; Replace KDE by a <em>learned</em> conditional density \(q_\phi(\theta\mid x)\). <strong>Lectures 2&ndash;3.</strong></span>
       </div>
       <p style="margin-top:10px; font-size:0.95em;">Classical ABC is the rejection-sampling skeleton of the whole field. Everything we add from here is a way to spend simulator calls more wisely.</p>
     </div>
   </div>
+</section>
+
+<!-- ============================================================ -->
+<!-- CLOSING — KEY TAKEAWAYS                                      -->
+<!-- ============================================================ -->
+<section>
+  <h2>Key Takeaways</h2>
+  <ul style="font-size:0.92em; line-height:1.6;">
+    <li class="fragment"><strong>Rejection ABC:</strong> the simplest likelihood-free loop &mdash; sample from the prior, run the simulator, keep what lands near \(x_\mathrm{obs}\). Correct in the limit \(\varepsilon\to 0\), but pays for it in wasted simulator calls.</li>
+    <li class="fragment"><strong>Summary statistics:</strong> a well-chosen \(s(x)\) shrinks \(\varepsilon_\mathrm{eff}\) for free and buys orders of magnitude in sample efficiency &mdash; provided we know what to summarise. Hand-engineered summaries are where classical ABC breaks down.</li>
+    <li class="fragment"><strong>KDE on \((\theta, x)\):</strong> stop filtering, start modelling the joint density. No \(\varepsilon\), every sim contributes, and the result is amortised &mdash; one cloud, any \(x_\mathrm{obs}\).</li>
+    <li class="fragment"><strong>The conceptual jump:</strong> from "accept/reject samples" to "fit a density on the simulator output". This is the seed idea of every neural-SBI method that follows.</li>
+  </ul>
+</section>
+
+<!-- ============================================================ -->
+<!-- CLOSING — SUMMARY & WHAT'S NEXT                              -->
+<!-- ============================================================ -->
+<section>
+  <h2>Summary &amp; What's Next</h2>
+  <div style="display:flex; gap:15px; font-size:0.9em;">
+    <div class="box" style="flex:1;">
+      <h3 style="margin-top:0; color:#2980b9;">Rejection ABC</h3>
+      <ul style="font-size:0.9em; line-height:1.5;">
+        <li>Prior &middot; simulator &middot; distance \(d\), tolerance \(\varepsilon\)</li>
+        <li>Top-\(M\) variant for live demos</li>
+        <li>The sample-efficiency cliff</li>
+      </ul>
+    </div>
+    <div class="box" style="flex:1;">
+      <h3 style="margin-top:0; color:#e67e22;">Summary statistics</h3>
+      <ul style="font-size:0.9em; line-height:1.5;">
+        <li>Many throws per \(\theta\), summary \(\bar x\)</li>
+        <li>\(\varepsilon_\mathrm{eff}\) shrinks as \(\sigma/\sqrt{n_\mathrm{balls}}\)</li>
+        <li>Raw \(L^2\) distance fails: curse of dimensionality</li>
+      </ul>
+    </div>
+    <div class="box" style="flex:1;">
+      <h3 style="margin-top:0; color:#27ae60;">KDE on the joint</h3>
+      <ul style="font-size:0.9em; line-height:1.5;">
+        <li>Weight every sim by \(K_{h_x}(x_\mathrm{obs}-x_i)\)</li>
+        <li>No \(\varepsilon\), uses all \(N\) sims</li>
+        <li>Amortised: pay once, query any \(x_\mathrm{obs}\)</li>
+      </ul>
+    </div>
+  </div>
+  <div class="box" style="text-align:center; margin-top:12px; padding:8px; font-size:0.85em;">
+    <strong>Key equations:</strong> &nbsp;
+    ABC: \(\theta_i\sim p(\theta),\ x_i\sim p(x\mid\theta_i),\ \text{keep if } d(x_i,x_\mathrm{obs})&lt;\varepsilon\) &nbsp;|&nbsp;
+    Summary: \(\mathrm{Var}(\bar x) = \sigma^2/n\) &nbsp;|&nbsp;
+    KDE: \(\hat p(\theta\mid x_\mathrm{obs}) \propto \sum_i K_{h_x}(x_\mathrm{obs}-x_i)\,K_{h_\theta}(\theta-\theta_i)\)
+  </div>
+  <p style="text-align:center; margin-top:10px; font-size:0.85em; color:#7f8c8d;">
+    Next: replace hand-picked summaries by <strong>neural embedding networks</strong>, and KDE on the joint by a <strong>learned conditional density</strong> \(q_\phi(\theta\mid x)\) &mdash; the path into neural SBI.
+  </p>
 </section>
 
 </div>
@@ -370,7 +463,7 @@ function createRNG(seed) {
 function gaussN(rng) { return Math.sqrt(-2*Math.log(rng()+1e-12))*Math.cos(2*Math.PI*rng()); }
 
 Reveal.initialize({
-  hash: true, center: false, transition: 'fade', slideNumber: true,
+  hash: true, center: false, transition: 'none', slideNumber: true,
   width: 1214, height: 700, margin: 0.04, minScale: 0.2, maxScale: 2.0,
   plugins: [ RevealMath.MathJax3 ]
 });
