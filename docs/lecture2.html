@@ -23,13 +23,16 @@
   .reveal h1, .reveal h2, .reveal h3 { text-transform: none; }
   .reveal h2 { font-size: 1.2em; margin-bottom: 0.3em; text-align: left; }
   .reveal .subtitle { font-size: 0.6em; color: #7f8c8d; margin-top: 0.5em; }
-  .reveal section { font-size: 0.66em; }
+  .reveal section { font-size: 0.56em; }
   .reveal p { margin: 0.3em 0; }
   .reveal ul { text-align: left; margin: 0.3em 0; }
   .reveal li { margin: 0.15em 0; }
   .reveal .highlight { color: #1a3a6e; font-weight: bold; }
   .reveal .MathJax { font-size: 0.95em; }
   /* Equations rendered by MathJax — dark red, consistently. */
+  /* MathJax3 font-size does not inherit from .reveal section; force it to
+     follow the body scale so equations stay in proportion. */
+  .reveal mjx-container { font-size: 0.85em !important; }
   .reveal mjx-container, .reveal mjx-container * { color: #8b1a1a !important; }
   /* Important keywords — dark blue, consistently. */
   .reveal section p strong,

@@ -29,7 +29,7 @@
   .reveal h1, .reveal h2, .reveal h3 { text-transform: none; }
   .reveal h2 { font-size: 1.2em; margin-bottom: 0.3em; text-align: left; }
   .reveal .subtitle { font-size: 0.6em; color: var(--muted); margin-top: 0.5em; }
-  .reveal section { font-size: 0.66em; }
+  .reveal section { font-size: 0.56em; }
   .reveal p { margin: 0.3em 0; }
   .reveal ul { text-align: left; margin: 0.3em 0; }
   .reveal li { margin: 0.15em 0; }
@@ -38,6 +38,9 @@
   .reveal .highlight { color: #e74c3c; font-weight: 700; }
   /* MathJax equations in dark red (both display and inline) */
   .reveal .MathJax, .reveal mjx-container, .reveal mjx-math { color: var(--eq) !important; }
+  /* MathJax3 font-size does not inherit from .reveal section; force it to
+     follow the body scale so equations stay in proportion. */
+  .reveal mjx-container { font-size: 0.85em !important; }
   /* single canonical box — matches lecture2_v2 .box + .box-blue */
   .reveal .box {
     background: #eaf2f8;

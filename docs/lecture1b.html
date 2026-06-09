@@ -21,12 +21,17 @@
   .reveal h1, .reveal h2, .reveal h3 { text-transform: none; }
   .reveal h2 { font-size: 1.2em; margin-bottom: 0.3em; text-align: left; }
   .reveal .subtitle { font-size: 0.6em; color: #7f8c8d; margin-top: 0.5em; }
-  .reveal section { font-size: 0.66em; }
+  .reveal section { font-size: 0.56em; }
   .reveal p { margin: 0.3em 0; }
   .reveal ul { text-align: left; margin: 0.3em 0; }
   .reveal li { margin: 0.15em 0; }
   .reveal .highlight { color: #1a3a6e; font-weight: bold; }
   .reveal .MathJax { font-size: 0.95em; }
+  /* MathJax3 writes an inline font-size (e.g. 123.4% on display math) on
+     mjx-container, which beats external CSS unless we use !important.
+     Without this, shrinking the body via .reveal section { font-size }
+     leaves equations the same size and they overflow narrow columns. */
+  .reveal mjx-container { font-size: 0.85em !important; }
   .reveal mjx-container, .reveal mjx-container * { color: #8b1a1a !important; }
   .reveal section p strong,
   .reveal section li strong,
