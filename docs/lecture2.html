@@ -369,27 +369,6 @@
   </div>
 </section>
 
-<!-- B9 — bridge slide -->
-<section>
-  <h2>The basis-function problem</h2>
-  <div style="display:flex; gap:30px; margin-top:14px;">
-    <div style="flex:1;">
-      <h3 style="margin-top:0;">Worked in 1D</h3>
-      <p>We could draw the data, eyeball the smoothness, and pick polynomials or RBFs.</p>
-    </div>
-    <div style="flex:1;">
-      <h3 style="margin-top:0;">Does not scale</h3>
-      <p>What is a good basis for a 1024-pixel image? A gravitational-wave strain time series? A galaxy spectrum?</p>
-    </div>
-  </div>
-  <p style="text-align:center; margin-top:18px; font-size:1.05em;">
-    In \(\mu(x) = \mathbf{w}^T\boldsymbol{\phi}(x)\), linear MLE solves the easy part &mdash; the weights. All of the modelling burden is on \(\boldsymbol{\phi}\).
-  </p>
-  <p class="fragment" style="text-align:center; margin-top:18px; font-size:1.2em;">
-    <strong>Can we learn the basis functions themselves?</strong>
-  </p>
-</section>
-
 <section>
   <div style="display:flex; align-items:center; justify-content:center; height:100%;">
     <div style="text-align:center;">
@@ -569,6 +548,101 @@
   <p style="text-align:center; font-size:0.8em; color:#7f8c8d; margin-top:2px;">
     <em>Grey: individual neurons \(w_j \cdot g(v_j x + b_j)\). Black: their sum. More neurons = more expressive.</em>
   </p>
+</section>
+
+<!-- No Closed-Form Solution (reframed: linear basis vs learnable basis) -->
+<section>
+  <h2>No Closed-Form Solution</h2>
+  <div style="display:flex; gap:20px; margin-top:12px;">
+    <div class="box" style="flex:1; border-left:4px solid #27ae60;">
+      <h3 style="margin-top:0; color:#27ae60;">Fixed basis (linear regression)</h3>
+      <p>\(\mu_\theta(x) = \mathbf{w}^T\boldsymbol{\phi}(x)\) with fixed \(\boldsymbol{\phi}\).</p>
+      <p>Loss is <strong>quadratic</strong> in \(\mathbf{w}\).</p>
+      <p>\(\nabla E = 0\) &rarr; closed form: \(\mathbf{w}_{\mathrm{ML}} = (\boldsymbol{\Phi}^T\boldsymbol{\Phi})^{-1}\boldsymbol{\Phi}^T\boldsymbol{\theta}\).</p>
+    </div>
+    <div class="box fragment" style="flex:1; border-left:4px solid #e74c3c;">
+      <h3 style="margin-top:0; color:#e74c3c;">Learnable basis (neural net)</h3>
+      <p>\(\mu_\theta(x) = \sum_j w_j\, g(\mathbf{v}_j^T x + b_j)\) with learnable \(\mathbf{v}_j, b_j\).</p>
+      <p>The nonlinearity \(g\) makes the loss <strong>nonlinear and non-convex</strong> in the parameters.</p>
+      <p>No closed form: \(\nabla E = 0\) gives a transcendental system, not a matrix equation.</p>
+    </div>
+  </div>
+  <p class="fragment" style="text-align:center; margin-top:20px; font-size:1.1em;">
+    When we cannot solve \(\nabla E = 0\) on paper, we need a <strong style="color:#e67e22;">numerical method</strong> to find the minimum of \(E(\mathbf{w})\). The default one is <strong>(stochastic) gradient descent</strong>.
+  </p>
+</section>
+
+<!-- Gradient Descent (interactive) -->
+<section>
+  <h2>Gradient Descent</h2>
+  <p>Start somewhere, then repeatedly step in the direction that <strong>decreases the loss</strong>:</p>
+  <div class="box" style="text-align:center; font-size:1.1em; padding:14px; margin-top:6px;">
+    \[ \mathbf{w} \;\leftarrow\; \mathbf{w} - \eta \,\nabla E(\mathbf{w}) \]
+  </div>
+  <p>\(\eta\) = <strong>learning rate</strong> &mdash; controls the step size.</p>
+  <div id="gd-narration" style="min-height:2em; margin-top:6px;">
+    <span style="color:#7f8c8d; font-size:0.9em;">Click <strong>Next &#9654;</strong> to see how the learning rate affects convergence.</span>
+  </div>
+  <div id="gd-plot" style="width:100%; height:260px;"></div>
+  <div style="display:flex; gap:12px; margin-top:4px; align-items:center;">
+    <button id="gd-story-next" style="padding:6px 24px; cursor:pointer; font-size:1.0em; font-weight:600;">Next &#9654;</button>
+    <button id="gd-story-replay" style="padding:6px 16px; cursor:pointer; font-size:0.9em;">&#8634; Replay</button>
+    <button id="gd-story-reset" style="padding:6px 16px; cursor:pointer; font-size:0.9em;">&#8634; Reset all</button>
+    <span id="gd-story-step" style="color:#7f8c8d; font-size:0.85em; margin-left:8px;"></span>
+  </div>
+</section>
+
+<!-- Illustration: Step Size and Curvature -->
+<section>
+  <h2>Illustration: Step Size and Curvature</h2>
+  <p>How large should \(\eta\) be? Consider a simplistic quadratic loss \(E(w) = \tfrac{1}{2}\,\kappa\,w^2\) with curvature \(\kappa = E''(w)\).</p>
+  <div class="box" style="margin-top:6px; padding:8px 12px;">
+    <p style="margin:0;">One GD step: \(w_{i+1} = w_i - \eta\,\kappa\,w_i = (1 - \eta\,\kappa)\,w_i\). &ensp; Converges instantly when:</p>
+    \[ \eta = \frac{1}{\kappa} = \frac{1}{E''(w)} \qquad \text{(ideal for this toy case)} \]
+  </div>
+  <div class="fragment" style="display:flex; gap:6px; margin-top:6px;">
+    <div id="curv-plot-small" style="flex:1; height:200px;"></div>
+    <div id="curv-plot-opt" style="flex:1; height:200px;"></div>
+    <div id="curv-plot-large" style="flex:1; height:200px;"></div>
+  </div>
+  <p class="fragment" style="margin-top:4px; font-size:0.9em;">
+    <strong>Practical challenges:</strong> the optimal step size is the inverse curvature of the loss, which is typically not known. In many dimensions, curvature differs per direction.
+  </p>
+</section>
+
+<!-- Mini-Batch SGD -->
+<section>
+  <h2>Mini-Batch Stochastic Gradient Descent (SGD)</h2>
+  <p>Computing the full gradient over all \(N\) samples is expensive. Instead, approximate it with a random <strong>mini-batch</strong> \(\mathcal{B}\) of size \(B \ll N\):</p>
+  <div class="box" style="text-align:center; font-size:1.0em; padding:10px; margin-top:8px;">
+    \[ \nabla E(\mathbf{w}) = \frac{1}{N}\sum_{n=1}^{N} \nabla E_n(\mathbf{w}) \;\approx\; \frac{1}{B}\sum_{n \in \mathcal{B}} \nabla E_n(\mathbf{w}) \]
+  </div>
+  <div class="fragment" style="margin-top:12px;">
+    <p>One full pass through the data = one <strong>epoch</strong>. &ensp; Typical batch sizes: \(B\) = 32&ndash;256.</p>
+    <p style="font-size:0.85em; color:#7f8c8d; margin-top:4px;">When people say "SGD" they almost always mean mini-batch SGD.</p>
+  </div>
+</section>
+
+<!-- SGD = True Gradient + Noise -->
+<section>
+  <h2>SGD = True Gradient + Noise</h2>
+  <p>The mini-batch gradient is a <strong>noisy estimate</strong> of the true gradient:</p>
+  <div class="box" style="text-align:center; padding:10px; margin-top:8px;">
+    \[ \underbrace{\frac{1}{B}\sum_{n \in \mathcal{B}} \nabla E_n}_{\text{mini-batch gradient}} = \underbrace{\nabla E(\mathbf{w})}_{\text{true gradient}} + \underbrace{\boldsymbol{\epsilon}}_{\text{noise}}, \qquad \mathrm{Var}(\boldsymbol{\epsilon}) = \frac{\sigma^2_{\nabla}}{B} \]
+    <p style="font-size:0.85em; color:#7f8c8d; margin:4px 0 0;">\(\sigma^2_{\nabla}\) = variance of individual sample gradients \(\nabla E_n\) across the dataset</p>
+  </div>
+  <div class="fragment" style="display:flex; gap:12px; margin-top:12px;">
+    <div class="box" style="flex:1; text-align:center;">
+      <strong style="color:#e67e22;">Large \(B\)</strong><br>
+      Low noise, precise gradient<br>
+      <span style="font-size:0.85em; color:#7f8c8d;">Expensive per step</span>
+    </div>
+    <div class="box" style="flex:1; text-align:center;">
+      <strong style="color:#e74c3c;">Small \(B\)</strong><br>
+      High noise, rough gradient<br>
+      <span style="font-size:0.85em; color:#7f8c8d;">Cheap per step, helps generalisation</span>
+    </div>
+  </div>
 </section>
 
 <!-- MLP in Action: Regression -->
@@ -799,245 +873,6 @@
   </ul>
 </section>
 
-<!-- ============================================================ -->
-<!-- end imported block                                            -->
-<!-- ============================================================ -->
-
-<!-- C10 — learnable building blocks -->
-<section>
-  <h2>Towards learnable building blocks</h2>
-  <p>Replace each fixed template by a <strong>parametric</strong> one:</p>
-  <div class="box" style="text-align:center;">
-    \[ \phi_j(x) \;=\; g\!\bigl(\mathbf{v}_j^T x + b_j\bigr) \]
-    <p style="font-size:0.9em; color:#7f8c8d; margin:4px 0 0;">\(g\) = nonlinear activation; \(\mathbf{v}_j, b_j\) are <strong>learnable</strong>.</p>
-  </div>
-  <div id="building-block-plot" style="width:100%; height:280px; margin-top:6px;"></div>
-  <div style="display:flex; gap:12px; align-items:center; margin-top:0; font-size:0.85em; justify-content:center;">
-    <label>Activation:
-      <select id="bb-act"><option value="relu" selected>ReLU</option><option value="sigmoid">Sigmoid</option><option value="tanh">Tanh</option></select>
-    </label>
-    <label>H = <span id="bb-h-val">5</span>
-      <input type="range" id="bb-h-slider" min="1" max="12" step="1" value="5" style="width:140px;">
-    </label>
-    <button id="bb-resample" style="padding:3px 12px; cursor:pointer;">⟳ Resample \(\mathbf{v},b\)</button>
-  </div>
-  <p style="text-align:center; font-size:0.8em; color:#7f8c8d;">Grey: individual \(\phi_j(x)\). Each one moves with \(\mathbf{v}_j, b_j\) &mdash; the basis is now a free parameter.</p>
-</section>
-
-<!-- C11 — neuron + activations -->
-<section>
-  <h2>The artificial neuron &amp; activations</h2>
-  <div style="display:flex; gap:16px; align-items:center; justify-content:center; margin-top:4px; font-size:0.88em;">
-    <div style="display:flex; flex-direction:column; align-items:center; gap:4px;">
-      <div style="background:#eaf2f8; border:2px solid #2980b9; border-radius:6px; padding:3px 12px;">\(x_1\)</div>
-      <div style="background:#eaf2f8; border:2px solid #2980b9; border-radius:6px; padding:3px 12px;">\(x_2\)</div>
-      <div style="color:#7f8c8d; font-size:1.1em;">\(\vdots\)</div>
-      <div style="background:#eaf2f8; border:2px solid #2980b9; border-radius:6px; padding:3px 12px;">\(x_d\)</div>
-    </div>
-    <div style="font-size:1.2em; color:#7f8c8d;">\(\xrightarrow{\,v_j\,}\)</div>
-    <div style="background:linear-gradient(135deg, #eafaf1, #d5f5e3); border:3px solid #27ae60; border-radius:50%; width:120px; height:120px; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center;">
-      <span>\(\mathbf{v}_j^T\mathbf{x} + b_j\)</span>
-      <span style="color:#27ae60;">\(\downarrow\)</span>
-      <span>\(g(\cdot)\)</span>
-    </div>
-    <div style="font-size:1.4em; color:#7f8c8d;">→</div>
-    <div style="background:#f5eef8; border:2px solid #8e44ad; border-radius:8px; padding:8px 14px;">
-      <strong>output</strong><br>\(\phi_j = g(\mathbf{v}_j^T\mathbf{x}+b_j)\)
-    </div>
-  </div>
-  <div id="activations-plot" style="width:100%; height:220px; margin-top:14px;"></div>
-  <p style="text-align:center; font-size:0.85em; color:#7f8c8d; margin-top:0;">
-    Sigmoid, tanh, ReLU, GELU. ReLU is the default; GELU appears in transformers.
-  </p>
-</section>
-
-<!-- C12 — one hidden layer = learnable phi -->
-<section>
-  <h2>One hidden layer = learnable \(\boldsymbol{\phi}\)</h2>
-  <p>Stack \(H\) neurons and let a linear head combine them:</p>
-  <div class="box" style="text-align:center; font-size:1.05em;">
-    \[ \mu(x;\mathbf{w},\mathbf{v},\mathbf{b}) \;=\; \sum_{j=1}^{H} w_j\,\underbrace{g(\mathbf{v}_j^T x + b_j)}_{\text{learnable }\phi_j(x)} + w_0 \]
-  </div>
-  <p style="margin-top:6px;">This is <strong>exactly</strong> the linear-basis model \(\mu_\theta(x) = \mathbf{w}^T\boldsymbol{\phi}(x)\) &mdash; only now \(\boldsymbol{\phi}\) has its own parameters that we will train jointly with \(\mathbf{w}\).</p>
-  <div class="fragment" style="display:flex; align-items:center; justify-content:center; gap:10px; margin-top:14px; font-size:0.9em;">
-    <div style="background:#eaf2f8; border:2px solid #2980b9; border-radius:8px; padding:10px 16px; text-align:center;">
-      <strong>Input</strong><br>\(x\)
-    </div>
-    <div style="font-size:1.4em; color:#7f8c8d;">→</div>
-    <div style="background:#eafaf1; border:2px solid #27ae60; border-radius:8px; padding:10px 16px; text-align:center;">
-      <strong>Hidden layer</strong><br>\(h_j = g(\mathbf{v}_j^T x + b_j)\)
-    </div>
-    <div style="font-size:1.4em; color:#7f8c8d;">→</div>
-    <div style="background:#f5eef8; border:2px solid #8e44ad; border-radius:8px; padding:10px 16px; text-align:center;">
-      <strong>Output head</strong><br>\(\mu(x)\), or later \(\mu,\sigma\)
-    </div>
-  </div>
-  <p class="fragment" style="text-align:center; margin-top:12px;">
-    Stack more hidden layers → <strong>multi-layer perceptron</strong> (MLP).
-  </p>
-</section>
-
-<!-- C13 — universal approximation -->
-<section>
-  <h2>Universal approximation &mdash; one line</h2>
-  <p style="text-align:center; font-size:1.1em; margin-top:14px;">
-    With enough neurons, a single hidden layer can approximate any continuous function on a compact domain to arbitrary precision.
-  </p>
-  <p style="text-align:center; color:#7f8c8d; font-size:0.9em;">Cybenko 1989, Hornik 1991.</p>
-  <ul style="font-size:1.0em; line-height:1.7; margin-top:18px;">
-    <li><strong>Why we care.</strong> Whatever \(\mu(x)\) we secretly need, the network can in principle express it. The basis is no longer the bottleneck.</li>
-    <li><strong>Why we still need engineering.</strong> The theorem says weights <em>exist</em>; it does not say SGD will <em>find</em> them. Depth and inductive bias matter in practice.</li>
-  </ul>
-  <p class="fragment" style="text-align:center; margin-top:20px; font-size:1.1em;">
-    No closed form for the weights any more &mdash; we need <strong>gradient descent</strong>.
-  </p>
-</section>
-
-<!-- C14 — Gradient descent + interactive -->
-<section>
-  <h2>Enter gradient descent</h2>
-  <div class="box" style="text-align:center; font-size:1.05em;">
-    \[ \mathbf{w} \;\leftarrow\; \mathbf{w} - \eta\,\nabla E(\mathbf{w}) \]
-    <p style="margin:4px 0 0; font-size:0.9em;">\(\eta\) = learning rate. Step downhill.</p>
-  </div>
-  <div style="display:flex; gap:14px; align-items:center; margin-top:6px; font-size:0.9em; justify-content:center;">
-    <label>\(\log_{10}\eta\) = <span id="gd-lr-val">-0.5</span>
-      <input type="range" id="gd-lr-slider" min="-2" max="0.5" step="0.05" value="-0.5" style="width:180px;">
-    </label>
-    <button id="gd-run" style="padding:4px 14px; cursor:pointer; font-weight:600;">▶ Run</button>
-    <button id="gd-reset" style="padding:4px 14px; cursor:pointer;">↺ Reset</button>
-  </div>
-  <div id="gd-plot" style="width:100%; height:340px; margin-top:4px;"></div>
-  <p style="text-align:center; font-size:0.8em; color:#7f8c8d; margin-top:0;">
-    Toy loss \(E(w) = \tfrac{1}{2}w^2 + 0.3\sin(3w)\). Small \(\eta\): crawls. Right \(\eta\): converges fast. Large \(\eta\): bounces or diverges.
-  </p>
-</section>
-
-<!-- C15 — GD pseudocode -->
-<section>
-  <h2>GD &mdash; details &amp; pseudocode</h2>
-  <ul>
-    <li>\(\nabla E(\mathbf{w})\) points in the direction of <strong>steepest increase</strong>. We step opposite.</li>
-    <li>Optimal \(\eta\) scales like \(1/E''(\mathbf{w})\) (inverse curvature). Anisotropic curvature is the practical headache.</li>
-    <li>Full-batch GD uses all \(N\) samples per step &mdash; expensive for large datasets.</li>
-  </ul>
-  <pre style="background:#2c3e50; color:#ecf0f1; padding:18px 22px; border-radius:10px; font-size:0.82em; line-height:1.55; text-align:left; margin-top:10px;"><code><span style="color:#7f8c8d;">// Given training data {(x_n, t_n)}, loss E, learning rate η</span>
-
-initialise w randomly
-
-for step = 1, 2, ... until converged:
-    <span style="color:#7f8c8d;">// Compute gradient over all N samples</span>
-    g ← (1/N) Σ_n ∇_w E_n(w)
-
-    <span style="color:#7f8c8d;">// Update</span>
-    w ← w − η · g</code></pre>
-</section>
-
-<!-- C16 — Mini-batch SGD -->
-<section>
-  <h2>Mini-batch SGD</h2>
-  <p>Computing the gradient over all \(N\) samples per step is wasteful. Use a random <strong>mini-batch</strong> \(\mathcal{B}\) of size \(B\ll N\):</p>
-  <div class="box" style="text-align:center;">
-    \[ \nabla E(\mathbf{w}) \;\approx\; \frac{1}{B}\sum_{n\in\mathcal{B}} \nabla E_n(\mathbf{w}) \]
-  </div>
-  <ul style="margin-top:16px; line-height:1.7;">
-    <li><strong>Large \(B\):</strong> precise gradient, expensive per step.</li>
-    <li><strong>Small \(B\):</strong> noisy gradient, cheap per step; the noise often helps generalisation.</li>
-    <li>One full sweep through the data = one <strong>epoch</strong>. Typical \(B \in [32, 256]\).</li>
-    <li>"SGD" almost always means "mini-batch SGD".</li>
-  </ul>
-</section>
-
-<!-- C17 — backprop -->
-<section>
-  <h2>Backprop &mdash; one slide</h2>
-  <div style="display:flex; gap:14px; align-items:center; margin-top:6px;">
-    <div style="flex:1.1; font-size:1.0em; line-height:1.7;">
-      <p>Backpropagation is just the <strong>chain rule, applied bottom-up on a computation graph</strong>. For each parameter \(w_\ell\) we want \(\partial E / \partial w_\ell\); we get it by sweeping local Jacobians backwards from the loss.</p>
-      <p>You do not have to write it. Modern libraries (PyTorch, JAX) build the graph as you call functions and differentiate it for you &mdash; this is <em>autograd</em>.</p>
-      <p style="color:#7f8c8d;">Practically: you write the forward pass, call <code>loss.backward()</code>, get gradients of every parameter. Cost ≈ 2&times; the forward pass.</p>
-    </div>
-    <div style="flex:0.9;">
-      <svg viewBox="0 0 320 240" style="width:100%; height:240px;">
-        <defs>
-          <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#2c3e50"/></marker>
-          <marker id="arrR" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#e74c3c"/></marker>
-        </defs>
-        <!-- nodes -->
-        <circle cx="40"  cy="60"  r="22" fill="#eaf2f8" stroke="#2980b9" stroke-width="2"/><text x="40" y="65" text-anchor="middle" font-size="13">x</text>
-        <circle cx="120" cy="60"  r="22" fill="#eafaf1" stroke="#27ae60" stroke-width="2"/><text x="120" y="65" text-anchor="middle" font-size="12">h₁</text>
-        <circle cx="200" cy="60"  r="22" fill="#eafaf1" stroke="#27ae60" stroke-width="2"/><text x="200" y="65" text-anchor="middle" font-size="12">h₂</text>
-        <circle cx="280" cy="60"  r="22" fill="#f5eef8" stroke="#8e44ad" stroke-width="2"/><text x="280" y="65" text-anchor="middle" font-size="12">μ</text>
-        <circle cx="280" cy="160" r="22" fill="#fadbd8" stroke="#e74c3c" stroke-width="2"/><text x="280" y="165" text-anchor="middle" font-size="12">E</text>
-        <!-- forward arrows (blue) -->
-        <line x1="62"  y1="60" x2="98"  y2="60" stroke="#2980b9" stroke-width="2" marker-end="url(#arr)"/>
-        <line x1="142" y1="60" x2="178" y2="60" stroke="#2980b9" stroke-width="2" marker-end="url(#arr)"/>
-        <line x1="222" y1="60" x2="258" y2="60" stroke="#2980b9" stroke-width="2" marker-end="url(#arr)"/>
-        <line x1="280" y1="82" x2="280" y2="138" stroke="#2980b9" stroke-width="2" marker-end="url(#arr)"/>
-        <!-- backward arrows (red) -->
-        <line x1="260" y1="155" x2="260" y2="80" stroke="#e74c3c" stroke-width="2" stroke-dasharray="4,3" marker-end="url(#arrR)"/>
-        <line x1="258" y1="50" x2="222" y2="50" stroke="#e74c3c" stroke-width="2" stroke-dasharray="4,3" marker-end="url(#arrR)"/>
-        <line x1="178" y1="50" x2="142" y2="50" stroke="#e74c3c" stroke-width="2" stroke-dasharray="4,3" marker-end="url(#arrR)"/>
-        <line x1="98"  y1="50" x2="62"  y2="50" stroke="#e74c3c" stroke-width="2" stroke-dasharray="4,3" marker-end="url(#arrR)"/>
-        <text x="160" y="120" font-size="11" fill="#2980b9">forward (values)</text>
-        <text x="160" y="40"  font-size="11" fill="#e74c3c">backward (gradients)</text>
-      </svg>
-    </div>
-  </div>
-</section>
-
-<!-- C18 — Adam + LR schedule -->
-<section>
-  <h2>Practical optimisers in one slide</h2>
-  <div style="display:flex; gap:30px; margin-top:14px;">
-    <div style="flex:1;">
-      <h3 style="margin-top:0;">Adam &mdash; the default optimiser</h3>
-      <ul>
-        <li>Keeps running averages of the gradient (\(m_t\)) and its square (\(v_t\)).</li>
-        <li>Effective per-parameter step \(\propto m_t/\sqrt{v_t}\): rescales each direction by its own curvature.</li>
-        <li>Robust default: \(\eta = 10^{-3}\), \(\beta_1=0.9\), \(\beta_2=0.999\).</li>
-      </ul>
-    </div>
-    <div style="flex:1;">
-      <h3 style="margin-top:0;">Learning-rate schedule</h3>
-      <ul>
-        <li>Decay \(\eta\) as training progresses (cosine, step, or linear warmup-then-decay).</li>
-        <li>Helps SGD settle into the minimum once you are close.</li>
-        <li>Cheap, large effect. Always worth tuning.</li>
-      </ul>
-    </div>
-  </div>
-  <p style="text-align:center; margin-top:16px; color:#7f8c8d;">
-    Plenty more (RMSProp, AdamW, Lion, SOAP, …). Adam + a sensible schedule is a strong default for everything in this school.
-  </p>
-</section>
-
-<!-- C19 — MLP regression demo -->
-<section>
-  <h2>MLP regression in action</h2>
-  <p style="margin-top:0;">Same 1D dataset as before, but \(\mu_\theta(x)\) is now an MLP fitted by SGD.</p>
-  <div style="display:flex; gap:12px; align-items:center; font-size:0.85em; flex-wrap:wrap;">
-    <label>Target:
-      <select id="mlpreg-target"><option value="sin" selected>sin(2πx)</option><option value="step">Step</option><option value="bump">Bump</option></select>
-    </label>
-    <label>Width H = <span id="mlpreg-h-val">12</span>
-      <input type="range" id="mlpreg-h-slider" min="2" max="40" step="1" value="12" style="width:120px;">
-    </label>
-    <label>\(\log_{10}\eta\) = <span id="mlpreg-lr-val">-1.0</span>
-      <input type="range" id="mlpreg-lr-slider" min="-3" max="0" step="0.1" value="-1.0" style="width:120px;">
-    </label>
-    <button id="mlpreg-train" style="padding:3px 14px; cursor:pointer; font-weight:600;">▶ Train</button>
-    <button id="mlpreg-reset" style="padding:3px 14px; cursor:pointer;">↺ Reset</button>
-    <span id="mlpreg-status" style="color:#7f8c8d;"></span>
-  </div>
-  <div style="display:flex; gap:10px;">
-    <div id="mlpreg-fit" style="flex:1; height:380px;"></div>
-    <div id="mlpreg-loss" style="flex:0 0 300px; height:380px;"></div>
-  </div>
-  <p style="text-align:center; font-size:0.8em; color:#7f8c8d; margin-top:0;">
-    The hidden layer learns its own basis. Watch ReLU "kinks" appear and align with the curve.
-  </p>
-</section>
 
 <section>
   <div style="display:flex; align-items:center; justify-content:center; height:100%;">
@@ -1588,229 +1423,6 @@ function baseLayout(opts={}) {
     ], baseLayout({xaxis:{title:'polynomial degree M'}, yaxis:{title:'RMSE', range:[0, 2]}, legend:{x:0.55,y:0.98}}), {displayModeBar:false});
   }
   Reveal.on('slidechanged', draw); Reveal.on('ready', draw);
-})();
-
-// ============================================================
-// Slide C10 — building block plot
-// ============================================================
-(function(){
-  let rng = createRNG(11);
-  let params = [];
-  function regen(H){ params = []; for (let j=0;j<H;j++) params.push({v: 4*rng()-2, b: 4*rng()-2, w: 2*rng()-1}); }
-  function actFn(name){ return name==='relu' ? x=>Math.max(0,x) : name==='tanh' ? x=>Math.tanh(x) : x=>1/(1+Math.exp(-x)); }
-  function draw(){
-    const H = parseInt(document.getElementById('bb-h-slider').value);
-    const name = document.getElementById('bb-act').value;
-    document.getElementById('bb-h-val').textContent = H;
-    if (params.length !== H) regen(H);
-    const g = actFn(name);
-    const xLine=[]; for(let x=-3;x<=3;x+=0.02) xLine.push(x);
-    const traces = [];
-    let sum = new Array(xLine.length).fill(0);
-    for (let j=0;j<H;j++){
-      const y = xLine.map(x => params[j].w * g(params[j].v*x + params[j].b));
-      for (let k=0;k<sum.length;k++) sum[k]+=y[k];
-      traces.push({ x:xLine, y, mode:'lines', line:{color:'rgba(127,140,141,0.55)', width:1.2}, showlegend:false, hoverinfo:'skip' });
-    }
-    traces.push({ x:xLine, y:sum, mode:'lines', line:{color:'#2c3e50', width:3}, name:'Σ wⱼ g(vⱼx+bⱼ)' });
-    Plotly.react('building-block-plot', traces, baseLayout({xaxis:{title:'x'}, yaxis:{title:'φⱼ(x)'}, legend:{x:0.02,y:0.98}}), {displayModeBar:false});
-  }
-  document.getElementById('bb-h-slider').addEventListener('input', draw);
-  document.getElementById('bb-act').addEventListener('change', draw);
-  document.getElementById('bb-resample').addEventListener('click', ()=>{ rng = createRNG(Math.floor(1e9*Math.random())); regen(parseInt(document.getElementById('bb-h-slider').value)); draw(); });
-  function init(e){ if (e.currentSlide.querySelector('#building-block-plot')) { if (params.length===0) regen(parseInt(document.getElementById('bb-h-slider').value)); draw(); } }
-  Reveal.on('slidechanged', init); Reveal.on('ready', init);
-})();
-
-// ============================================================
-// Slide C11 — activation zoo
-// ============================================================
-(function(){
-  function draw(e){
-    if (!e.currentSlide.querySelector('#activations-plot')) return;
-    const xLine=[]; for(let x=-4;x<=4;x+=0.02) xLine.push(x);
-    const acts = [
-      { name:'Sigmoid', y: xLine.map(x => 1/(1+Math.exp(-x))), color:'#2980b9' },
-      { name:'Tanh',    y: xLine.map(x => Math.tanh(x)), color:'#27ae60' },
-      { name:'ReLU',    y: xLine.map(x => Math.max(0,x)), color:'#e67e22' },
-      { name:'GELU',    y: xLine.map(x => x*(1/(1+Math.exp(-1.7*x)))), color:'#8e44ad' }
-    ];
-    Plotly.react('activations-plot', acts.map(a=>({x:xLine, y:a.y, mode:'lines', name:a.name, line:{color:a.color, width:2.5}})),
-      baseLayout({xaxis:{title:'x', range:[-4,4]}, yaxis:{range:[-1.5, 3]}, legend:{x:0.02, y:0.98}}), {displayModeBar:false});
-  }
-  Reveal.on('slidechanged', draw); Reveal.on('ready', draw);
-})();
-
-// ============================================================
-// Slide C14 — GD on toy loss
-// ============================================================
-(function(){
-  function E(w){ return 0.5*w*w + 0.3*Math.sin(3*w); }
-  function dE(w){ return w + 0.9*Math.cos(3*w); }
-  let traj = [2.5];
-  function refresh(){
-    document.getElementById('gd-lr-val').textContent = parseFloat(document.getElementById('gd-lr-slider').value).toFixed(2);
-    const xLine=[]; for(let w=-3;w<=3;w+=0.02) xLine.push(w);
-    const yLine = xLine.map(E);
-    const tx = traj, ty = traj.map(E);
-    Plotly.react('gd-plot', [
-      { x:xLine, y:yLine, mode:'lines', name:'E(w)', line:{color:'#2c3e50', width:2} },
-      { x:tx, y:ty, mode:'lines+markers', name:'trajectory', line:{color:'#e74c3c', width:2}, marker:{size:6, color:'#e74c3c'} }
-    ], baseLayout({xaxis:{title:'w', range:[-3,3]}, yaxis:{title:'E(w)', range:[-0.7, 5]}}), {displayModeBar:false});
-  }
-  function run(){
-    const eta = Math.pow(10, parseFloat(document.getElementById('gd-lr-slider').value));
-    let w = traj[traj.length-1];
-    let i = 0;
-    const tick = () => {
-      const g = dE(w);
-      w = w - eta*g;
-      if (Math.abs(w) > 5) w = Math.sign(w)*5;
-      traj.push(w);
-      refresh();
-      i++;
-      if (i < 60 && Math.abs(g) > 1e-3) requestAnimationFrame(tick);
-    };
-    tick();
-  }
-  document.getElementById('gd-lr-slider').addEventListener('input', refresh);
-  document.getElementById('gd-run').onclick = run;
-  document.getElementById('gd-reset').onclick = ()=>{ traj=[2.5]; refresh(); };
-  function init(e){ if (e.currentSlide.querySelector('#gd-plot')) refresh(); }
-  Reveal.on('slidechanged', init); Reveal.on('ready', init);
-})();
-
-// ============================================================
-// Tiny MLP utility (1D in → 1 or 2 out) used by several demos.
-// ============================================================
-function MLP1D(H, nOut, seed) {
-  const rng = createRNG(seed||1);
-  // weights init: He for ReLU
-  const W1 = []; const b1 = []; const W2 = []; const b2 = [];
-  for (let j=0;j<H;j++){ W1.push(0.8*gaussN(rng)); b1.push(0.5*gaussN(rng)); }
-  for (let k=0;k<nOut;k++){ const row=[]; for (let j=0;j<H;j++) row.push(gaussN(rng)/Math.sqrt(H)); W2.push(row); b2.push(0); }
-  return {W1,b1,W2,b2,H,nOut};
-}
-function mlpForward(net, x) {
-  const h = new Array(net.H), hPre = new Array(net.H);
-  for (let j=0;j<net.H;j++){ const a = net.W1[j]*x + net.b1[j]; hPre[j]=a; h[j] = a>0?a:0; }
-  const out = new Array(net.nOut);
-  for (let k=0;k<net.nOut;k++){ let s = net.b2[k]; for (let j=0;j<net.H;j++) s += net.W2[k][j]*h[j]; out[k]=s; }
-  return {out, h, hPre};
-}
-// gradient: gradOut: array of len nOut. returns gradients of params; updates buffers in-place if g supplied
-function mlpBackward(net, x, fwd, gradOut) {
-  const H = net.H, nOut = net.nOut;
-  const gW2 = []; const gb2 = new Array(nOut);
-  for (let k=0;k<nOut;k++){
-    const row=new Array(H); for (let j=0;j<H;j++) row[j] = gradOut[k]*fwd.h[j];
-    gW2.push(row); gb2[k] = gradOut[k];
-  }
-  const dh = new Array(H).fill(0);
-  for (let j=0;j<H;j++){ let s=0; for (let k=0;k<nOut;k++) s += gradOut[k]*net.W2[k][j]; dh[j] = s; }
-  const dhPre = new Array(H);
-  for (let j=0;j<H;j++) dhPre[j] = fwd.hPre[j] > 0 ? dh[j] : 0;
-  const gW1 = new Array(H), gb1 = new Array(H);
-  for (let j=0;j<H;j++){ gW1[j] = dhPre[j]*x; gb1[j] = dhPre[j]; }
-  return {gW1, gb1, gW2, gb2};
-}
-function adamStep(net, grads, opt, lr) {
-  const beta1=0.9, beta2=0.999, eps=1e-8;
-  opt.t = (opt.t||0)+1;
-  function upd(p, g, m, v){
-    for (let i=0;i<p.length;i++){
-      m[i] = beta1*m[i] + (1-beta1)*g[i];
-      v[i] = beta2*v[i] + (1-beta2)*g[i]*g[i];
-      const mh = m[i]/(1-Math.pow(beta1, opt.t));
-      const vh = v[i]/(1-Math.pow(beta2, opt.t));
-      p[i] -= lr*mh/(Math.sqrt(vh)+eps);
-    }
-  }
-  if (!opt.mW1){
-    opt.mW1=new Array(net.H).fill(0); opt.vW1=new Array(net.H).fill(0);
-    opt.mb1=new Array(net.H).fill(0); opt.vb1=new Array(net.H).fill(0);
-    opt.mW2=net.W2.map(r=>r.map(_=>0)); opt.vW2=net.W2.map(r=>r.map(_=>0));
-    opt.mb2=new Array(net.nOut).fill(0); opt.vb2=new Array(net.nOut).fill(0);
-  }
-  upd(net.W1, grads.gW1, opt.mW1, opt.vW1);
-  upd(net.b1, grads.gb1, opt.mb1, opt.vb1);
-  for (let k=0;k<net.nOut;k++){ upd(net.W2[k], grads.gW2[k], opt.mW2[k], opt.vW2[k]); }
-  upd(net.b2, grads.gb2, opt.mb2, opt.vb2);
-}
-
-// ============================================================
-// Slide C19 — MLP regression demo
-// ============================================================
-(function(){
-  let net = MLP1D(12, 1, 7), opt = {};
-  let dataX=[], dataT=[]; let lossHist=[]; let timer=null;
-  function targetFn(name){ return name==='step' ? x => x>0?1:-1 : name==='bump' ? x => Math.exp(-8*x*x) : x => Math.sin(2*Math.PI*x); }
-  function regen(){
-    const rng = createRNG(42);
-    const tgt = targetFn(document.getElementById('mlpreg-target').value);
-    dataX=[]; dataT=[];
-    for (let i=0;i<60;i++){ const x=-1+2*rng(); dataX.push(x); dataT.push(tgt(x)+0.15*gaussN(rng)); }
-  }
-  function rebuild(){
-    const H = parseInt(document.getElementById('mlpreg-h-slider').value);
-    document.getElementById('mlpreg-h-val').textContent = H;
-    net = MLP1D(H, 1, 7); opt = {}; lossHist = []; regen(); draw(); document.getElementById('mlpreg-status').textContent='';
-  }
-  function trainStep(){
-    const lr = Math.pow(10, parseFloat(document.getElementById('mlpreg-lr-slider').value));
-    document.getElementById('mlpreg-lr-val').textContent = parseFloat(document.getElementById('mlpreg-lr-slider').value).toFixed(2);
-    const B = 16;
-    let totLoss = 0;
-    const gW1 = new Array(net.H).fill(0), gb1=new Array(net.H).fill(0), gb2=[0];
-    const gW2 = [new Array(net.H).fill(0)];
-    for (let bIdx=0;bIdx<B;bIdx++){
-      const idx = Math.floor(Math.random()*dataX.length);
-      const x = dataX[idx], t = dataT[idx];
-      const f = mlpForward(net, x);
-      const r = f.out[0] - t; totLoss += 0.5*r*r;
-      const gr = mlpBackward(net, x, f, [r]);
-      for (let j=0;j<net.H;j++){ gW1[j]+=gr.gW1[j]/B; gb1[j]+=gr.gb1[j]/B; gW2[0][j]+=gr.gW2[0][j]/B; }
-      gb2[0]+=gr.gb2[0]/B;
-    }
-    adamStep(net, {gW1, gb1, gW2, gb2}, opt, lr);
-    lossHist.push(totLoss/B);
-    if (lossHist.length > 300) lossHist.shift();
-  }
-  function draw(){
-    const xLine=[]; for(let x=-1.05;x<=1.05;x+=0.01) xLine.push(x);
-    const yLine = xLine.map(x => mlpForward(net, x).out[0]);
-    const tgt = targetFn(document.getElementById('mlpreg-target').value);
-    const yTrue = xLine.map(x => tgt(x));
-    Plotly.react('mlpreg-fit', [
-      { x:xLine, y:yTrue, mode:'lines', name:'target', line:{color:'#bdc3c7', dash:'dash', width:2} },
-      { x:dataX, y:dataT, mode:'markers', name:'data', marker:{size:5, color:'#2c3e50', opacity:0.7} },
-      { x:xLine, y:yLine, mode:'lines', name:'MLP μ(x)', line:{color:'#e74c3c', width:3} }
-    ], baseLayout({xaxis:{title:'x', range:[-1.05,1.05]}, yaxis:{title:'θ', range:[-2,2]}}), {displayModeBar:false});
-    Plotly.react('mlpreg-loss', [
-      { x: lossHist.map((_,i)=>i), y: lossHist, mode:'lines', line:{color:'#e67e22', width:2}, name:'mini-batch loss' }
-    ], baseLayout({xaxis:{title:'step'}, yaxis:{title:'loss', type:'log'}}), {displayModeBar:false});
-    document.getElementById('mlpreg-status').textContent = 'step ' + lossHist.length;
-  }
-  document.getElementById('mlpreg-h-slider').addEventListener('input', rebuild);
-  document.getElementById('mlpreg-target').addEventListener('change', rebuild);
-  document.getElementById('mlpreg-lr-slider').addEventListener('input', ()=>{
-    document.getElementById('mlpreg-lr-val').textContent = parseFloat(document.getElementById('mlpreg-lr-slider').value).toFixed(2);
-  });
-  document.getElementById('mlpreg-reset').onclick = rebuild;
-  document.getElementById('mlpreg-train').onclick = ()=>{
-    if (timer){ clearInterval(timer); timer=null; document.getElementById('mlpreg-train').textContent='▶ Train'; return; }
-    document.getElementById('mlpreg-train').textContent='⏸ Pause';
-    timer = setInterval(()=>{ for (let i=0;i<5;i++) trainStep(); draw(); }, 40);
-  };
-  function init(e){
-    if (!e.currentSlide.querySelector('#mlpreg-fit')) {
-      if (timer){ clearInterval(timer); timer=null; document.getElementById('mlpreg-train').textContent='▶ Train'; }
-      return;
-    }
-    if (dataX.length===0) regen();
-    draw();
-  }
-  Reveal.on('slidechanged', init); Reveal.on('ready', init);
 })();
 
 // ============================================================
@@ -2807,6 +2419,117 @@ function genClassData(type, n) {
   document.getElementById('dmlp-layers').addEventListener('change',reset);
   function init(e){if(e.currentSlide&&e.currentSlide.querySelector('#dmlp-boundary-plot'))reset();}
   Reveal.on('slidechanged',init);
+})();
+
+// DEMO: Gradient descent animation
+(function() {
+  function lossF(w) { return 0.5*(w-2)*(w-2) + 0.3*Math.sin(3*w); }
+  function gradF(w) { return (w-2) + 0.9*Math.cos(3*w); }
+  var xF = []; for (var t = -1; t <= 5; t += 0.02) xF.push(t);
+  var yF = xF.map(lossF);
+  var step = -1, animId = null;
+  var stories = [
+    { eta:0.01, w0:4.5, steps:80, msg:'<strong style="color:#2980b9;">Too small (η=0.01):</strong> Barely moves.' },
+    { eta:0.1,  w0:4.5, steps:80, msg:'<strong style="color:#27ae60;">Slightly too small (η=0.1):</strong> Slow convergence.' },
+    { eta:0.2,  w0:4.5, steps:80, msg:'<strong style="color:#16a085;">Close to optimal (η=0.2):</strong> Fast convergence in few steps.' },
+    { eta:0.5,  w0:4.5, steps:80, msg:'<strong style="color:#e67e22;">Slightly too large (η=0.5):</strong> Overshoots and oscillates.' },
+    { eta:1.0,  w0:4.5, steps:80, msg:'<strong style="color:#e74c3c;">Way too large (η=1.0):</strong> Diverges.' }
+  ];
+  function stopAnim() { if (animId) { clearTimeout(animId); animId = null; } }
+  function animate() {
+    stopAnim();
+    var s = stories[step];
+    document.getElementById('gd-narration').innerHTML = '<span style="font-size:0.95em;">' + s.msg + '</span>';
+    document.getElementById('gd-story-step').textContent = (step+1) + ' / ' + stories.length;
+    var w = s.w0, ws = [w], ls = [lossF(w)], i = 0;
+    function tick() {
+      if (i >= s.steps) return;
+      i++;
+      w = w - s.eta * gradF(w);
+      w = Math.max(-1, Math.min(5, w));
+      ws.push(w); ls.push(lossF(w));
+      Plotly.react('gd-plot', [
+        { x:xF, y:yF, mode:'lines', name:'Loss E(w)', line:{width:2,color:'#bdc3c7'} },
+        { x:ws, y:ls, mode:'lines+markers', name:'GD path', line:{width:2,color:'#e74c3c'}, marker:{size:4,color:'#e74c3c'} },
+        { x:[ws[ws.length-1]], y:[ls[ls.length-1]], mode:'markers', showlegend:false, marker:{size:12,color:'#2c3e50',symbol:'circle'} }
+      ], { xaxis:{title:'w',range:[-1,5]}, yaxis:{title:'E(w)',range:[-0.5,5]}, margin:{t:5,r:20,b:35,l:45}, paper_bgcolor:'rgba(0,0,0,0)', plot_bgcolor:'rgba(0,0,0,0)', font:{size:13}, legend:{x:0.02,y:0.98} }, {displayModeBar:false});
+      animId = setTimeout(tick, 120);
+    }
+    tick();
+  }
+  function showEmpty() {
+    Plotly.react('gd-plot', [
+      { x:xF, y:yF, mode:'lines', name:'Loss E(w)', line:{width:2,color:'#bdc3c7'} }
+    ], { xaxis:{title:'w',range:[-1,5]}, yaxis:{title:'E(w)',range:[-0.5,5]}, margin:{t:5,r:20,b:35,l:45}, paper_bgcolor:'rgba(0,0,0,0)', plot_bgcolor:'rgba(0,0,0,0)', font:{size:13}, legend:{x:0.02,y:0.98} }, {displayModeBar:false});
+  }
+  document.getElementById('gd-story-next').addEventListener('click', function(e) {
+    e.preventDefault(); e.stopPropagation();
+    stopAnim();
+    if (step < stories.length - 1) { step++; animate(); }
+  });
+  document.getElementById('gd-story-replay').addEventListener('click', function(e) {
+    e.preventDefault(); e.stopPropagation();
+    if (step >= 0) animate();
+  });
+  document.getElementById('gd-story-reset').addEventListener('click', function(e) {
+    e.preventDefault(); e.stopPropagation();
+    stopAnim();
+    step = -1;
+    document.getElementById('gd-narration').innerHTML = '<span style="color:#7f8c8d; font-size:0.9em;">Click <strong>Next &#9654;</strong> to see gradient descent in action.</span>';
+    document.getElementById('gd-story-step').textContent = '';
+    showEmpty();
+  });
+  function init(e) {
+    if (!(e.currentSlide && e.currentSlide.querySelector('#gd-plot'))) return;
+    stopAnim();
+    step = -1;
+    document.getElementById('gd-narration').innerHTML = '<span style="color:#7f8c8d; font-size:0.9em;">Click <strong>Next &#9654;</strong> to see gradient descent in action.</span>';
+    document.getElementById('gd-story-step').textContent = '';
+    showEmpty();
+  }
+  Reveal.on('slidechanged', init);
+})();
+
+// DEMO: Curvature and step size (static, 3-panel)
+(function() {
+  var a = 2;
+  var xP = []; for (var t = -2; t <= 2; t += 0.02) xP.push(t);
+  var yP = xP.map(function(w) { return 0.5*a*w*w; });
+  var lo = {xaxis:{range:[-2.2,2.2],title:'w',dtick:1}, yaxis:{range:[-0.2,4.2],title:'E(w)',dtick:1}, margin:{t:28,r:8,b:32,l:36}, paper_bgcolor:'rgba(0,0,0,0)', plot_bgcolor:'rgba(0,0,0,0)', font:{size:11}, showlegend:false};
+  function gdPath(w0, eta, nSteps) {
+    var ws = [w0], ls = [0.5*a*w0*w0];
+    var w = w0;
+    for (var i = 0; i < nSteps; i++) {
+      w = w - eta * a * w;
+      ws.push(w); ls.push(0.5*a*w*w);
+    }
+    return {ws:ws, ls:ls};
+  }
+  function render(e) {
+    var sl = e.currentSlide || e;
+    if (!sl || !sl.querySelector('#curv-plot-opt')) return;
+    var w0 = 1.8, nSteps = 3;
+    var p1 = gdPath(w0, 0.15, nSteps);
+    Plotly.react('curv-plot-small', [
+      {x:xP, y:yP, mode:'lines', line:{width:2,color:'#bdc3c7'}},
+      {x:p1.ws, y:p1.ls, mode:'lines+markers', line:{width:2,color:'#2980b9'}, marker:{size:7,color:'#2980b9'}},
+      {x:[p1.ws[0]], y:[p1.ls[0]], mode:'markers', marker:{size:10,color:'#2c3e50',symbol:'circle'}}
+    ], Object.assign({}, lo, {title:{text:'η too small',font:{size:12,color:'#2980b9'}}}), {displayModeBar:false});
+    var p2 = gdPath(w0, 1/a, nSteps);
+    Plotly.react('curv-plot-opt', [
+      {x:xP, y:yP, mode:'lines', line:{width:2,color:'#bdc3c7'}},
+      {x:p2.ws, y:p2.ls, mode:'lines+markers', line:{width:2,color:'#27ae60'}, marker:{size:7,color:'#27ae60'}},
+      {x:[p2.ws[0]], y:[p2.ls[0]], mode:'markers', marker:{size:10,color:'#2c3e50',symbol:'circle'}}
+    ], Object.assign({}, lo, {title:{text:'η = 1/κ (optimal)',font:{size:12,color:'#27ae60'}}}), {displayModeBar:false});
+    var p3 = gdPath(w0, 0.85, nSteps);
+    Plotly.react('curv-plot-large', [
+      {x:xP, y:yP, mode:'lines', line:{width:2,color:'#bdc3c7'}},
+      {x:p3.ws, y:p3.ls, mode:'lines+markers', line:{width:2,color:'#e67e22'}, marker:{size:7,color:'#e67e22'}},
+      {x:[p3.ws[0]], y:[p3.ls[0]], mode:'markers', marker:{size:10,color:'#2c3e50',symbol:'circle'}}
+    ], Object.assign({}, lo, {title:{text:'η too large',font:{size:12,color:'#e67e22'}}}), {displayModeBar:false});
+  }
+  Reveal.on('slidechanged', render);
+  Reveal.on('fragmentshown', function(e) { render({currentSlide: e.fragment.closest('section')}); });
 })();
 
 </script>
