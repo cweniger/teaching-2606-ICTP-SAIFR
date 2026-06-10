@@ -76,36 +76,29 @@
   </div>
   <div class="fragment" style="display:flex; gap:8px; margin-top:20px;">
     <div class="box box-blue" style="flex:1; text-align:center;">
-      <strong style="color:#2980b9;">A</strong><br>
-      \(\chi^2\) as conditional Gaussian<br><span style="font-size:0.85em;">Least-squares fitting as the simplest conditional density estimator</span>
+      <strong style="color:#2980b9;">1</strong><br>
+      Linear regression as conditional Gaussian<br><span style="font-size:0.85em;">Fit \(\mu_\theta(x)\) and \(\sigma_\theta\); get \(q(\theta\mid x) = \mathcal{N}(\mu_\theta(x), \sigma_\theta^{2})\) almost for free</span>
     </div>
     <div style="align-self:center; font-size:1.4em; color:#bdc3c7;">&rarr;</div>
     <div class="box box-orange" style="flex:1; text-align:center;">
-      <strong style="color:#e67e22;">B</strong><br>
-      Overfitting and bases<br><span style="font-size:0.85em;">Polynomials blow up; the basis-function problem motivates learnable features</span>
+      <strong style="color:#e67e22;">2</strong><br>
+      Neural networks + SGD<br><span style="font-size:0.85em;">Replace fixed templates with a learnable basis, train with gradient descent</span>
     </div>
     <div style="align-self:center; font-size:1.4em; color:#bdc3c7;">&rarr;</div>
     <div class="box box-green" style="flex:1; text-align:center;">
-      <strong style="color:#27ae60;">C</strong><br>
-      Neural nets + SGD<br><span style="font-size:0.85em;">Learn the basis with an MLP, train with gradient descent</span>
-    </div>
-    <div style="align-self:center; font-size:1.4em; color:#bdc3c7;">&rarr;</div>
-    <div class="box box-purple" style="flex:1; text-align:center;">
-      <strong style="color:#8e44ad;">D</strong><br>
+      <strong style="color:#27ae60;">3</strong><br>
       Flexible \(q_\phi(\theta\mid x)\)<br><span style="font-size:0.85em;">From Gaussian heads to densities that can take any shape</span>
     </div>
   </div>
 </section>
 
-<!-- ============================================================ -->
-<!-- BLOCK A — chi^2 as conditional Gaussian density estimation   -->
-<!-- ============================================================ -->
 <section>
   <div style="display:flex; align-items:center; justify-content:center; height:100%;">
     <div style="text-align:center;">
-      <h1 style="font-size:1.8em; margin-bottom:0.2em;">Block A &mdash; \(\chi^2\) as Conditional Gaussian Density Estimation</h1>
-      <div style="width:140px; height:4px; background: linear-gradient(90deg, #2980b9, #e74c3c); margin:0 auto; border-radius:2px;"></div>
-      <p style="font-size:0.9em; color:#7f8c8d; margin-top:0.8em;">The role-swap: from "\(x \to\) point estimate of \(\theta\)" to "\(x \to q(\theta\mid x)\)".</p>
+      <div style="width:200px; height:4px; background:linear-gradient(90deg,#2980b9,#e74c3c); margin:0 auto 25px;"></div>
+      <h1 style="font-size:2em; margin:0;">Linear regression as conditional Gaussian density estimation</h1>
+      <p style="font-size:1.1em; color:#7f8c8d; margin-top:15px;">Fit \(\mu_\theta(x)\) and \(\sigma_\theta\); the simplest \(q(\theta\mid x)\) comes out almost for free.</p>
+      <div style="width:200px; height:4px; background:linear-gradient(90deg,#2980b9,#e74c3c); margin:25px auto 0;"></div>
     </div>
   </div>
 </section>
@@ -134,7 +127,7 @@
     </div>
   </div>
   <p class="fragment" style="text-align:center; margin-top:10px; font-size:0.95em;">
-    For now we assume \(q(\theta\mid x)\) is <strong>uni-modal</strong> at every \(x\). The multi-modal case waits for Block D.
+    For now we assume \(q(\theta\mid x)\) is <strong>uni-modal</strong> at every \(x\). The multi-modal case waits until the last section.
   </p>
 </section>
 
@@ -397,15 +390,13 @@
   </p>
 </section>
 
-<!-- ============================================================ -->
-<!-- BLOCK C — NNs + SGD                                          -->
-<!-- ============================================================ -->
 <section>
   <div style="display:flex; align-items:center; justify-content:center; height:100%;">
     <div style="text-align:center;">
-      <h1 style="font-size:1.8em; margin-bottom:0.2em;">Block C &mdash; Learning the Basis: NNs + SGD</h1>
-      <div style="width:140px; height:4px; background: linear-gradient(90deg, #27ae60, #2980b9); margin:0 auto; border-radius:2px;"></div>
-      <p style="font-size:0.9em; color:#7f8c8d; margin-top:0.8em;">Replace fixed templates with parametric ones. Train them by gradient descent.</p>
+      <div style="width:200px; height:4px; background:linear-gradient(90deg,#2980b9,#e74c3c); margin:0 auto 25px;"></div>
+      <h1 style="font-size:2em; margin:0;">Neural networks + SGD</h1>
+      <p style="font-size:1.1em; color:#7f8c8d; margin-top:15px;">Replace fixed templates with parametric ones. Train them by gradient descent.</p>
+      <div style="width:200px; height:4px; background:linear-gradient(90deg,#2980b9,#e74c3c); margin:25px auto 0;"></div>
     </div>
   </div>
 </section>
@@ -465,7 +456,7 @@
   <div class="box" style="text-align:center; font-size:1.05em;">
     \[ \mu(x;\mathbf{w},\mathbf{v},\mathbf{b}) \;=\; \sum_{j=1}^{H} w_j\,\underbrace{g(\mathbf{v}_j^T x + b_j)}_{\text{learnable }\phi_j(x)} + w_0 \]
   </div>
-  <p style="margin-top:6px;">This is <strong>exactly</strong> the Block A model \(\mu(x) = \mathbf{w}^T\boldsymbol{\phi}(x)\) &mdash; only now \(\boldsymbol{\phi}\) has its own parameters that we will train jointly with \(\mathbf{w}\).</p>
+  <p style="margin-top:6px;">This is <strong>exactly</strong> the linear-basis model \(\mu_\theta(x) = \mathbf{w}^T\boldsymbol{\phi}(x)\) &mdash; only now \(\boldsymbol{\phi}\) has its own parameters that we will train jointly with \(\mathbf{w}\).</p>
   <div class="fragment" style="display:flex; align-items:center; justify-content:center; gap:10px; margin-top:14px; font-size:0.9em;">
     <div style="background:#eaf2f8; border:2px solid #2980b9; border-radius:8px; padding:10px 16px; text-align:center;">
       <strong>Input</strong><br>\(x\)
@@ -622,7 +613,7 @@ for step = 1, 2, ... until converged:
 <!-- C19 — MLP regression demo -->
 <section>
   <h2>MLP regression in action</h2>
-  <p style="margin-top:0;">Same 1D dataset as Block A, but \(\mu(x)\) is now an MLP fitted by SGD.</p>
+  <p style="margin-top:0;">Same 1D dataset as before, but \(\mu_\theta(x)\) is now an MLP fitted by SGD.</p>
   <div style="display:flex; gap:12px; align-items:center; font-size:0.85em; flex-wrap:wrap;">
     <label>Target:
       <select id="mlpreg-target"><option value="sin" selected>sin(2πx)</option><option value="step">Step</option><option value="bump">Bump</option></select>
@@ -646,15 +637,13 @@ for step = 1, 2, ... until converged:
   </p>
 </section>
 
-<!-- ============================================================ -->
-<!-- BLOCK D — flexible q_phi(theta|x)                            -->
-<!-- ============================================================ -->
 <section>
   <div style="display:flex; align-items:center; justify-content:center; height:100%;">
     <div style="text-align:center;">
-      <h1 style="font-size:1.8em; margin-bottom:0.2em;">Block D &mdash; From Gaussian to Flexible \(q_\phi(\theta\mid x)\)</h1>
-      <div style="width:140px; height:4px; background: linear-gradient(90deg, #8e44ad, #e67e22); margin:0 auto; border-radius:2px;"></div>
-      <p style="font-size:0.9em; color:#7f8c8d; margin-top:0.8em;">Let the noise depend on \(x\); then drop the Gaussian assumption altogether.</p>
+      <div style="width:200px; height:4px; background:linear-gradient(90deg,#2980b9,#e74c3c); margin:0 auto 25px;"></div>
+      <h1 style="font-size:2em; margin:0;">From Gaussian to flexible \(q_\phi(\theta\mid x)\)</h1>
+      <p style="font-size:1.1em; color:#7f8c8d; margin-top:15px;">Let the noise depend on \(x\); then drop the Gaussian assumption altogether.</p>
+      <div style="width:200px; height:4px; background:linear-gradient(90deg,#2980b9,#e74c3c); margin:25px auto 0;"></div>
     </div>
   </div>
 </section>
@@ -676,7 +665,7 @@ for step = 1, 2, ... until converged:
 <!-- D21 — heteroscedastic noise (NEW) -->
 <section>
   <h2>Heteroscedastic noise &mdash; \(\sigma^2(x)\) as a second output</h2>
-  <p style="margin:6px 0;">Block A baked in a single \(\sigma\). Make \(\sigma\) a function of \(x\); same network, <strong>two heads</strong>: \(\mu_\phi(x)\) and \(\log\sigma_\phi(x)\). The NLL trades off mean accuracy against calibrated width.</p>
+  <p style="margin:6px 0;">Our first model baked in a single \(\sigma_\theta\). Make \(\sigma\) a function of \(x\); same network, <strong>two heads</strong>: \(\mu_\phi(x)\) and \(\log\sigma_\phi(x)\). The NLL trades off mean accuracy against calibrated width.</p>
   <div class="box" style="text-align:center; padding:8px 16px; margin:6px 0;">
     \[ q_\phi(\theta\mid x) \;=\; \mathcal{N}\!\bigl(\theta \,\big|\, \mu_\phi(x), \sigma_\phi(x)^2\bigr), \qquad \mathcal{L} = -\!\sum_n \log q_\phi(\theta_n\mid x_n) \]
   </div>
@@ -700,7 +689,7 @@ for step = 1, 2, ... until converged:
       <p style="text-align:center; font-size:1.0em;">
         \( \mathcal{L}(\phi) = -\tfrac{1}{N}\sum_n \log q_\phi(\theta_n\mid x_n) \)
       </p>
-      <p>For diagonal \(\Sigma\): \(\;\tfrac{1}{2}\bigl((\theta-\mu)/\sigma\bigr)^2 + \log\sigma\). Constant \(\Sigma\) reduces to MSE (Block A callback).</p>
+      <p>For diagonal \(\Sigma\): \(\;\tfrac{1}{2}\bigl((\theta-\mu)/\sigma\bigr)^2 + \log\sigma\). Constant \(\Sigma\) reduces to MSE &mdash; the linear-regression case.</p>
     </div>
     <div style="flex:1;">
       <pre style="background:#2c3e50; color:#ecf0f1; padding:14px 16px; border-radius:8px; font-size:0.78em; line-height:1.55;"><code><span style="color:#7f8c8d;">// Supervised training of q_φ(θ|x)
@@ -744,7 +733,7 @@ for step = 1, 2, ... :
 <!-- D24 — why we need flows -->
 <section>
   <h2>Where Gaussian breaks: multimodal posteriors</h2>
-  <p style="margin:4px 0;">The Gaussian head was a modelling choice we put in by hand &mdash; just like polynomials in Block A. It fails when the true posterior is not Gaussian.</p>
+  <p style="margin:4px 0;">The Gaussian head was a modelling choice we put in by hand &mdash; just like the polynomial basis at the start. It fails when the true posterior is not Gaussian.</p>
   <div id="multimodal-plot" style="width:100%; height:230px; margin-top:4px;"></div>
   <div style="display:flex; gap:12px; margin-top:6px;">
     <div class="box" style="flex:1; text-align:center; padding:8px 12px;">
