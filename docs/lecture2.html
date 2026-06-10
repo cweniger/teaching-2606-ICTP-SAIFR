@@ -105,7 +105,7 @@
 
 <!-- A0 — the stage: simulator joint cloud and q(theta|x) as a vertical slice -->
 <section>
-  <h2>What we are after: \(q(\theta\mid x)\)</h2>
+  <h2>What we are after: the conditional density</h2>
   <div style="display:flex; gap:14px;">
     <div style="flex:0 0 36%; text-align:left;">
       <p>A simulator gives us pairs \((\theta, x)\): parameter in, observation out. Plotted together they form a <strong>joint cloud</strong>.</p>
@@ -133,7 +133,7 @@
 
 <!-- A0b — the simplest possible model: q = N(μ_θ(x), σ_θ²) -->
 <section>
-  <h2>The simplest model for \(q(\theta\mid x)\)</h2>
+  <h2>The simplest conditional density model</h2>
   <div style="display:flex; gap:14px;">
     <div style="flex:0 0 38%; text-align:left;">
       <p>Fit a curve \(\mu_\theta(x)\) through the cloud and assume the slice at every \(x\) is Gaussian with the same width \(\sigma_\theta\).</p>
@@ -255,7 +255,7 @@
 
 <!-- A5 — worked example interactive -->
 <section>
-  <h2>Worked example: polynomial \(\mu(x)\) with a Gaussian band</h2>
+  <h2>Worked example: polynomial fit with a Gaussian band</h2>
   <div style="display:flex; gap:12px; font-size:0.85em; align-items:center; margin-top:4px;">
     <label>Degree \(M\) = <span id="polyfit-m-val">3</span>
       <input type="range" id="polyfit-m-slider" min="1" max="10" step="1" value="3" style="width:160px;">
@@ -386,7 +386,7 @@
 
 <!-- The phi problem -->
 <section>
-  <h2>The \(\boldsymbol{\phi}\) Problem</h2>
+  <h2>The hand-picked basis problem</h2>
   <p>Everything so far depends on <strong>hand-picked</strong> basis functions \(\boldsymbol{\phi}(x)\).</p>
   <div style="display:flex; gap:12px; margin-top:10px;">
     <div class="box" style="flex:1;">
@@ -504,7 +504,7 @@
 
 <!-- One Hidden Layer = Learnable phi -->
 <section>
-  <h2>One Hidden Layer = Learnable \(\boldsymbol{\phi}\)</h2>
+  <h2>One hidden layer = a learnable basis</h2>
   <p>Stack \(H\) of these neurons and let a final linear layer combine them:</p>
   <div class="box" style="text-align:center; font-size:1.05em; padding:14px; margin-top:8px;">
     \[ f(\mathbf{x}) = \sum_{j=1}^{H} w_j \;\underbrace{g(\mathbf{v}_j^T \mathbf{x} + b_j)}_{\text{learnable }\phi_j(\mathbf{x})} \;+\; w_0 \]
@@ -893,7 +893,7 @@
 
 <!-- D21 — heteroscedastic noise (NEW) -->
 <section>
-  <h2>Heteroscedastic noise &mdash; \(\sigma^2(x)\) as a second output</h2>
+  <h2>Heteroscedastic noise &mdash; variance as a second output</h2>
   <p style="margin:6px 0;">Our first model baked in a single \(\sigma_\theta\). Make \(\sigma\) a function of \(x\); same network, <strong>two heads</strong>: \(\mu_\phi(x)\) and \(\log\sigma_\phi(x)\). The NLL trades off mean accuracy against calibrated width.</p>
   <div class="box" style="text-align:center; padding:8px 16px; margin:6px 0;">
     \[ q_\phi(\theta\mid x) \;=\; \mathcal{N}\!\bigl(\theta \,\big|\, \mu_\phi(x), \sigma_\phi(x)^2\bigr), \qquad \mathcal{L} = -\!\sum_n \log q_\phi(\theta_n\mid x_n) \]
@@ -906,7 +906,7 @@
 
 <!-- D22 — Gaussian-head q_phi -->
 <section>
-  <h2>The Gaussian-head \(q_\phi(\theta\mid x)\) &mdash; the destination of this lecture</h2>
+  <h2>The Gaussian-head network &mdash; the destination of this lecture</h2>
   <div style="display:flex; gap:22px; align-items:flex-start; margin-top:10px;">
     <div style="flex:1.1;">
       <p><strong>Density family.</strong></p>
@@ -937,7 +937,7 @@ for step = 1, 2, ... :
 
 <!-- D23 — live demo: Gaussian-head -->
 <section>
-  <h2>Live demo &mdash; Gaussian-head NN on \(\theta = a + b\,x\)</h2>
+  <h2>Live demo &mdash; Gaussian-head NN on a linear forward model</h2>
   <div style="display:flex; gap:10px; font-size:0.85em; align-items:center; margin-top:0; flex-wrap:wrap;">
     <button id="gh-train" style="padding:4px 14px; cursor:pointer; font-weight:600;">▶ Train</button>
     <button id="gh-reset" style="padding:4px 14px; cursor:pointer;">↺ Reset network</button>
