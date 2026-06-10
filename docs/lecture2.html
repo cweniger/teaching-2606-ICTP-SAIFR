@@ -82,12 +82,12 @@
     <div style="align-self:center; font-size:1.4em; color:#bdc3c7;">&rarr;</div>
     <div class="box box-orange" style="flex:1; text-align:center;">
       <strong style="color:#e67e22;">2</strong><br>
-      Neural networks + SGD<br><span style="font-size:0.85em;">Replace fixed templates with a learnable basis, train with gradient descent</span>
+      Deep NNs + SGD<br><span style="font-size:0.85em;">Replace fixed templates with a learnable basis, train with stochastic gradient descent</span>
     </div>
     <div style="align-self:center; font-size:1.4em; color:#bdc3c7;">&rarr;</div>
     <div class="box box-green" style="flex:1; text-align:center;">
       <strong style="color:#27ae60;">3</strong><br>
-      Flexible \(q_\phi(\theta\mid x)\)<br><span style="font-size:0.85em;">From Gaussian heads to densities that can take any shape</span>
+      Going beyond univariate parameters and homoscedastic noise<br><span style="font-size:0.85em;">Multivariate parameters and input-dependent uncertainty \(\sigma(x)\)</span>
     </div>
   </div>
 </section>
@@ -373,8 +373,8 @@
   <div style="display:flex; align-items:center; justify-content:center; height:100%;">
     <div style="text-align:center;">
       <div style="width:200px; height:4px; background:linear-gradient(90deg,#2980b9,#e74c3c); margin:0 auto 25px;"></div>
-      <h1 style="font-size:2em; margin:0;">Neural networks + SGD</h1>
-      <p style="font-size:1.1em; color:#7f8c8d; margin-top:15px;">Replace fixed templates with parametric ones. Train them by gradient descent.</p>
+      <h1 style="font-size:2em; margin:0;">Deep neural networks and stochastic gradient descent</h1>
+      <p style="font-size:1.1em; color:#7f8c8d; margin-top:15px;">Replace fixed templates with parametric ones. Train them by mini-batch SGD.</p>
       <div style="width:200px; height:4px; background:linear-gradient(90deg,#2980b9,#e74c3c); margin:25px auto 0;"></div>
     </div>
   </div>
@@ -722,15 +722,12 @@
   </ul>
 </section>
 
-<!-- Section divider: Going Deep -->
+<!-- Transition slide: question (no header bars, demoted from section divider) -->
 <section>
   <div style="display:flex; align-items:center; justify-content:center; height:100%;">
-    <div style="text-align:center;">
-      <div style="width:200px; height:4px; background:linear-gradient(90deg,#2980b9,#e74c3c); margin:0 auto 25px;"></div>
-      <h1 style="font-size:2em; margin:0;">Going Deep</h1>
-      <p style="font-size:1.1em; color:#7f8c8d; margin-top:15px;">One hidden layer is a universal approximator. But what happens when we stack more?</p>
-      <div style="width:200px; height:4px; background:linear-gradient(90deg,#2980b9,#e74c3c); margin:25px auto 0;"></div>
-    </div>
+    <p style="font-size:1.4em; color:#2c3e50; text-align:center; max-width:820px; margin:0;">
+      One hidden layer is a universal approximator. But what happens when we stack more?
+    </p>
   </div>
 </section>
 
@@ -881,11 +878,15 @@
 
 <section>
   <div style="display:flex; align-items:center; justify-content:center; height:100%;">
-    <div style="text-align:center;">
+    <div style="text-align:center; max-width:880px;">
       <div style="width:200px; height:4px; background:linear-gradient(90deg,#2980b9,#e74c3c); margin:0 auto 25px;"></div>
-      <h1 style="font-size:2em; margin:0;">From Gaussian to flexible \(q_\phi(\theta\mid x)\)</h1>
-      <p style="font-size:1.1em; color:#7f8c8d; margin-top:15px;">Let the noise depend on \(x\); then drop the Gaussian assumption altogether.</p>
+      <h1 style="font-size:1.8em; margin:0;">Going beyond univariate parameters<br>and homoscedastic noise</h1>
+      <p style="font-size:1.1em; color:#7f8c8d; margin-top:15px;">Multivariate parameters and input-dependent uncertainty \(\sigma(x)\).</p>
       <div style="width:200px; height:4px; background:linear-gradient(90deg,#2980b9,#e74c3c); margin:25px auto 0;"></div>
+      <p style="font-size:0.8em; color:#95a5a6; margin-top:28px; line-height:1.55;">
+        <strong>univariate</strong> &mdash; only one parameter (scalar \(\theta\)); the multivariate case has a vector \(\boldsymbol\theta = (\theta_1, \ldots, \theta_D)\). &nbsp;
+        <strong>homoscedastic</strong> &mdash; the noise width \(\sigma\) is the same at every \(x\); the heteroscedastic case lets \(\sigma\) depend on \(x\), i.e. \(\sigma(x)\).
+      </p>
     </div>
   </div>
 </section>
@@ -899,7 +900,7 @@
   </div>
   <div id="hetero-plot" style="width:100%; height:280px; margin-top:4px;"></div>
   <p style="text-align:center; font-size:0.78em; color:#7f8c8d; margin:2px 0 0;">
-    Toy: noise grows toward the edges. Constant-σ fit (blue band) overconfident in the middle, underconfident at edges; learned \(\sigma(x)\) (orange) tracks the true scale.
+    Toy: noise is small on the left, large on the right. The grey band is the learned \(\sigma(x)\) &mdash; it tracks the true scale instead of averaging over \(x\).
   </p>
 </section>
 
@@ -958,83 +959,58 @@ for step = 1, 2, ... :
   </p>
 </section>
 
-<!-- D24 — why we need flows -->
+<!-- ============================================================ -->
+<!-- CLOSING — KEY TAKEAWAYS                                      -->
+<!-- ============================================================ -->
 <section>
-  <h2>Where Gaussian breaks: multimodal posteriors</h2>
-  <p style="margin:4px 0;">The Gaussian head was a modelling choice we put in by hand &mdash; just like the polynomial basis at the start. It fails when the true posterior is not Gaussian.</p>
-  <div id="multimodal-plot" style="width:100%; height:230px; margin-top:4px;"></div>
-  <div style="display:flex; gap:12px; margin-top:6px;">
-    <div class="box" style="flex:1; text-align:center; padding:8px 12px;">
-      <strong>True posterior</strong><br>multimodal, curved, heavy-tailed
-    </div>
-    <div class="box" style="flex:1; text-align:center; padding:8px 12px;">
-      <strong>Best Gaussian fit</strong><br>smears across modes, miscalibrated tails
-    </div>
-    <div class="box" style="flex:1; text-align:center; padding:8px 12px;">
-      <strong>What we want</strong><br>a flexible density that takes any shape but is still a proper PDF
-    </div>
-  </div>
-  <p style="text-align:center; margin-top:8px; font-size:0.95em;">Wishlist: ① evaluate \(\log q_\phi\); ② sample; ③ arbitrary shape. <strong>Normalising flows</strong> deliver all three.</p>
-</section>
-
-<!-- D25 — Normalising flow preview -->
-<section>
-  <h2>Normalising flows &mdash; one-slide preview</h2>
-  <div style="display:flex; gap:14px; align-items:flex-start; margin-top:6px;">
-    <div style="flex:1.1; font-size:1.0em; line-height:1.65;">
-      <p><strong>Idea.</strong> Take a simple base density (Gaussian noise \(z\)). Push it through a stack of invertible neural maps to land on a complex target \(\theta\).</p>
-      <p style="text-align:center; margin:10px 0;">
-        \( \theta = f_L\circ\cdots\circ f_1(z), \quad z\sim\mathcal{N}(0,I) \)
-      </p>
-      <p><strong>Change-of-variables.</strong> For invertible \(f\),</p>
-      <p style="text-align:center; margin:6px 0;">
-        \( q_\phi(\theta\mid x) = p_Z(z)\;\bigl|\det \partial f/\partial z\bigr|^{-1} \)
-      </p>
-      <p>Build \(f\) so the Jacobian determinant is cheap (triangular).</p>
-      <p style="color:#7f8c8d; margin-top:10px;">Full machinery &mdash; coupling layers, conditional flows, log-Jacobian sums &mdash; in Lecture 3.</p>
-    </div>
-    <div style="flex:1;">
-      <div id="flow-warp-plot" style="width:100%; height:360px;"></div>
-      <div style="display:flex; gap:10px; align-items:center; justify-content:center; font-size:0.85em;">
-        <label>strength \(A\) = <span id="flow-a-val">0.80</span>
-          <input type="range" id="flow-a-slider" min="0" max="0.99" step="0.01" value="0.80" style="width:180px; accent-color:#8e44ad;">
-        </label>
-      </div>
-      <p style="text-align:center; font-size:0.78em; color:#7f8c8d; margin:2px 0 0;">
-        Base \(z\sim\mathcal{N}(0,1.5^2)\) warped by \(\theta = z + A\sin z\). As \(A\to 1\), the same base produces a bimodal target &mdash; for free.
-      </p>
-    </div>
-  </div>
+  <h2>Key Takeaways</h2>
+  <ul style="font-size:0.92em; line-height:1.6;">
+    <li class="fragment"><strong>Linear regression as density estimation:</strong> least-squares fitting is implicit Gaussian density estimation. With a fixed basis \(\boldsymbol{\phi}(x)\), closed-form solutions exist for both \(\mathbf{w}\) and \(\sigma_\theta\).</li>
+    <li class="fragment"><strong>Deep NNs + SGD:</strong> replace fixed templates by learnable basis functions \(\phi_j(x) = g(\mathbf{v}_j^T x + b_j)\). The loss becomes non-convex; train all of \(\boldsymbol\phi = (\mathbf{W},\mathbf{b},\sigma_\theta,\ldots)\) by mini-batch SGD.</li>
+    <li class="fragment"><strong>Going beyond:</strong> step up from scalar \(\theta\) and constant \(\sigma\) to vector \(\boldsymbol\theta\) and input-dependent \(\sigma_\phi(x)\). One network, two heads (\(\mu_\phi, \log\sigma_\phi\)), trained by NLL.</li>
+    <li class="fragment"><strong>The conceptual jump:</strong> from "fit a function" to "fit a conditional density". The object we have built, \(q_\phi(\theta\mid x)\), is exactly what neural SBI needs.</li>
+  </ul>
 </section>
 
 <!-- ============================================================ -->
-<!-- BLOCK E — handoff                                            -->
+<!-- CLOSING — SUMMARY & WHAT'S NEXT                              -->
 <!-- ============================================================ -->
 <section>
-  <h2>Where we are; where we are going</h2>
-  <p style="text-align:center; font-size:1.1em; margin-top:8px;">
-    We have built a learnable conditional density \(q_\phi(\theta\mid x)\), trained on \((\theta, x)\) pairs by NLL.
-  </p>
-  <div style="display:flex; gap:26px; margin-top:14px;">
-    <div style="flex:1;">
-      <h3 style="margin-top:0; margin-bottom:6px;">Lecture 3 &mdash; inference heads</h3>
-      <ul style="margin-top:0;">
-        <li>The pairs come from a simulator → that is <strong>NPE</strong>.</li>
-        <li>Replace the Gaussian head with a <strong>normalising flow</strong>: change-of-variables, coupling layers, conditional flows.</li>
-        <li>Flow matching and diffusion as visual side-companions.</li>
-        <li>DINGO, LISA &mdash; production examples.</li>
+  <h2>Summary &amp; What's Next</h2>
+  <div style="display:flex; gap:15px; font-size:0.9em;">
+    <div class="box" style="flex:1;">
+      <h3 style="margin-top:0; color:#2980b9;">Linear regression</h3>
+      <ul style="font-size:0.9em; line-height:1.5;">
+        <li>Fixed basis \(\boldsymbol{\phi}(x)\), least-squares = MLE</li>
+        <li>Closed-form \(\mathbf{w}_{\mathrm{ML}}\) and \(\sigma_\theta\)</li>
+        <li>Overfitting, train/val/test, U-curve</li>
       </ul>
     </div>
-    <div style="flex:1;">
-      <h3 style="margin-top:0; margin-bottom:6px;">Lecture 4 &mdash; the embedding network</h3>
-      <ul style="margin-top:0;">
-        <li>How do we get a good \(x\) when raw data is a 256×256 image or a 16k-sample time series?</li>
-        <li>CNNs, transformers, GNNs: data-aware compression trained jointly with the inference head.</li>
+    <div class="box" style="flex:1;">
+      <h3 style="margin-top:0; color:#e67e22;">Deep NNs + SGD</h3>
+      <ul style="font-size:0.9em; line-height:1.5;">
+        <li>Learnable basis \(g(\mathbf{v}_j^T x + b_j)\); MLPs, depth</li>
+        <li>No closed form &mdash; gradient descent on \(\boldsymbol\phi\)</li>
+        <li>Mini-batch SGD; backprop = chain rule</li>
+      </ul>
+    </div>
+    <div class="box" style="flex:1;">
+      <h3 style="margin-top:0; color:#27ae60;">Going beyond</h3>
+      <ul style="font-size:0.9em; line-height:1.5;">
+        <li>Multivariate \(\boldsymbol\theta\) via vector \(\mu_\phi(x)\)</li>
+        <li>Input-dependent \(\sigma_\phi(x)\) &mdash; heteroscedastic head</li>
+        <li>Two-headed Gaussian-head network trained by NLL</li>
       </ul>
     </div>
   </div>
-  <p style="text-align:center; margin-top:18px; font-size:1.05em;">
-    The triptych: <strong>simulator → compression → inference head</strong>. Today we built the head.
+  <div class="box" style="text-align:center; margin-top:12px; padding:8px; font-size:0.85em;">
+    <strong>Key equations:</strong> &nbsp;
+    \(q_\phi(\theta\mid x) = \mathcal{N}\!\bigl(\mu_\phi(x), \sigma_\phi(x)^2\bigr)\) &nbsp;|&nbsp;
+    \(\boldsymbol\phi \leftarrow \boldsymbol\phi - \eta\,\nabla_{\!\boldsymbol\phi}\,E(\boldsymbol\phi)\) &nbsp;|&nbsp;
+    \(E = -\sum_n \log q_\phi(\theta_n\mid x_n)\)
+  </div>
+  <p style="text-align:center; margin-top:10px; font-size:0.85em; color:#7f8c8d;">
+    Next: when the \((\theta, x)\) pairs come from a simulator, training \(q_\phi\) by NLL is <strong>neural posterior estimation</strong> (NPE). Lecture 3 swaps the Gaussian head for a normalising flow and puts the whole pipeline to work.
   </p>
 </section>
 
@@ -1421,20 +1397,20 @@ function baseLayout(opts={}) {
 // ============================================================
 (function(){
   function trueMu(x){ return Math.sin(2*Math.PI*x); }
-  function trueSigma(x){ return 0.08 + 0.5*x*x; }
+  // Heteroscedastic: quiet on the left half, very noisy on the right.
+  function trueSigma(x){ return 0.04 + 0.7*Math.max(0, x)*Math.max(0, x); }
   let dataX=[], dataT=[];
   function regen(){
     const rng = createRNG(8);
     dataX=[]; dataT=[];
-    for (let i=0;i<150;i++){ const x=-1+2*rng(); dataX.push(x); dataT.push(trueMu(x)+trueSigma(x)*gaussN(rng)); }
+    for (let i=0;i<200;i++){ const x=-1+2*rng(); dataX.push(x); dataT.push(trueMu(x)+trueSigma(x)*gaussN(rng)); }
   }
-  // Two heads MLP — quick analytic fit: fit μ(x) with poly degree 5, σ(x) with poly degree 3 of |residuals|
+  // Two-stage analytic fit: μ via degree-5 polynomial LS, σ via degree-3 poly of |residuals|.
   function fitBoth(){
     const wMu = fitPoly(dataX, dataT, 6);
     const resAbs = dataX.map((x,i)=> Math.abs(dataT[i] - polyEval(wMu, x)));
     const wSig = fitPoly(dataX, resAbs, 4);
-    // adjust scale: |normal| has mean σ√(2/π)
-    const scale = Math.sqrt(Math.PI/2);
+    const scale = Math.sqrt(Math.PI/2);  // |N(0,σ²)| has mean σ√(2/π)
     return {wMu, wSig, scale};
   }
   function draw(e){
@@ -1444,20 +1420,14 @@ function baseLayout(opts={}) {
     const xLine=[]; for (let x=-1.05;x<=1.05;x+=0.01) xLine.push(x);
     const muLine = xLine.map(x => polyEval(fit.wMu, x));
     const sigLine = xLine.map(x => Math.max(0.02, polyEval(fit.wSig, x)*fit.scale));
-    // constant-σ baseline
-    let ss=0; for (let i=0;i<dataX.length;i++){ const r = dataT[i]-polyEval(fit.wMu, dataX[i]); ss+=r*r; }
-    const sigConst = Math.sqrt(ss/dataX.length);
-    const upHet = muLine.map((v,i)=>v+2*sigLine[i]), loHet = muLine.map((v,i)=>v-2*sigLine[i]);
-    const upHom = muLine.map(v=>v+2*sigConst),     loHom = muLine.map(v=>v-2*sigConst);
+    const upHet = muLine.map((v,i)=>v+sigLine[i]), loHet = muLine.map((v,i)=>v-sigLine[i]);
     Plotly.react('hetero-plot', [
-      { x:xLine.concat(xLine.slice().reverse()), y:upHom.concat(loHom.slice().reverse()),
-        fill:'toself', fillcolor:'rgba(41,128,185,0.16)', line:{width:0}, name:'constant σ' },
       { x:xLine.concat(xLine.slice().reverse()), y:upHet.concat(loHet.slice().reverse()),
-        fill:'toself', fillcolor:'rgba(230,126,34,0.25)', line:{width:0}, name:'learned σ(x)' },
+        fill:'toself', fillcolor:'rgba(127,140,141,0.25)', line:{width:0}, name:'fit ± σ(x)', hoverinfo:'skip' },
       { x:dataX, y:dataT, mode:'markers', name:'data', marker:{size:5, color:'#2c3e50', opacity:0.55} },
       { x:xLine, y:xLine.map(trueMu), mode:'lines', name:'true μ(x)', line:{color:'#bdc3c7', dash:'dash', width:2} },
       { x:xLine, y:muLine, mode:'lines', name:'fitted μ(x)', line:{color:'#e74c3c', width:3} }
-    ], baseLayout({xaxis:{title:'x', range:[-1.05,1.05]}, yaxis:{title:'θ'}, legend:{x:0.02,y:0.98}}), {displayModeBar:false});
+    ], baseLayout({xaxis:{title:'x', range:[-1.05,1.05]}, yaxis:{title:'θ', range:[-2.5,2.5]}, legend:{x:0.02,y:0.98}}), {displayModeBar:false});
   }
   Reveal.on('slidechanged', draw); Reveal.on('ready', draw);
 })();
@@ -1662,56 +1632,6 @@ function baseLayout(opts={}) {
     draw();
   }
   Reveal.on('slidechanged', initSlide); Reveal.on('ready', initSlide);
-})();
-
-// ============================================================
-// Slide D24 — multimodal posterior visualisation
-// ============================================================
-(function(){
-  function draw(e){
-    if (!e.currentSlide.querySelector('#multimodal-plot')) return;
-    const xLine=[]; for(let t=-4;t<=4;t+=0.02) xLine.push(t);
-    function gpdf(t, mu, sigma){ return Math.exp(-0.5*((t-mu)/sigma)**2)/(sigma*Math.sqrt(2*Math.PI)); }
-    const truth = xLine.map(t => 0.5*gpdf(t,-1.5,0.5) + 0.5*gpdf(t,1.5,0.5));
-    // best Gaussian (moment match)
-    const mu = 0, sig2 = 0.5*(0.25 + 2.25) + 0.5*(0.25 + 2.25) - 0; // mixture variance
-    const fitted = xLine.map(t => gpdf(t, 0, Math.sqrt(sig2)));
-    Plotly.react('multimodal-plot', [
-      { x:xLine, y:truth, mode:'lines', name:'true p(θ|x)', line:{color:'#2c3e50', width:3}, fill:'tozeroy', fillcolor:'rgba(44,62,80,0.10)' },
-      { x:xLine, y:fitted, mode:'lines', name:'best Gaussian fit', line:{color:'#e74c3c', width:3, dash:'dash'} }
-    ], baseLayout({xaxis:{title:'θ'}, yaxis:{title:'p(θ|x)'}, legend:{x:0.02, y:0.98}}), {displayModeBar:false});
-  }
-  Reveal.on('slidechanged', draw); Reveal.on('ready', draw);
-})();
-
-// ============================================================
-// Slide D25 — flow warping visualisation
-// ============================================================
-(function(){
-  function gpdf(z, sigma){ return Math.exp(-0.5*(z/sigma)**2)/(sigma*Math.sqrt(2*Math.PI)); }
-  function draw(){
-    const A = parseFloat(document.getElementById('flow-a-slider').value);
-    document.getElementById('flow-a-val').textContent = A.toFixed(2);
-    const sigma = 1.5;
-    const zL=[]; for(let z=-5;z<=5;z+=0.02) zL.push(z);
-    const pz = zL.map(z=>gpdf(z,sigma));
-    const theta = zL.map(z=>z+A*Math.sin(z));
-    const jac = zL.map(z=>Math.abs(1+A*Math.cos(z)));
-    const pTheta = pz.map((p,i)=>p/Math.max(1e-3, jac[i]));
-    Plotly.react('flow-warp-plot', [
-      { x:zL, y:pz, mode:'lines', name:'base p_Z(z)', line:{color:'#2980b9', width:2.5}, yaxis:'y' },
-      { x:theta, y:pTheta, mode:'lines', name:'warped p_Θ(θ)', line:{color:'#8e44ad', width:3}, yaxis:'y' },
-      { x:zL, y:theta, mode:'lines', name:'θ = z + A·sin(z)', line:{color:'#e67e22', dash:'dot', width:2}, yaxis:'y2' }
-    ], baseLayout({
-      xaxis:{title:'z / θ', range:[-5,5]},
-      yaxis:{title:'density', range:[0, 0.4]},
-      yaxis2:{title:'θ', overlaying:'y', side:'right', range:[-7,7], showgrid:false},
-      legend:{x:0.02, y:0.98}
-    }), {displayModeBar:false});
-  }
-  document.getElementById('flow-a-slider').addEventListener('input', draw);
-  function init(e){ if (e.currentSlide.querySelector('#flow-warp-plot')) draw(); }
-  Reveal.on('slidechanged', init); Reveal.on('ready', init);
 })();
 
 // ============================================================
@@ -2303,7 +2223,10 @@ function genClassData(type, n) {
   document.getElementById('mlp-lr-slider').addEventListener('input',function(){document.getElementById('mlp-lr-val').textContent=Math.pow(10,parseFloat(this.value)).toFixed(3);});
   document.getElementById('mlp-dataset').addEventListener('change',reset);
   document.getElementById('mlp-act').addEventListener('change',reset);
-  function init(e){if(e.currentSlide&&e.currentSlide.querySelector('#mlp-boundary-plot'))reset();}
+  function init(e){
+    if(e.currentSlide&&e.currentSlide.querySelector('#mlp-boundary-plot')) reset();
+    else if(animId){ clearTimeout(animId); animId=null; }
+  }
   Reveal.on('slidechanged',init);
 })();
 
@@ -2398,7 +2321,10 @@ function genClassData(type, n) {
   document.getElementById('mlpreg2-lr-slider').addEventListener('input',function(){document.getElementById('mlpreg2-lr-val').textContent=Math.pow(10,parseFloat(this.value)).toFixed(3);});
   document.getElementById('mlpreg2-target').addEventListener('change',resetR);
   document.getElementById('mlpreg2-act').addEventListener('change',resetR);
-  function init(e){if(e.currentSlide&&e.currentSlide.querySelector('#mlpreg2-fit-plot'))resetR();}
+  function init(e){
+    if(e.currentSlide&&e.currentSlide.querySelector('#mlpreg2-fit-plot')) resetR();
+    else if(ranimId){ clearTimeout(ranimId); ranimId=null; }
+  }
   Reveal.on('slidechanged',init);
 })();
 
@@ -2463,7 +2389,10 @@ function genClassData(type, n) {
   document.getElementById('dmlp-dataset').addEventListener('change',reset);
   document.getElementById('dmlp-act').addEventListener('change',reset);
   document.getElementById('dmlp-layers').addEventListener('change',reset);
-  function init(e){if(e.currentSlide&&e.currentSlide.querySelector('#dmlp-boundary-plot'))reset();}
+  function init(e){
+    if(e.currentSlide&&e.currentSlide.querySelector('#dmlp-boundary-plot')) reset();
+    else if(animId){ clearTimeout(animId); animId=null; }
+  }
   Reveal.on('slidechanged',init);
 })();
 
