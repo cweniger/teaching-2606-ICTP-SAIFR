@@ -653,7 +653,7 @@
 <!-- MLP in Action: Regression -->
 <section>
   <h2>MLP in Action: Regression</h2>
-  <p>Train a one-hidden-layer MLP on 1D regression. Watch the fit evolve:</p>
+  <p>Train a one-hidden-layer MLP on 1D regression with the Gaussian NLL loss. The grey band is the trained \(\sigma\) &mdash; all of \(\boldsymbol\phi = (\mathbf{W},\mathbf{b},\log\sigma)\) is updated by SGD.</p>
   <div class="ctrl-row">
     <label>Target:
       <select id="mlpreg2-target" style="padding:2px 6px; font-size:1em;">
@@ -2308,38 +2308,79 @@ function genClassData(type, n) {
 })();
 
 // DEMO: MLP regression trainer (1 hidden layer) - IDs renamed to mlpreg2-*
+//   NLL with learnable σ: φ = (W, b, log σ). Gradient descent updates all of them.
 (function() {
   function targetFn(type,x){if(type==='sin')return Math.sin(2*Math.PI*x);if(type==='step')return x>0.5?1:-1;return 2*(x-Math.floor(x+0.5));}
   var rnet=null,rdata=null,rloss=[],rbatchLoss=[],repoch=0,ranimId=null;
+  var logSigma=0;  // σ = exp(logSigma); start at σ=1
   function genRD(type){var rng=createRNG(77),X=[],Y=[];for(var i=0;i<100;i++){var x=rng()-0.5;X.push(x);Y.push(targetFn(type,x+0.5)+0.15*boxMuller(rng));}return{X:X,Y:Y};}
   function buildRN(){var w=Math.pow(2,parseInt(document.getElementById('mlpreg2-width-slider').value));var act=document.getElementById('mlpreg2-act').value;return new MLPReg([1,w,1],act);}
   var rLossInitialized=false;
-  function resetR(){if(ranimId){clearTimeout(ranimId);ranimId=null;}rdata=genRD(document.getElementById('mlpreg2-target').value);rnet=buildRN();rloss=[];rbatchLoss=[];repoch=0;rLossInitialized=false;document.getElementById('mlpreg2-epoch-label').textContent='';renderR();}
+  function resetR(){
+    if(ranimId){clearTimeout(ranimId);ranimId=null;}
+    rdata=genRD(document.getElementById('mlpreg2-target').value);
+    rnet=buildRN(); rloss=[]; rbatchLoss=[]; repoch=0;
+    logSigma=0;
+    rLossInitialized=false;
+    document.getElementById('mlpreg2-epoch-label').textContent='';
+    renderR();
+  }
   function renderRFit(){
     var type=document.getElementById('mlpreg2-target').value;
     var xF=[];for(var t=-0.5;t<=0.5;t+=0.005)xF.push(t);
     var yT=xF.map(function(x){return targetFn(type,x+0.5);});
     var yP=xF.map(function(x){return rnet.forward([x]);});
+    var sigma=Math.exp(logSigma);
+    var yU=yP.map(function(v){return v+sigma;});
+    var yL=yP.map(function(v){return v-sigma;});
     Plotly.react('mlpreg2-fit-plot',[
+      {x:xF.concat(xF.slice().reverse()), y:yU.concat(yL.slice().reverse()),
+        fill:'toself', fillcolor:'rgba(127,140,141,0.25)', line:{width:0},
+        name:'fit ± σ', hoverinfo:'skip'},
       {x:xF,y:yT,mode:'lines',name:'Target',line:{width:2,color:'#bdc3c7',dash:'dash'}},
       {x:rdata.X,y:rdata.Y,mode:'markers',name:'Data',marker:{size:5,color:'#2980b9',opacity:0.6}},
       {x:xF,y:yP,mode:'lines',name:'MLP fit',line:{width:2.5,color:'#e74c3c'}}
     ],{xaxis:{title:'x',range:[-0.5,0.5]},yaxis:{title:'y',range:[-2,2]},margin:{t:5,r:10,b:35,l:45},paper_bgcolor:'rgba(0,0,0,0)',plot_bgcolor:'rgba(0,0,0,0)',font:{size:12},legend:{x:0.65,y:0.98},hovermode:false},{displayModeBar:false});
   }
   function renderRLossInit(){
-    Plotly.newPlot('mlpreg2-loss-plot',[{x:[],y:[],mode:'lines',name:'MSE',line:{width:2,color:'#e74c3c'}}],{xaxis:{title:'Step'},yaxis:{title:'MSE',type:'log'},margin:{t:5,r:10,b:35,l:50},paper_bgcolor:'rgba(0,0,0,0)',plot_bgcolor:'rgba(0,0,0,0)',font:{size:12}},{displayModeBar:false});
+    Plotly.newPlot('mlpreg2-loss-plot',[{x:[],y:[],mode:'lines',name:'NLL',line:{width:2,color:'#e74c3c'}}],{xaxis:{title:'Step'},yaxis:{title:'NLL'},margin:{t:5,r:10,b:35,l:50},paper_bgcolor:'rgba(0,0,0,0)',plot_bgcolor:'rgba(0,0,0,0)',font:{size:12}},{displayModeBar:false});
     rLossInitialized=true;
   }
   function renderR(){renderRFit();if(!rLossInitialized)renderRLossInit();}
   function trainRS(){
     var lr=Math.pow(10,parseFloat(document.getElementById('mlpreg2-lr-slider').value));
-    var B=64,N=rdata.X.length;
+    var B=64, N=rdata.X.length;
     var rng=createRNG(repoch);
-    var bl=0;
-    for(var b=0;b<B;b++){var i=Math.floor(rng()*N);var p=rnet.forward([rdata.X[i]]);var y=rdata.Y[i];bl+=0.5*(p-y)*(p-y);rnet.backward(y,lr);}
+    var sigma2=Math.exp(2*logSigma);
+    var effLr=Math.min(lr/sigma2, 10*lr);   // cap network LR scaling for stability
+    var bl=0, dLogS=0;
+    for(var b=0;b<B;b++){
+      var i=Math.floor(rng()*N);
+      var p=rnet.forward([rdata.X[i]]);
+      var y=rdata.Y[i];
+      var r=p-y;
+      // NLL_n = log σ + 0.5 (r/σ)²   (constant 0.5 log 2π dropped)
+      bl += logSigma + 0.5*r*r/sigma2;
+      // ∂NLL/∂(network params) = (r/σ²) × MSE-gradient → use scaled lr
+      rnet.backward(y, effLr);
+      // ∂NLL/∂(log σ) per sample = 1 - r²/σ²; accumulate over batch
+      dLogS += (1 - r*r/sigma2);
+    }
     rbatchLoss.push(bl/B);
-    var tl=0;for(var i=0;i<N;i++){var p=rnet.forward([rdata.X[i]]);var y=rdata.Y[i];tl+=0.5*(p-y)*(p-y);}
-    rloss.push(tl/N);repoch++;document.getElementById('mlpreg2-epoch-label').textContent='Step '+repoch;
+    logSigma -= lr*(dLogS/B);
+    if(logSigma < -2) logSigma=-2;          // clamp σ ∈ [exp(-2), exp(1)] ≈ [0.14, 2.72]
+    else if(logSigma > 1) logSigma=1;
+    // Full-dataset NLL (snapshot at end of step, with updated σ)
+    var sigma2New=Math.exp(2*logSigma);
+    var tl=0;
+    for(var i=0;i<N;i++){
+      var p=rnet.forward([rdata.X[i]]);
+      var y=rdata.Y[i];
+      var r=p-y;
+      tl += logSigma + 0.5*r*r/sigma2New;
+    }
+    rloss.push(tl/N); repoch++;
+    document.getElementById('mlpreg2-epoch-label').textContent='Step '+repoch+'   σ='+Math.exp(logSigma).toFixed(3);
   }
   function trainRL(){
     trainRS();
@@ -2348,7 +2389,7 @@ function genClassData(type, n) {
     Plotly.react('mlpreg2-loss-plot',[
       {x:ep,y:rbatchLoss,mode:'lines',line:{width:1,color:'#bdc3c7'},name:'Mini-batch'},
       {x:ep,y:rloss,mode:'lines',line:{width:2,color:'#e74c3c'},name:'Full dataset'}
-    ],{xaxis:{title:'Step',range:[0,Math.max(repoch,10)]},yaxis:{title:'MSE',type:'log'},margin:{t:5,r:10,b:35,l:50},paper_bgcolor:'rgba(0,0,0,0)',plot_bgcolor:'rgba(0,0,0,0)',font:{size:12},legend:{x:0.5,y:0.99,bgcolor:'rgba(255,255,255,0.8)',font:{size:9}}},{displayModeBar:false});
+    ],{xaxis:{title:'Step',range:[0,Math.max(repoch,10)]},yaxis:{title:'NLL'},margin:{t:5,r:10,b:35,l:50},paper_bgcolor:'rgba(0,0,0,0)',plot_bgcolor:'rgba(0,0,0,0)',font:{size:12},legend:{x:0.5,y:0.99,bgcolor:'rgba(255,255,255,0.8)',font:{size:9}}},{displayModeBar:false});
     if(repoch<5000)ranimId=setTimeout(trainRL,100);
   }
   document.getElementById('mlpreg2-train-btn').addEventListener('click',function(){if(ranimId){clearTimeout(ranimId);ranimId=null;return;}trainRL();});
