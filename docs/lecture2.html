@@ -575,11 +575,16 @@
 <!-- Gradient Descent (interactive) -->
 <section>
   <h2>Gradient Descent</h2>
-  <p>Start somewhere, then repeatedly step in the direction that <strong>decreases the loss</strong>:</p>
-  <div class="box" style="text-align:center; font-size:1.1em; padding:14px; margin-top:6px;">
-    \[ \mathbf{w} \;\leftarrow\; \mathbf{w} - \eta \,\nabla E(\mathbf{w}) \]
+  <p>Bundle every trainable quantity into a single parameter vector \(\boldsymbol\phi\):</p>
+  <div class="box" style="text-align:center; font-size:1.0em; padding:8px 12px; margin-top:4px;">
+    \[ \boldsymbol\phi \;=\; \bigl(\,\mathbf{W}^{(1)},\,\mathbf{b}^{(1)},\,\ldots,\,\mathbf{W}^{(L)},\,\mathbf{b}^{(L)},\,\sigma_\theta,\,\ldots\bigr) \]
+    <p style="margin:4px 0 0; font-size:0.85em; color:#7f8c8d;">weights, biases, output-noise scale &mdash; everything the loss depends on, in one flat vector</p>
   </div>
-  <p>\(\eta\) = <strong>learning rate</strong> &mdash; controls the step size.</p>
+  <p style="margin-top:6px;">Start somewhere, then repeatedly step in the direction that <strong>decreases the loss</strong>:</p>
+  <div class="box" style="text-align:center; font-size:1.1em; padding:14px; margin-top:4px;">
+    \[ \boldsymbol\phi \;\leftarrow\; \boldsymbol\phi - \eta \,\nabla_{\!\boldsymbol\phi}\, E(\boldsymbol\phi) \]
+  </div>
+  <p>\(\eta\) = <strong>learning rate</strong>. The gradient is taken w.r.t. <em>every</em> component of \(\boldsymbol\phi\) at once.</p>
   <div id="gd-narration" style="min-height:2em; margin-top:6px;">
     <span style="color:#7f8c8d; font-size:0.9em;">Click <strong>Next &#9654;</strong> to see how the learning rate affects convergence.</span>
   </div>
@@ -613,9 +618,9 @@
 <!-- Mini-Batch SGD -->
 <section>
   <h2>Mini-Batch Stochastic Gradient Descent (SGD)</h2>
-  <p>Computing the full gradient over all \(N\) samples is expensive. Instead, approximate it with a random <strong>mini-batch</strong> \(\mathcal{B}\) of size \(B \ll N\):</p>
+  <p>Computing the full gradient over all \(N\) samples is expensive. Approximate it with a random <strong>mini-batch</strong> \(\mathcal{B}\) of size \(B \ll N\). The gradient is taken w.r.t. every component of \(\boldsymbol\phi = (\mathbf{W},\mathbf{b},\sigma_\theta,\ldots)\):</p>
   <div class="box" style="text-align:center; font-size:1.0em; padding:10px; margin-top:8px;">
-    \[ \nabla E(\mathbf{w}) = \frac{1}{N}\sum_{n=1}^{N} \nabla E_n(\mathbf{w}) \;\approx\; \frac{1}{B}\sum_{n \in \mathcal{B}} \nabla E_n(\mathbf{w}) \]
+    \[ \nabla_{\!\boldsymbol\phi}\, E(\boldsymbol\phi) = \frac{1}{N}\sum_{n=1}^{N} \nabla_{\!\boldsymbol\phi}\, E_n(\boldsymbol\phi) \;\approx\; \frac{1}{B}\sum_{n \in \mathcal{B}} \nabla_{\!\boldsymbol\phi}\, E_n(\boldsymbol\phi) \]
   </div>
   <div class="fragment" style="margin-top:12px;">
     <p>One full pass through the data = one <strong>epoch</strong>. &ensp; Typical batch sizes: \(B\) = 32&ndash;256.</p>
@@ -628,8 +633,8 @@
   <h2>SGD = True Gradient + Noise</h2>
   <p>The mini-batch gradient is a <strong>noisy estimate</strong> of the true gradient:</p>
   <div class="box" style="text-align:center; padding:10px; margin-top:8px;">
-    \[ \underbrace{\frac{1}{B}\sum_{n \in \mathcal{B}} \nabla E_n}_{\text{mini-batch gradient}} = \underbrace{\nabla E(\mathbf{w})}_{\text{true gradient}} + \underbrace{\boldsymbol{\epsilon}}_{\text{noise}}, \qquad \mathrm{Var}(\boldsymbol{\epsilon}) = \frac{\sigma^2_{\nabla}}{B} \]
-    <p style="font-size:0.85em; color:#7f8c8d; margin:4px 0 0;">\(\sigma^2_{\nabla}\) = variance of individual sample gradients \(\nabla E_n\) across the dataset</p>
+    \[ \underbrace{\frac{1}{B}\sum_{n \in \mathcal{B}} \nabla_{\!\boldsymbol\phi}\, E_n}_{\text{mini-batch gradient}} = \underbrace{\nabla_{\!\boldsymbol\phi}\, E(\boldsymbol\phi)}_{\text{true gradient}} + \underbrace{\boldsymbol{\epsilon}}_{\text{noise}}, \qquad \mathrm{Var}(\boldsymbol{\epsilon}) = \frac{\sigma^2_{\nabla}}{B} \]
+    <p style="font-size:0.85em; color:#7f8c8d; margin:4px 0 0;">\(\sigma^2_{\nabla}\) = variance of individual sample gradients \(\nabla_{\!\boldsymbol\phi}\, E_n\) across the dataset</p>
   </div>
   <div class="fragment" style="display:flex; gap:12px; margin-top:12px;">
     <div class="box" style="flex:1; text-align:center;">
@@ -883,20 +888,6 @@
       <div style="width:200px; height:4px; background:linear-gradient(90deg,#2980b9,#e74c3c); margin:25px auto 0;"></div>
     </div>
   </div>
-</section>
-
-<!-- D20 — Bayes-optimal classifier ↔ sigmoid -->
-<section>
-  <h2>One slide on classification: Bayes ↔ sigmoid</h2>
-  <p>Train a binary classifier on \(y\in\{0,1\}\) with cross-entropy. With enough data and capacity, the optimal output is:</p>
-  <div class="box" style="text-align:center;">
-    \[ p(y\!=\!1\mid x) \;=\; \sigma\!\bigl(f_\phi(x)\bigr), \qquad f_\phi(x)^\star = \ln\!\frac{p(x\mid y\!=\!1)}{p(x\mid y\!=\!0)} \]
-    <p style="margin:4px 0 0; font-size:0.9em;">The logit <em>is</em> a log-density ratio. Classifiers are statistics in disguise.</p>
-  </div>
-  <p style="margin-top:14px;">Plug \(p(y\!=\!1) = p(y\!=\!0)\) and you get \(p(y\!=\!1\mid x) - 1/2 = \tfrac{1}{4}f^\star(x) + \mathcal{O}(f^{\star 2})\). The same network can target probabilities, densities, or ratios.</p>
-  <p style="margin-top:14px;">
-    Why this matters for SBI: this is the doorway to <strong>neural ratio estimation</strong> (NRE), the classifier-flavoured cousin of NPE. Lecture 3 names it; we mention it here once and move on.
-  </p>
 </section>
 
 <!-- D21 — heteroscedastic noise (NEW) -->
