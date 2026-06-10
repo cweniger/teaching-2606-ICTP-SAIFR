@@ -279,76 +279,101 @@
   </p>
 </section>
 
-<!-- ============================================================ -->
-<!-- BLOCK B — overfitting & basis-function problem               -->
-<!-- ============================================================ -->
+<!-- Interactive: polynomial regression with train/val error -->
 <section>
-  <div style="display:flex; align-items:center; justify-content:center; height:100%;">
-    <div style="text-align:center;">
-      <h1 style="font-size:1.8em; margin-bottom:0.2em;">Block B &mdash; Overfitting &amp; the Basis-Function Problem</h1>
-      <div style="width:140px; height:4px; background: linear-gradient(90deg, #e67e22, #e74c3c); margin:0 auto; border-radius:2px;"></div>
-      <p style="font-size:0.9em; color:#7f8c8d; margin-top:0.8em;">The fixed basis cannot be both expressive enough and well-behaved.</p>
+  <h2>Interactive: Polynomial Regression</h2>
+  <div class="ctrl-row" style="margin-top:2px;">
+    <label>\(M\) = <span id="lr-deg-val">2</span>
+      <input type="range" id="lr-deg-slider" min="1" max="13" step="1" value="2" style="width:140px;"></label>
+    <label>\(N\) points = <span id="lr-n-val">15</span>
+      <input type="range" id="lr-n-slider" min="5" max="50" step="1" value="15" style="width:140px;"></label>
+    <label>Noise \(\sigma\) = <span id="lr-noise-val">0.30</span>
+      <input type="range" id="lr-noise-slider" min="0.05" max="1.0" step="0.05" value="0.30" style="width:140px;"></label>
+    <button id="lr-resample-btn">&#x21bb; Resample</button>
+  </div>
+  <div style="display:flex; gap:10px;">
+    <div id="lr-fit-plot" style="flex:1; height:280px;"></div>
+    <div id="lr-err-plot" style="flex:1; height:280px;"></div>
+  </div>
+  <p style="font-size:0.75em; color:#95a5a6; margin-top:2px;">RMSE = root mean square error: \(\sqrt{\frac{1}{N}\sum_n (\theta_n - \mu_\theta(x_n;\mathbf{w}))^2}\).</p>
+  <div id="lr-narration" style="min-height:2.2em; margin-top:4px;">
+    <span style="color:#7f8c8d; font-size:0.9em;">Click <strong>Next &#x25b8;</strong> to walk through the key lessons.</span>
+  </div>
+  <div style="display:flex; gap:12px; margin-top:4px; align-items:center;">
+    <button id="lr-story-next" style="padding:6px 24px; cursor:pointer; font-size:1.0em; font-weight:600;">Next &#x25b8;</button>
+    <button id="lr-story-reset" style="padding:6px 16px; cursor:pointer; font-size:0.9em;">&#x21ba; Reset</button>
+    <span id="lr-story-step" style="color:#7f8c8d; font-size:0.85em; margin-left:8px;"></span>
+  </div>
+</section>
+
+<!-- Overfitting & underfitting -->
+<section>
+  <h2>Overfitting &amp; Underfitting</h2>
+  <div style="display:flex; gap:20px;">
+    <div class="box fragment" style="flex:1;">
+      <h3 style="margin-top:0; color:#27ae60;">Underfitting</h3>
+      <p>Model too simple &mdash; misses the pattern.</p>
+      <p>Training error: high<br>Validation error: high</p>
+    </div>
+    <div class="box fragment" style="flex:1;">
+      <h3 style="margin-top:0; color:#e67e22;">Good fit</h3>
+      <p>Right complexity.</p>
+      <p>Training error: low<br>Validation error: low</p>
+    </div>
+    <div class="box fragment" style="flex:1;">
+      <h3 style="margin-top:0; color:#e74c3c;">Overfitting</h3>
+      <p>Model too flexible &mdash; memorises noise.</p>
+      <p>Training error: very low<br>Validation error: high</p>
+    </div>
+  </div>
+  <p class="fragment" style="text-align:center; margin-top:10px;">
+    The gap between training and validation error is the signature of overfitting.
+  </p>
+</section>
+
+<!-- Validation & Testing -->
+<section>
+  <h2>Validation &amp; Testing</h2>
+  <div style="display:flex; gap:14px;">
+    <div style="flex:0 0 42%; text-align:left;">
+      <div class="box" style="margin-top:0;">
+        <p><strong>Training set</strong> &mdash; fit parameters \(\mathbf{w}\).</p>
+        <p><strong>Validation set</strong> &mdash; choose model complexity (\(M\), \(\lambda\), architecture, ...).</p>
+        <p><strong>Test set</strong> &mdash; one-shot final score. Look once.</p>
+      </div>
+      <div style="display:flex; margin-top:10px; height:36px; border-radius:8px; overflow:hidden; font-size:0.85em; text-align:center; line-height:36px;">
+        <div style="flex:7; background:#3498db; color:white;">Training (70%)</div>
+        <div style="flex:1.5; background:#e67e22; color:white;">Val (15%)</div>
+        <div style="flex:1.5; background:#e74c3c; color:white;">Test (15%)</div>
+      </div>
+      <p style="margin-top:10px; font-size:0.95em;"><strong>Never</strong> use test data for model selection &mdash; it defeats the purpose.</p>
+    </div>
+    <div style="flex:1 1 0; min-width:0; overflow:hidden;">
+      <div id="ucurve-plot" style="width:100%; max-width:100%; height:320px;"></div>
+      <p style="text-align:center; font-size:0.85em; color:#7f8c8d; margin-top:0;">
+        Training error keeps decreasing with \(M\). Validation error is U-shaped &mdash; the minimum picks the sweet spot.
+      </p>
     </div>
   </div>
 </section>
 
-<!-- B6 -->
+<!-- Validation vs Test in Practice -->
 <section>
-  <h2>Overfitting &mdash; step through</h2>
-  <div style="display:flex; gap:10px; align-items:center; font-size:0.85em; margin-top:2px;">
-    <button id="overfit-next" style="padding:5px 18px; cursor:pointer; font-weight:600;">Next ▸</button>
-    <button id="overfit-reset" style="padding:5px 12px; cursor:pointer;">↺ Reset</button>
-    <span id="overfit-step-label" style="color:#7f8c8d;"></span>
+  <h2>Validation vs. Test in Practice</h2>
+  <p style="font-size:0.9em;">Pick \(M\) using <span style="color:#e67e22; font-weight:bold;">validation</span> RMSE. The <span style="color:#e74c3c; font-weight:bold;">test</span> RMSE is your honest final score.</p>
+  <div class="ctrl-row">
+    <label>\(M\) = <span id="vt-deg-val">2</span>
+      <input type="range" id="vt-deg-slider" min="1" max="13" step="1" value="2" style="width:120px;"></label>
+    <button id="vt-resample-btn">&#x21bb; Resample</button>
+    <button id="vt-reveal-test" style="background:#e74c3c; color:white; border:none; border-radius:4px; padding:3px 12px; cursor:pointer;">Reveal test RMSE</button>
   </div>
-  <div id="overfit-plot" style="width:100%; height:380px; margin-top:4px;"></div>
-  <div id="overfit-msg" style="min-height:2.6em; margin-top:4px; font-size:0.95em; padding:6px 10px; border-radius:6px;"></div>
-</section>
-
-<!-- B7 -->
-<section>
-  <h2>Underfit / good fit / overfit</h2>
-  <div style="display:flex; gap:14px; margin-top:8px;">
-    <div class="box" style="flex:1;">
-      <h3 style="margin-top:0;">Underfit (\(M\) too small)</h3>
-      <p>Basis too rigid &mdash; cannot follow the signal.</p>
-      <p>Training error: high. Test error: high.</p>
-    </div>
-    <div class="box" style="flex:1;">
-      <h3 style="margin-top:0;">Good fit</h3>
-      <p>Basis matches the smoothness of the signal.</p>
-      <p>Training error: low. Test error: low.</p>
-    </div>
-    <div class="box" style="flex:1;">
-      <h3 style="margin-top:0;">Overfit (\(M\) too large)</h3>
-      <p>Basis flexible enough to chase the noise.</p>
-      <p>Training error: \(\to 0\). Test error: explodes.</p>
-    </div>
+  <div style="display:flex; gap:10px;">
+    <div id="vt-fit-plot" style="flex:1; height:260px;"></div>
+    <div id="vt-err-plot" style="flex:1; height:260px;"></div>
   </div>
-  <p class="fragment" style="text-align:center; margin-top:24px;">
-    The signature of overfitting is the <strong>gap</strong> between training and test error.
-  </p>
-  <p class="fragment" style="text-align:center; margin-top:8px;">
-    With a fixed basis you only have one knob &mdash; \(M\) &mdash; and it controls both expressiveness <em>and</em> noise sensitivity.
-  </p>
-</section>
-
-<!-- B8 -->
-<section>
-  <h2>Validation &amp; the U-curve</h2>
-  <div class="box">
-    <p><strong>Training set</strong> &mdash; fit parameters \(\mathbf{w}\).</p>
-    <p><strong>Validation set</strong> &mdash; choose model complexity (\(M\), \(\lambda\), architecture, …).</p>
-    <p><strong>Test set</strong> &mdash; one-shot final score. Look once.</p>
+  <div id="vt-narration" style="min-height:2.2em; margin-top:4px;">
+    <span style="color:#7f8c8d; font-size:0.9em;">1. Adjust \(M\) to minimise <span style="color:#e67e22;">validation</span> RMSE. 2. Click <strong>Reveal test RMSE</strong> to see the final score.</span>
   </div>
-  <div style="display:flex; margin-top:10px; height:36px; border-radius:8px; overflow:hidden; font-size:0.85em; text-align:center; line-height:36px;">
-    <div style="flex:7; background:#3498db; color:white;">Training (70%)</div>
-    <div style="flex:1.5; background:#e67e22; color:white;">Validation (15%)</div>
-    <div style="flex:1.5; background:#e74c3c; color:white;">Test (15%)</div>
-  </div>
-  <div id="ucurve-plot" style="width:100%; height:300px; margin-top:6px;"></div>
-  <p style="text-align:center; font-size:0.8em; color:#7f8c8d; margin-top:0;">
-    Training error keeps decreasing with \(M\). Validation error is U-shaped &mdash; minimum picks the sweet spot.
-  </p>
 </section>
 
 <!-- B9 — bridge slide -->
@@ -1149,42 +1174,6 @@ function baseLayout(opts={}) {
 })();
 
 // ============================================================
-// Slide B6 — overfitting animation
-// ============================================================
-(function(){
-  const rng = createRNG(321);
-  const N=12;
-  const xs=[], ts=[];
-  for (let i=0;i<N;i++){ const x=-1+2*i/(N-1); xs.push(x); ts.push(Math.sin(2*Math.PI*x)+0.25*gaussN(rng)); }
-  const steps = [
-    { M:1, msg:'M=1 (linear) — underfit. Cannot follow the curve.', color:'#fef5e7' },
-    { M:2, msg:'M=2. Still rigid.', color:'#fef5e7' },
-    { M:4, msg:'M=4 — good fit. Matches the smoothness.', color:'#eafaf1' },
-    { M:7, msg:'M=7 — starting to wiggle.', color:'#fdf2e9' },
-    { M:11, msg:'M=11 — overfit. Curve chases the noise; wild swings at the edges.', color:'#fadbd8' }
-  ];
-  let step = 0;
-  function draw(){
-    const s = steps[step];
-    const w = fitPoly(xs, ts, s.M+1);
-    const xLine=[]; for (let x=-1.05;x<=1.05;x+=0.005) xLine.push(x);
-    const yLine = xLine.map(x=>polyEval(w,x));
-    const yTrue = xLine.map(x=>Math.sin(2*Math.PI*x));
-    Plotly.react('overfit-plot', [
-      { x:xLine, y:yTrue, mode:'lines', name:'true', line:{color:'#bdc3c7', width:2, dash:'dash'} },
-      { x:xs, y:ts, mode:'markers', name:'data', marker:{size:9, color:'#2c3e50'} },
-      { x:xLine, y:yLine, mode:'lines', name:'fit (M='+s.M+')', line:{width:3, color:'#e74c3c'} }
-    ], baseLayout({xaxis:{title:'x', range:[-1.05,1.05]}, yaxis:{title:'θ', range:[-2.5,2.5]}}), {displayModeBar:false});
-    const m = document.getElementById('overfit-msg'); m.textContent = s.msg; m.style.background = s.color;
-    document.getElementById('overfit-step-label').textContent = (step+1)+' / '+steps.length;
-  }
-  document.getElementById('overfit-next').onclick = ()=>{ step = (step+1) % steps.length; draw(); };
-  document.getElementById('overfit-reset').onclick = ()=>{ step=0; draw(); };
-  function init(e){ if (e.currentSlide.querySelector('#overfit-plot')) draw(); }
-  Reveal.on('slidechanged', init); Reveal.on('ready', init);
-})();
-
-// ============================================================
 // Slide B8 — U-curve
 // ============================================================
 (function(){
@@ -1729,6 +1718,244 @@ function adamStep(net, grads, opt, lr) {
   document.getElementById('flow-a-slider').addEventListener('input', draw);
   function init(e){ if (e.currentSlide.querySelector('#flow-warp-plot')) draw(); }
   Reveal.on('slidechanged', init); Reveal.on('ready', init);
+})();
+
+// ============================================================
+// Shared helpers for LR + VT polynomial demos
+// ============================================================
+function _polyBasisRow(x, deg) {
+  const row = []; for (let d = 0; d <= deg; d++) row.push(Math.pow(x, d)); return row;
+}
+function _solveRidge(xArr, yArr, deg, lambda) {
+  const N = xArr.length, M = deg + 1;
+  const Phi = xArr.map(x => _polyBasisRow(x, deg));
+  const PhiTPhi = Array.from({length:M}, () => new Array(M).fill(0));
+  const PhiTy = new Array(M).fill(0);
+  for (let i = 0; i < N; i++) for (let j = 0; j < M; j++) {
+    PhiTy[j] += Phi[i][j] * yArr[i];
+    for (let k = 0; k < M; k++) PhiTPhi[j][k] += Phi[i][j] * Phi[i][k];
+  }
+  for (let j = 0; j < M; j++) PhiTPhi[j][j] += lambda;
+  for (let col = 0; col < M; col++) {
+    let maxRow = col;
+    for (let r = col+1; r < M; r++) if (Math.abs(PhiTPhi[r][col]) > Math.abs(PhiTPhi[maxRow][col])) maxRow = r;
+    [PhiTPhi[col], PhiTPhi[maxRow]] = [PhiTPhi[maxRow], PhiTPhi[col]];
+    [PhiTy[col], PhiTy[maxRow]] = [PhiTy[maxRow], PhiTy[col]];
+    for (let r = col+1; r < M; r++) {
+      const f = PhiTPhi[r][col] / PhiTPhi[col][col];
+      for (let k = col; k < M; k++) PhiTPhi[r][k] -= f * PhiTPhi[col][k];
+      PhiTy[r] -= f * PhiTy[col];
+    }
+  }
+  const w = new Array(M).fill(0);
+  for (let i = M-1; i >= 0; i--) {
+    w[i] = PhiTy[i];
+    for (let j = i+1; j < M; j++) w[i] -= PhiTPhi[i][j] * w[j];
+    w[i] /= PhiTPhi[i][i];
+  }
+  return w;
+}
+function _evalPolyW(w, x) {
+  let v = 0; for (let d = 0; d < w.length; d++) v += w[d] * Math.pow(x, d); return v;
+}
+function _mse(xArr, yArr, w) {
+  let s = 0; for (let i = 0; i < xArr.length; i++) s += Math.pow(yArr[i] - _evalPolyW(w, xArr[i]), 2);
+  return s / xArr.length;
+}
+
+// ============================================================
+// Slide LR — Interactive polynomial regression with guided narration
+// ============================================================
+(function(){
+  const trueF = x => Math.sin(2*Math.PI*x);
+  let trainX=[], trainY=[], testX=[], testY=[], noiseSigma=0.3;
+  let lrSeed = 303;
+  function generateLRData(resample) {
+    if (resample) lrSeed++;
+    const rng = createRNG(lrSeed);
+    const N = parseInt(document.getElementById('lr-n-slider').value);
+    noiseSigma = parseFloat(document.getElementById('lr-noise-slider').value);
+    trainX=[]; trainY=[]; testX=[]; testY=[];
+    for (let i = 0; i < N; i++) {
+      const xi = rng(); trainX.push(xi);
+      trainY.push(trueF(xi) + noiseSigma*(2*rng()-1)*1.7);
+    }
+    for (let i = 0; i < 100; i++) {
+      const xi = rng(); testX.push(xi);
+      testY.push(trueF(xi) + noiseSigma*(2*rng()-1)*1.7);
+    }
+    updateLR();
+  }
+  function updateLR() {
+    const M = parseInt(document.getElementById('lr-deg-slider').value);
+    const deg = M - 1;
+    document.getElementById('lr-deg-val').textContent = M;
+    document.getElementById('lr-n-val').textContent = trainX.length;
+    document.getElementById('lr-noise-val').textContent = noiseSigma.toFixed(2);
+    const w = _solveRidge(trainX, trainY, deg, 1e-10);
+    const xFine=[]; for (let t = 0; t <= 1; t += 0.005) xFine.push(t);
+    const yFit = xFine.map(x => _evalPolyW(w, x));
+    const yClip = yFit.map(v => Math.max(-3, Math.min(3, v)));
+    const yTrue = xFine.map(trueF);
+    Plotly.react('lr-fit-plot', [
+      { x:xFine, y:yTrue, mode:'lines', name:'True f(x)', line:{width:2, color:'#bdc3c7', dash:'dash'} },
+      { x:trainX, y:trainY, mode:'markers', name:'Training', marker:{size:6, color:'#2980b9'} },
+      { x:testX, y:testY, mode:'markers', name:'Validation', marker:{size:6, color:'#e74c3c', symbol:'triangle-up', opacity:0.6} },
+      { x:xFine, y:yClip, mode:'lines', name:'Fit (M='+M+')', line:{width:2.5, color: M > trainX.length ? '#e74c3c' : '#27ae60'} }
+    ], {
+      xaxis:{title:'x', range:[0,1]}, yaxis:{title:'θ', range:[-2.5,2.5]},
+      margin:{t:5, r:10, b:35, l:45},
+      paper_bgcolor:'rgba(0,0,0,0)', plot_bgcolor:'rgba(0,0,0,0)',
+      font:{size:12}, legend:{x:0.55, y:0.98}
+    }, {displayModeBar:false});
+    const trainErr=[], valErr=[], mVals=[];
+    for (let d = 0; d <= 12; d++) {
+      mVals.push(d+1);
+      const wd = _solveRidge(trainX, trainY, d, 1e-10);
+      trainErr.push(Math.sqrt(_mse(trainX, trainY, wd)));
+      valErr.push(Math.min(3, Math.sqrt(_mse(testX, testY, wd))));
+    }
+    const curTrain = trainErr[deg], curVal = valErr[deg];
+    Plotly.react('lr-err-plot', [
+      { x:mVals, y:trainErr, mode:'lines+markers', name:'Train RMSE', line:{width:2, color:'#3498db'}, marker:{size:5} },
+      { x:mVals, y:valErr,   mode:'lines+markers', name:'Validation RMSE', line:{width:2, color:'#e74c3c'}, marker:{size:5} },
+      { x:[M], y:[curTrain], mode:'markers', showlegend:false, marker:{size:12, color:'#3498db', symbol:'star'} },
+      { x:[M], y:[curVal],   mode:'markers', showlegend:false, marker:{size:12, color:'#e74c3c', symbol:'star'} }
+    ], {
+      xaxis:{title:'M', dtick:1}, yaxis:{title:'RMSE', range:[0,2]},
+      margin:{t:30, r:10, b:35, l:45},
+      paper_bgcolor:'rgba(0,0,0,0)', plot_bgcolor:'rgba(0,0,0,0)',
+      font:{size:12}, legend:{x:0.55, y:0.98},
+      annotations:[
+        { x:0.02, y:1.12, xref:'paper', yref:'paper', showarrow:false, font:{size:12, color:'#3498db'}, text:'Train: '+curTrain.toFixed(3) },
+        { x:0.4,  y:1.12, xref:'paper', yref:'paper', showarrow:false, font:{size:12, color:'#e74c3c'}, text:'Val: '+curVal.toFixed(3) }
+      ]
+    }, {displayModeBar:false});
+  }
+  document.getElementById('lr-deg-slider').addEventListener('input', updateLR);
+  document.getElementById('lr-n-slider').addEventListener('input', () => generateLRData(false));
+  document.getElementById('lr-noise-slider').addEventListener('input', () => generateLRData(false));
+  document.getElementById('lr-resample-btn').addEventListener('click', () => generateLRData(true));
+  function initLR(e) { if (e.currentSlide.querySelector('#lr-fit-plot')) generateLRData(false); }
+  Reveal.on('slidechanged', initLR); Reveal.on('ready', initLR);
+
+  let storyStep = 0;
+  const storySteps = [
+    { msg:'<strong style="color:#27ae60;">Underfitting:</strong> a straight line (M=2) cannot capture the shape of the data.', deg:2, n:15, noise:0.30 },
+    { msg:'<strong style="color:#e67e22;">Good fit:</strong> M=4 captures the pattern. Validation RMSE is generally lowest here &mdash; that is how you would choose M in practice.', deg:4, n:15, noise:0.30 },
+    { msg:'<strong style="color:#e74c3c;">Overfitting:</strong> M=13 fits every training point but <strong>validation RMSE explodes</strong>.', deg:13, n:15, noise:0.30 },
+    { msg:'<strong style="color:#2980b9;">More data helps:</strong> with N=50, even M=13 is forced to generalise.', deg:13, n:50, noise:0.30 },
+    { msg:'<strong style="color:#8e44ad;">Try it yourself:</strong> for different N and σ, find the M with lowest validation RMSE.', deg:4, n:15, noise:0.30 }
+  ];
+  function applyStep() {
+    const s = storySteps[storyStep];
+    document.getElementById('lr-narration').innerHTML = '<span style="font-size:0.95em;">'+s.msg+'</span>';
+    document.getElementById('lr-story-step').textContent = 'Step ' + (storyStep+1) + ' / ' + storySteps.length;
+    document.getElementById('lr-deg-slider').value = s.deg;
+    document.getElementById('lr-n-slider').value = s.n;
+    document.getElementById('lr-noise-slider').value = s.noise;
+    generateLRData(false);
+  }
+  document.getElementById('lr-story-next').addEventListener('click', function(e) {
+    e.preventDefault(); e.stopPropagation();
+    if (storyStep < storySteps.length-1) { storyStep++; applyStep(); }
+  });
+  document.getElementById('lr-story-reset').addEventListener('click', function(e) {
+    e.preventDefault(); e.stopPropagation();
+    storyStep = 0;
+    document.getElementById('lr-narration').innerHTML = '<span style="color:#7f8c8d; font-size:0.9em;">Click <strong>Next &#x25b8;</strong> to walk through the key lessons.</span>';
+    document.getElementById('lr-story-step').textContent = '';
+    document.getElementById('lr-deg-slider').value = 2;
+    document.getElementById('lr-n-slider').value = 15;
+    document.getElementById('lr-noise-slider').value = 0.30;
+    generateLRData(false);
+  });
+})();
+
+// ============================================================
+// Slide VT — Validation vs Test in practice
+// ============================================================
+(function(){
+  const vtTrueF = x => Math.sin(2*Math.PI*x);
+  let vtSeed = 777;
+  let trX=[], trY=[], vaX=[], vaY=[], teX=[], teY=[];
+  let testRevealed = false;
+  function generateVTData(resample) {
+    if (resample) vtSeed++;
+    testRevealed = false;
+    const rng = createRNG(vtSeed);
+    trX=[]; trY=[]; vaX=[]; vaY=[]; teX=[]; teY=[];
+    const sigma = 0.35;
+    for (let i = 0; i < 15; i++) { const xi = rng(); trX.push(xi); trY.push(vtTrueF(xi) + sigma*(2*rng()-1)*1.7); }
+    for (let i = 0; i < 10; i++) { const xi = rng(); vaX.push(xi); vaY.push(vtTrueF(xi) + sigma*(2*rng()-1)*1.7); }
+    for (let i = 0; i < 10; i++) { const xi = rng(); teX.push(xi); teY.push(vtTrueF(xi) + sigma*(2*rng()-1)*1.7); }
+    document.getElementById('vt-narration').innerHTML = '<span style="color:#7f8c8d; font-size:0.9em;">1. Adjust \\(M\\) to minimise <span style="color:#e67e22;">validation</span> RMSE. 2. Click <strong>Reveal test RMSE</strong> to see the final score.</span>';
+    if (window.MathJax && window.MathJax.typesetPromise) window.MathJax.typesetPromise([document.getElementById('vt-narration')]).catch(function(){});
+    updateVT();
+  }
+  function updateVT() {
+    const M = parseInt(document.getElementById('vt-deg-slider').value);
+    const deg = M - 1;
+    document.getElementById('vt-deg-val').textContent = M;
+    const w = _solveRidge(trX, trY, deg, 1e-10);
+    const xFine=[]; for (let t = 0; t <= 1; t += 0.005) xFine.push(t);
+    const yFit = xFine.map(x => _evalPolyW(w, x));
+    const yClip = yFit.map(v => Math.max(-3, Math.min(3, v)));
+    const yTrue = xFine.map(vtTrueF);
+    const fitTraces = [
+      { x:xFine, y:yTrue, mode:'lines', name:'True f(x)', line:{width:2, color:'#bdc3c7', dash:'dash'} },
+      { x:trX, y:trY, mode:'markers', name:'Train', marker:{size:7, color:'#3498db'} },
+      { x:vaX, y:vaY, mode:'markers', name:'Validation', marker:{size:7, color:'#e67e22', symbol:'triangle-up'} }
+    ];
+    if (testRevealed) fitTraces.push({ x:teX, y:teY, mode:'markers', name:'Test', marker:{size:7, color:'#e74c3c', symbol:'square'} });
+    fitTraces.push({ x:xFine, y:yClip, mode:'lines', name:'Fit (M='+M+')', line:{width:2.5, color:'#27ae60'} });
+    Plotly.react('vt-fit-plot', fitTraces, {
+      xaxis:{title:'x', range:[0,1]}, yaxis:{title:'θ', range:[-2.5,2.5]},
+      margin:{t:5, r:10, b:35, l:45},
+      paper_bgcolor:'rgba(0,0,0,0)', plot_bgcolor:'rgba(0,0,0,0)',
+      font:{size:11}, legend:{x:0.6, y:0.98}
+    }, {displayModeBar:false});
+    const trainErr=[], valErr=[], testErr=[], mVals=[];
+    for (let d = 0; d <= 12; d++) {
+      mVals.push(d+1);
+      const wd = _solveRidge(trX, trY, d, 1e-10);
+      trainErr.push(Math.sqrt(_mse(trX, trY, wd)));
+      valErr.push(Math.min(3, Math.sqrt(_mse(vaX, vaY, wd))));
+      testErr.push(Math.min(3, Math.sqrt(_mse(teX, teY, wd))));
+    }
+    const errTraces = [
+      { x:mVals, y:trainErr, mode:'lines+markers', name:'Train', line:{width:2, color:'#3498db'}, marker:{size:4} },
+      { x:mVals, y:valErr,   mode:'lines+markers', name:'Validation', line:{width:2, color:'#e67e22'}, marker:{size:4} }
+    ];
+    const annotations = [
+      { x:0.02, y:1.12, xref:'paper', yref:'paper', showarrow:false, font:{size:11, color:'#3498db'}, text:'Train: '+trainErr[deg].toFixed(3) },
+      { x:0.35, y:1.12, xref:'paper', yref:'paper', showarrow:false, font:{size:11, color:'#e67e22'}, text:'Val: '+valErr[deg].toFixed(3) }
+    ];
+    if (testRevealed) {
+      errTraces.push({ x:mVals, y:testErr, mode:'lines+markers', name:'Test', line:{width:2, color:'#e74c3c', dash:'dash'}, marker:{size:4} });
+      annotations.push({ x:0.68, y:1.12, xref:'paper', yref:'paper', showarrow:false, font:{size:11, color:'#e74c3c'}, text:'Test: '+testErr[deg].toFixed(3) });
+    }
+    errTraces.push({ x:[M], y:[trainErr[deg]], mode:'markers', showlegend:false, marker:{size:10, color:'#3498db', symbol:'star'} });
+    errTraces.push({ x:[M], y:[valErr[deg]],   mode:'markers', showlegend:false, marker:{size:10, color:'#e67e22', symbol:'star'} });
+    if (testRevealed) errTraces.push({ x:[M], y:[testErr[deg]], mode:'markers', showlegend:false, marker:{size:10, color:'#e74c3c', symbol:'star'} });
+    Plotly.react('vt-err-plot', errTraces, {
+      xaxis:{title:'M', dtick:1}, yaxis:{title:'RMSE', range:[0,2]},
+      margin:{t:30, r:10, b:35, l:45},
+      paper_bgcolor:'rgba(0,0,0,0)', plot_bgcolor:'rgba(0,0,0,0)',
+      font:{size:11}, legend:{x:0.6, y:0.98},
+      annotations: annotations
+    }, {displayModeBar:false});
+  }
+  document.getElementById('vt-deg-slider').addEventListener('input', updateVT);
+  document.getElementById('vt-resample-btn').addEventListener('click', () => generateVTData(true));
+  document.getElementById('vt-reveal-test').addEventListener('click', function(e) {
+    e.preventDefault(); e.stopPropagation();
+    testRevealed = true;
+    document.getElementById('vt-narration').innerHTML = '<span style="font-size:0.9em;"><strong style="color:#e74c3c;">Test RMSE revealed.</strong> This is the honest estimate of the model performance.</span>';
+    updateVT();
+  });
+  function initVT(e) { if (e.currentSlide && e.currentSlide.querySelector('#vt-fit-plot')) generateVTData(false); }
+  Reveal.on('slidechanged', initVT); Reveal.on('ready', initVT);
 })();
 </script>
 </body>
