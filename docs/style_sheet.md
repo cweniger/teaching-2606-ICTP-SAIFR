@@ -169,6 +169,22 @@ Every lecture deck contains, in this order:
 5. **Key Takeaways** [required]
 6. **Summary & What's Next** [required]
 
+### 4.0 Slide title convention [required]
+
+`h1`, `h2`, `h3` are prose only — **no MathJax expressions in titles.** Equations
+belong in slide bodies, not headings. Reveal's white-theme uppercase mangles
+`\(...\)` glyphs, MathJax re-typesetting is slower per-nav when headings carry
+math, and a sentence-form title reads cleanly in a table of contents.
+
+If a section-divider title is long, prefer `font-size: 1.6em` with `<br>` to wrap
+rather than shrinking further:
+
+```html
+<h1 style="font-size:1.8em; margin:0;">Going beyond univariate parameters<br>and homoscedastic noise</h1>
+```
+
+Aim for 3–6 words on body slides; section dividers can be a touch longer.
+
 ### 4.1 Title slide [required]
 
 ```html
@@ -215,6 +231,10 @@ Use `box box-blue/orange/green` (NOT `.sec-btn`).
 If you have four sections, add a fourth tile with `box box-purple` and a
 purple `<strong>`. Don't try to fit five — split the lecture instead.
 
+**Section titles must match exactly across four touchpoints:** the roadmap tile,
+the section divider h1, the Key Takeaways bullet header, and the Summary & What's
+Next box header. Renaming a section means updating all four — easy to miss.
+
 ### 4.3 Section divider [required, one per section]
 
 A full-bleed centered card with gradient bars and a section title.
@@ -234,6 +254,27 @@ A full-bleed centered card with gradient bars and a section title.
 
 Gradient direction and colors are the same on every divider — visual
 consistency, not section coding.
+
+#### Transition slides (NOT section dividers) [guideline]
+
+Reserve the section-divider pattern (gradient bars + h1 + tagline) for top-level
+transitions that match the roadmap. For *rhetorical pivots inside a section*
+("now what if we stack more layers?"), use a title-free centered prose slide —
+no bars, no h1, just one centred sentence:
+
+```html
+<section>
+  <div style="display:flex; align-items:center; justify-content:center; height:100%;">
+    <p style="font-size:1.4em; color:#2c3e50; text-align:center; max-width:820px; margin:0;">
+      One hidden layer is a universal approximator. But what happens when we stack more?
+    </p>
+  </div>
+</section>
+```
+
+Promoting a rhetorical pivot to a section divider misleads the reader about the
+deck's structure — the roadmap promises N sections and they should see exactly N
+dividers.
 
 ### 4.4 Key Takeaways [required]
 
@@ -419,6 +460,22 @@ them on the SAME centered row.
 - Centre display equations by putting them in a `.box` with
   `max-width:` and `margin:... auto`.
 
+### Parameter notation [guideline]
+
+When the workflow is closed-form linear algebra (linear-basis MLE), use the
+familiar `\(\mathbf{w}_{\mathrm{ML}} = (\boldsymbol\Phi^T\boldsymbol\Phi)^{-1}\boldsymbol\Phi^T \boldsymbol\theta\)`.
+When the workflow is gradient descent, bundle every trainable quantity into one
+parameter vector and write the update with `\(\nabla_{\!\boldsymbol\phi}\)`:
+
+```
+\[ \boldsymbol\phi = (\mathbf{W}^{(1)}, \mathbf{b}^{(1)}, \ldots, \sigma_\theta, \ldots) \]
+\[ \boldsymbol\phi \leftarrow \boldsymbol\phi - \eta\,\nabla_{\!\boldsymbol\phi}\,E(\boldsymbol\phi) \]
+```
+
+Mixing the two notations in the same lecture is fine *if* the transition is
+named. Naming the transition (e.g. on a "No Closed-Form Solution" slide) is the
+moment to swap from `\(\mathbf{w}\)` to `\(\boldsymbol\phi\)`.
+
 ---
 
 ## 9. Plotly conventions
@@ -466,9 +523,94 @@ Red line `#c0392b`, width 3, filled to zero with low-alpha red:
 - Accepted subset: coloured (orange for "kept" in rejection ABC, green for
   the summary branch in Demo 2, etc.), size 5–8.
 
+### Uncertainty bands [required]
+
+Convention: **±σ** (not ±2σ). Light grey fill `rgba(127,140,141,0.25)`. Drawn
+**first** in the Plotly trace array so the band sits behind data markers,
+ground-truth dashes, and the fit line.
+
+```js
+Plotly.react('myplot', [
+  { x: xLine.concat(xLine.slice().reverse()),
+    y: upper.concat(lower.slice().reverse()),
+    fill:'toself', fillcolor:'rgba(127,140,141,0.25)', line:{width:0},
+    name:'fit ± σ', hoverinfo:'skip' },
+  // ... then truth, data, fit ...
+], ...);
+```
+
+Same convention for both fixed-σ bands (constant width) and learned σ(x) bands
+(envelope follows the curve). When the band is per-x, draw it as
+`upper.concat(lower.slice().reverse())` of the *exact same x grid* twice.
+
 ---
 
-## 10. Writing style
+## 10. Interactive demos — lifecycle and import [required]
+
+Interactive demos are where decks accumulate technical debt fastest. Three rules
+catch the recurring landmines.
+
+### 10.1 IIFEs must self-clean on `slidechanged`
+
+If a demo schedules a `setTimeout(trainLoop, …)` that reschedules itself, the
+*leave-the-slide* branch is essential. Without it, pressing **Train** and
+navigating away leaks CPU until the deck is reloaded — visible as transitions
+getting visibly chunkier over a long session.
+
+```js
+function init(e) {
+  if (e.currentSlide && e.currentSlide.querySelector('#my-plot')) {
+    reset();                              // entering the slide
+  } else if (animId) {
+    clearTimeout(animId); animId = null;  // leaving the slide
+  }
+}
+Reveal.on('slidechanged', init);
+```
+
+Same pattern with `clearInterval(timer)` if the demo uses `setInterval`.
+
+### 10.2 Top-level DOM lookups in IIFEs are landmines
+
+Lines like
+
+```js
+document.getElementById('foo').addEventListener('input', draw);
+```
+
+at the top level of an IIFE throw a `TypeError` if `#foo` is no longer in the
+DOM (e.g. you deleted the slide). Because IIFEs evaluate at script-block load,
+**one missing element kills every IIFE that comes after it in the same
+`<script>` block.** Symptom: completely unrelated demos stop rendering.
+
+When you delete a slide, *audit its JS counterpart*: either remove the IIFE
+entirely or wrap the lookups in `if (el) el.addEventListener(...)`.
+
+### 10.3 Importing demos from other decks
+
+Before pasting an IIFE from `old/lecture*.html` (or another deck):
+
+1. **Grep for ID collisions:**
+   ```bash
+   grep "id=['\"]<prefix>" target.html
+   ```
+   If any of the imported IDs collide, prefix the imports (e.g. `mlpreg-*` →
+   `mlpreg2-*`) and rename them in both HTML and JS.
+
+2. **Alias differing helper names** with one line rather than touching every
+   call site. Example: old/lecture3 uses `boxMuller(rng)`; lecture2 has the
+   same algorithm under `gaussN(rng)`. At the top of the imported JS block:
+
+   ```js
+   var boxMuller = gaussN;  // alias so imported demos run unmodified
+   ```
+
+3. **Skip the `Details` and `Pseudocode` vertical sub-slides** unless you
+   actually want them. The originals were lecture-3 specific.
+
+---
+
+## 11. Writing style
 
 - **No em dashes** in prose. Use commas, parentheses, semicolons, or
   separate sentences instead. (Em dashes in bullet-list separators are
@@ -485,7 +627,7 @@ Red line `#c0392b`, width 3, filled to zero with low-alpha red:
 
 ---
 
-## 11. Per-lecture checklist
+## 12. Per-lecture checklist
 
 When porting an existing deck to this style, walk through:
 
@@ -494,8 +636,12 @@ When porting an existing deck to this style, walk through:
 - [ ] MathJax re-typeset hook present (§1)
 - [ ] Footer label has correct lecture number (§1)
 - [ ] Title slide reformatted per §4.1
+- [ ] **No LaTeX in slide titles** (§4.0)
 - [ ] Today's Roadmap slide added (§4.2)
-- [ ] One section divider per section (§4.3)
+- [ ] One section divider per section (§4.3); rhetorical pivots inside a
+      section use title-free transition slides, NOT dividers (§4.3)
+- [ ] Section titles identical across roadmap, divider, Key Takeaways,
+      Summary boxes (§4.2)
 - [ ] Key Takeaways slide added (§4.4)
 - [ ] Summary & What's Next slide added (§4.5)
 - [ ] All boxes use `.box` or `.box-*`, no inline `background:#f4f6f8`
@@ -504,11 +650,16 @@ When porting an existing deck to this style, walk through:
 - [ ] All Plotly calls include `autosize`, `responsive`, and
       `Plotly.Plots.resize` (§6)
 - [ ] Red ✕ for observed data, red curve for reference posterior (§9)
-- [ ] Em dashes purged from prose (§10)
+- [ ] **Uncertainty bands are ±σ, light grey, drawn first in trace order** (§9)
+- [ ] **Interactive demos clear timers on `slidechanged` (leave branch)** (§10.1)
+- [ ] **No orphan IIFEs after deleting slides; top-level
+      `getElementById(...).addEventListener` guarded or removed** (§10.2)
+- [ ] When SGD is in play, use `φ` for the parameter bundle and `∇_φ E` (§8)
+- [ ] Em dashes purged from prose (§11)
 
 ---
 
-## 12. Known-good reference
+## 13. Known-good reference
 
 `docs/lecture1b.html` is the canonical reference implementation. When in
 doubt, copy from there.
