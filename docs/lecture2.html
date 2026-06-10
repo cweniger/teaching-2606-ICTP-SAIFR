@@ -141,7 +141,7 @@
         \[ q_\phi(\theta\mid x) \;=\; \mathcal{N}\!\bigl(\theta\,\big|\,\mu_\theta(x),\,\sigma_\theta^{2}\bigr) \]
       </div>
       <p>Trainable parameters \(\phi = (\mathbf{w}, \sigma_\theta)\): the curve and the band width.</p>
-      <p style="font-size:0.9em; color:#7f8c8d;">Black line: \(\mu_\theta(x)\). Shaded: \(\mu_\theta(x) \pm 2\sigma_\theta\).</p>
+      <p style="font-size:0.9em; color:#7f8c8d;">Black line: \(\mu_\theta(x)\). Shaded: \(\mu_\theta(x) \pm \sigma_\theta\).</p>
     </div>
     <div style="flex:1 1 0; min-width:0; overflow:hidden;">
       <div id="gband-plot" style="width:100%; max-width:100%; height:400px;"></div>
@@ -268,7 +268,7 @@
   </div>
   <div id="polyfit-plot" style="width:100%; height:430px; margin-top:6px;"></div>
   <p style="text-align:center; font-size:0.8em; color:#7f8c8d; margin-top:0;">
-    Black curve: \(\mu(x;\mathbf{w}_{\mathrm{ML}})\). Shaded band: \(\mu(x)\pm 2\sigma_{\mathrm{ML}}\). The fitted Gaussian density is \(q(\theta\mid x)=\mathcal{N}(\mu(x),\sigma^2)\).
+    Black curve: \(\mu(x;\mathbf{w}_{\mathrm{ML}})\). Shaded band: \(\mu(x)\pm\sigma_{\mathrm{ML}}\). The fitted Gaussian density is \(q(\theta\mid x)=\mathcal{N}(\mu(x),\sigma^2)\).
   </p>
 </section>
 
@@ -1239,7 +1239,7 @@ function baseLayout(opts={}) {
 })();
 
 // ============================================================
-// Slide A0b — Static fit: μ_θ(x) + ±2σ_θ band on the joint cloud
+// Slide A0b — Static fit: μ_θ(x) + ±1σ_θ band on the joint cloud
 // ============================================================
 (function(){
   const rng = createRNG(23);
@@ -1257,8 +1257,8 @@ function baseLayout(opts={}) {
   const sigmaT = Math.sqrt(ss / N);
   const xLine = []; for (let x = -2.0; x <= 2.0; x += 0.02) xLine.push(x);
   const muLine = xLine.map(x => polyEval(w, x));
-  const upper = muLine.map(v => v + 2*sigmaT);
-  const lower = muLine.map(v => v - 2*sigmaT);
+  const upper = muLine.map(v => v + sigmaT);
+  const lower = muLine.map(v => v - sigmaT);
   function draw(e){
     if (e && !e.currentSlide.querySelector('#gband-plot')) return;
     Plotly.react('gband-plot', [
@@ -1266,8 +1266,8 @@ function baseLayout(opts={}) {
         marker:{ size:3, color:'rgba(127,140,141,0.45)' } },
       { x: xLine.concat(xLine.slice().reverse()),
         y: upper.concat(lower.slice().reverse()),
-        fill:'toself', fillcolor:'rgba(44,62,80,0.18)', line:{width:0},
-        name:'μ_θ(x) ± 2σ_θ', hoverinfo:'skip' },
+        fill:'toself', fillcolor:'rgba(127,140,141,0.25)', line:{width:0},
+        name:'μ_θ(x) ± σ_θ', hoverinfo:'skip' },
       { x: xLine, y: muLine, mode:'lines', name:'μ_θ(x)',
         line:{ color:'#2c3e50', width:3 } }
     ], baseLayout({
@@ -1368,12 +1368,12 @@ function baseLayout(opts={}) {
     const muLine = xLine.map(x => polyEval(w,x));
     let ss=0; for (let i=0;i<dataX.length;i++){ const r = dataT[i]-polyEval(w,dataX[i]); ss+=r*r; }
     const sigma = Math.sqrt(ss/dataX.length);
-    const upper = muLine.map(v=>v+2*sigma), lower = muLine.map(v=>v-2*sigma);
+    const upper = muLine.map(v=>v+sigma), lower = muLine.map(v=>v-sigma);
     const xTrue=xLine, yTrue=xLine.map(x=>Math.sin(2*Math.PI*x));
     document.getElementById('polyfit-readout').textContent = ` σ_ML ≈ ${sigma.toFixed(3)}`;
     Plotly.react('polyfit-plot', [
       { x:xLine.concat(xLine.slice().reverse()), y:upper.concat(lower.slice().reverse()),
-        fill:'toself', fillcolor:'rgba(231,76,60,0.18)', line:{width:0}, name:'μ ± 2σ', hoverinfo:'skip' },
+        fill:'toself', fillcolor:'rgba(127,140,141,0.25)', line:{width:0}, name:'μ ± σ', hoverinfo:'skip' },
       { x:xTrue, y:yTrue, mode:'lines', name:'true sin(2πx)', line:{color:'#bdc3c7', width:2, dash:'dash'} },
       { x:xLine, y:muLine, mode:'lines', name:'fitted μ(x)', line:{width:3, color:'#e74c3c'} },
       { x:dataX, y:dataT, mode:'markers', name:'data', marker:{size:7, color:'#2c3e50'} }
@@ -1791,7 +1791,14 @@ function _mse(xArr, yArr, w) {
     const yFit = xFine.map(x => _evalPolyW(w, x));
     const yClip = yFit.map(v => Math.max(-3, Math.min(3, v)));
     const yTrue = xFine.map(trueF);
+    // ±1σ band estimated from training residuals (MLE σ)
+    const sigmaLR = Math.sqrt(_mse(trainX, trainY, w));
+    const upLR = yClip.map(v => Math.min(3, v + sigmaLR));
+    const dnLR = yClip.map(v => Math.max(-3, v - sigmaLR));
     Plotly.react('lr-fit-plot', [
+      { x:xFine.concat(xFine.slice().reverse()), y:upLR.concat(dnLR.slice().reverse()),
+        fill:'toself', fillcolor:'rgba(127,140,141,0.25)', line:{width:0},
+        name:'fit ± σ', hoverinfo:'skip' },
       { x:xFine, y:yTrue, mode:'lines', name:'True f(x)', line:{width:2, color:'#bdc3c7', dash:'dash'} },
       { x:trainX, y:trainY, mode:'markers', name:'Training', marker:{size:6, color:'#2980b9'} },
       { x:testX, y:testY, mode:'markers', name:'Validation', marker:{size:6, color:'#e74c3c', symbol:'triangle-up', opacity:0.6} },
@@ -1896,7 +1903,14 @@ function _mse(xArr, yArr, w) {
     const yFit = xFine.map(x => _evalPolyW(w, x));
     const yClip = yFit.map(v => Math.max(-3, Math.min(3, v)));
     const yTrue = xFine.map(vtTrueF);
+    // ±1σ band from training residuals
+    const sigmaVT = Math.sqrt(_mse(trX, trY, w));
+    const upVT = yClip.map(v => Math.min(3, v + sigmaVT));
+    const dnVT = yClip.map(v => Math.max(-3, v - sigmaVT));
     const fitTraces = [
+      { x:xFine.concat(xFine.slice().reverse()), y:upVT.concat(dnVT.slice().reverse()),
+        fill:'toself', fillcolor:'rgba(127,140,141,0.25)', line:{width:0},
+        name:'fit ± σ', hoverinfo:'skip' },
       { x:xFine, y:yTrue, mode:'lines', name:'True f(x)', line:{width:2, color:'#bdc3c7', dash:'dash'} },
       { x:trX, y:trY, mode:'markers', name:'Train', marker:{size:7, color:'#3498db'} },
       { x:vaX, y:vaY, mode:'markers', name:'Validation', marker:{size:7, color:'#e67e22', symbol:'triangle-up'} }
