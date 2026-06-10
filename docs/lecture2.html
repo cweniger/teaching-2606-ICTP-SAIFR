@@ -16,44 +16,43 @@
     box-sizing: border-box;
     height: 700px !important;
   }
+  .reveal .slides section.stack {
+    background: none;
+    box-shadow: none;
+    padding: 0;
+    height: auto !important;
+  }
   .reveal { font-family: 'Inter', sans-serif; font-weight: 400; }
   .reveal h1, .reveal h2, .reveal h3 { color: #2c3e50; font-family: 'Space Grotesk', sans-serif; font-weight: 700; }
-  /* Reveal's white theme applies text-transform: uppercase to h1/h2/h3;
-     that mangles inline MathJax glyphs. Keep titles in their natural case. */
-  .reveal h1, .reveal h2, .reveal h3 { text-transform: none; }
   .reveal h2 { font-size: 1.2em; margin-bottom: 0.3em; text-align: left; }
   .reveal .subtitle { font-size: 0.6em; color: #7f8c8d; margin-top: 0.5em; }
-  .reveal section { font-size: 0.6em; }
+  .reveal section { font-size: 0.66em; }
+  .reveal section.stack { font-size: 1em; }
   .reveal p { margin: 0.3em 0; }
   .reveal ul { text-align: left; margin: 0.3em 0; }
   .reveal li { margin: 0.15em 0; }
-  .reveal .highlight { color: #1a3a6e; font-weight: bold; }
+  .reveal .highlight { color: #e74c3c; font-weight: bold; }
   .reveal .MathJax { font-size: 0.95em; }
-  /* Equations rendered by MathJax — dark red, consistently. */
-  /* MathJax3 font-size does not inherit from .reveal section; force it to
-     follow the body scale so equations stay in proportion. */
-  .reveal mjx-container { font-size: 0.85em !important; }
-  .reveal mjx-container, .reveal mjx-container * { color: #8b1a1a !important; }
-  /* Important keywords — dark blue, consistently. */
-  .reveal section p strong,
-  .reveal section li strong,
-  .reveal section td strong { color: #1a3a6e; }
-  /* Single, neutral box style — used very sparingly. */
   .reveal .box, .reveal .box-blue, .reveal .box-orange,
   .reveal .box-green, .reveal .box-purple {
-    background: #f4f6f8;
-    border-left: 4px solid #1a3a6e;
-    border-radius: 6px;
-    padding: 12px 16px;
-    margin: 10px 0;
-    text-align: left;
+    background: #ecf0f1; border-radius: 10px; padding: 12px 16px;
+    margin: 10px 0; text-align: left;
   }
+  .reveal .box-blue   { border-left: 4px solid #2980b9; }
+  .reveal .box-orange { border-left: 4px solid #e67e22; }
+  .reveal .box-green  { border-left: 4px solid #27ae60; }
+  .reveal .box-purple { border-left: 4px solid #8e44ad; }
   .slide-footer {
     position: absolute; bottom: 8px; left: 40px; right: 40px;
     font-size: 10px; color: #bdc3c7;
     display: flex; justify-content: space-between; pointer-events: none;
   }
   pre code { font-family: 'Menlo','Monaco',monospace; }
+  .ctrl-row { display:flex; gap:14px; font-size:0.9em; align-items:center; margin-top:4px; flex-wrap:wrap; }
+  .ctrl-row label { white-space: nowrap; }
+  .ctrl-row input[type=range] { vertical-align: middle; }
+  .ctrl-row button { padding:3px 12px; cursor:pointer; }
+  .ctrl-row input[type=checkbox] { vertical-align: middle; transform: scale(1.2); margin-right:4px; }
 </style>
 </head>
 <body>
@@ -64,26 +63,38 @@
 <!-- TITLE                                                        -->
 <!-- ============================================================ -->
 <section>
-  <h1 style="font-size:1.5em;">Machine Learning for<br>Astroparticle Physics</h1>
-  <p style="font-family:'Space Grotesk',sans-serif; font-size:0.85em; font-weight:500; color:#34495e; margin:6px 0 18px;">A Crash-Course in Simulation-Based Inference</p>
-  <h3>Lecture 2: Building \(q_\phi(\theta\mid x)\)</h3>
-  <p class="subtitle">From \(\chi^2\) fitting to neural conditional densities</p>
+  <h1 style="font-size:1.5em;">Machine Learning for Astroparticle Physics: <br> A Crash-course in SBI</h1>
+  <h3>Lecture 2 - Neural networks for density estimation</h3>
   <p class="subtitle">Christoph Weniger &mdash; University of Amsterdam (GRAPPA)</p>
 </section>
 
 <section>
-  <h2>One continuous story</h2>
-  <p>We parameterise \(p(\theta\mid x)\) and make it more flexible as need demands. Every new ingredient enters because the <em>previous</em> model is too restrictive.</p>
-  <ol style="font-size:1.0em; line-height:1.8; margin-top:18px;">
-    <li><strong>Block A.</strong> \(\chi^2\) as conditional Gaussian density estimation.</li>
-    <li><strong>Block B.</strong> Overfitting and the basis-function problem.</li>
-    <li><strong>Block C.</strong> Learn the basis: neural networks + SGD.</li>
-    <li><strong>Block D.</strong> From Gaussian to flexible \(q_\phi(\theta\mid x)\).</li>
-  </ol>
-  <p style="margin-top:20px;">At the end we have \(q_\phi(\theta\mid x)\), a learnable conditional density. Lecture 3 trains it on simulator output and calls it neural posterior estimation (NPE).</p>
-  <p style="text-align:center; margin-top:18px; color:#7f8c8d;">
-    Notation: \(\theta\) = parameter we want to infer, \(x\) = observation/data.
-  </p>
+  <h2>Today's Roadmap</h2>
+  <div class="box" style="margin-top:25px; text-align:center; font-size:1.0em;">
+    <strong>The goal:</strong> approximate the true posterior \(p(\theta\mid x)\) density, as defined through the simulator 
+    \(p(x\mid\theta)\) and the prior \(p(\theta)\), with a fitting function \(q_\phi(\theta\mid x)\).
+  </div>
+  <div class="fragment" style="display:flex; gap:8px; margin-top:20px;">
+    <div class="box box-blue" style="flex:1; text-align:center;">
+      <strong style="color:#2980b9;">A</strong><br>
+      \(\chi^2\) as conditional Gaussian<br><span style="font-size:0.85em;">Least-squares fitting as the simplest conditional density estimator</span>
+    </div>
+    <div style="align-self:center; font-size:1.4em; color:#bdc3c7;">&rarr;</div>
+    <div class="box box-orange" style="flex:1; text-align:center;">
+      <strong style="color:#e67e22;">B</strong><br>
+      Overfitting and bases<br><span style="font-size:0.85em;">Polynomials blow up; the basis-function problem motivates learnable features</span>
+    </div>
+    <div style="align-self:center; font-size:1.4em; color:#bdc3c7;">&rarr;</div>
+    <div class="box box-green" style="flex:1; text-align:center;">
+      <strong style="color:#27ae60;">C</strong><br>
+      Neural nets + SGD<br><span style="font-size:0.85em;">Learn the basis with an MLP, train with gradient descent</span>
+    </div>
+    <div style="align-self:center; font-size:1.4em; color:#bdc3c7;">&rarr;</div>
+    <div class="box box-purple" style="flex:1; text-align:center;">
+      <strong style="color:#8e44ad;">D</strong><br>
+      Flexible \(q_\phi(\theta\mid x)\)<br><span style="font-size:0.85em;">From Gaussian heads to densities that can take any shape</span>
+    </div>
+  </div>
 </section>
 
 <!-- ============================================================ -->
@@ -727,10 +738,16 @@ Reveal.initialize({
   plugins: [ RevealMath.MathJax3 ]
 });
 
+Reveal.on('slidechanged', function(e) {
+  if (window.MathJax && window.MathJax.typesetPromise) {
+    window.MathJax.typesetPromise([e.currentSlide]).catch(function(){});
+  }
+});
+
 document.querySelectorAll('.reveal .slides > section').forEach(function(slide) {
   const footer = document.createElement('div');
   footer.className = 'slide-footer';
-  footer.innerHTML = '<a href="index.html" style="color:#bdc3c7; text-decoration:none; pointer-events:auto;">← Index</a><span>ML4PhA 2026 — Lecture 2</span><span>Christoph Weniger — GRAPPA / UvA</span>';
+  footer.innerHTML = '<a href="index.html" style="color:#bdc3c7; text-decoration:none; pointer-events:auto;">&larr; Index</a><span>ML4APP 2026 &mdash; Lecture 2</span><span>Christoph Weniger &mdash; GRAPPA / UvA</span>';
   slide.appendChild(footer);
 });
 

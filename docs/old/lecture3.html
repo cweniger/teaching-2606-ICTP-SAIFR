@@ -1,0 +1,2271 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Lecture 3: From Classification to Neural Networks</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reveal.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/theme/white.css">
+<style>
+  #bg-canvas { display: none; }
+  .reveal .slides section {
+    background: #ffffff;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+    padding: 30px 40px;
+    box-sizing: border-box;
+    height: 700px !important;
+  }
+  .reveal .slides section.stack {
+    background: none;
+    box-shadow: none;
+    padding: 0;
+    height: auto !important;
+  }
+  .reveal { font-family: 'Inter', sans-serif; font-weight: 400; }
+  .reveal h1, .reveal h2, .reveal h3 { color: #2c3e50; font-family: 'Space Grotesk', sans-serif; font-weight: 700; }
+  .reveal h2 { font-size: 1.2em; margin-bottom: 0.3em; text-align: left; }
+  .reveal .subtitle { font-size: 0.6em; color: #7f8c8d; margin-top: 0.5em; }
+  .reveal section { font-size: 0.66em; }
+  .reveal section.stack { font-size: 1em; }
+  .reveal p { margin: 0.3em 0; }
+  .reveal ul { text-align: left; margin: 0.3em 0; }
+  .reveal li { margin: 0.15em 0; }
+  .reveal .highlight { color: #e74c3c; font-weight: bold; }
+  .reveal .katex { font-size: 0.95em; }
+  .reveal .box {
+    background: #ecf0f1; border-radius: 10px; padding: 12px 16px;
+    margin: 10px 0; text-align: left;
+  }
+  .slide-footer {
+    position: absolute;
+    bottom: 8px;
+    left: 40px;
+    right: 40px;
+    font-size: 10px;
+    color: #bdc3c7;
+    display: flex;
+    justify-content: space-between;
+    pointer-events: none;
+  }
+  .sec-btn {
+    flex: 1; padding: 12px; border: 2px solid #ecf0f1; border-radius: 8px;
+    background: #f8f9fa; cursor: default; font-size: 1em; text-align: center;
+  }
+</style>
+</head>
+<body>
+<canvas id="bg-canvas"></canvas>
+<div class="reveal">
+<div class="slides">
+
+<!-- ============================================================ -->
+<!-- SLIDE 1: Title -->
+<!-- ============================================================ -->
+<section>
+  <h1 style="font-size:1.5em;">Machine Learning for<br>Physics &amp; Astronomy 2026</h1>
+  <h3>Lecture 3: From Classification to Neural Networks</h3>
+  <p class="subtitle">Christoph Weniger &mdash; University of Amsterdam (GRAPPA)</p>
+</section>
+
+<!-- ============================================================ -->
+<!-- SLIDE 2: Roadmap -->
+<!-- ============================================================ -->
+<section>
+  <h2>Today's Roadmap</h2>
+  <div style="display:flex; gap:12px; margin-top:20px;">
+    <div class="sec-btn" style="border-color:#2980b9;">
+      <strong style="color:#2980b9;">Section 1</strong><br>
+      Logistic regression<br>&amp; gradient descent
+    </div>
+    <div style="align-self:center; font-size:1.4em; color:#bdc3c7;">&rarr;</div>
+    <div class="sec-btn" style="border-color:#e67e22;">
+      <strong style="color:#e67e22;">Section 2</strong><br>
+      Learnable basis<br>functions
+    </div>
+    <div style="align-self:center; font-size:1.4em; color:#bdc3c7;">&rarr;</div>
+    <div class="sec-btn" style="border-color:#27ae60;">
+      <strong style="color:#27ae60;">Section 3</strong><br>
+      Going deep
+    </div>
+  </div>
+  <div class="box fragment" style="margin-top:25px; text-align:center; font-size:1.0em;">
+    <strong>The thread:</strong> In Lecture 1 we picked basis functions \(\phi_j(x)\) by hand.<br>
+    Today we learn how to <strong style="color:#e74c3c;">discover them from the training data itself</strong>,
+    using <strong>feed-forward neural networks</strong>.
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<!-- SECTION 1: LOGISTIC REGRESSION & GRADIENT DESCENT            -->
+<!-- ============================================================ -->
+
+<!-- Section 1 divider -->
+<section>
+  <div style="display:flex; align-items:center; justify-content:center; height:100%;">
+    <div style="text-align:center;">
+      <h1 style="font-size:2.0em; margin-bottom:0.2em;">Logistic Regression &amp; Gradient Descent</h1>
+      <div style="width:120px; height:4px; background: linear-gradient(90deg, #2980b9, #e67e22); margin:0 auto; border-radius:2px;"></div>
+      <p style="font-size:0.9em; color:#7f8c8d; margin-top:0.8em;">From Bayes&rsquo; rule to a trainable classifier.</p>
+    </div>
+  </div>
+</section>
+
+<!-- SLIDE 3: Recap -->
+<section>
+  <h2>Recap: Regression Predicts Distributions</h2>
+  <p>In Lecture 1: a model \(y(x, \mathbf{w}) = \mathbf{w}^T\boldsymbol{\phi}(x)\) with Gaussian noise predicts a <strong style="color:#2980b9;">probability distribution</strong>:</p>
+  <div class="box" style="text-align:center; font-size:1.1em; padding:14px; margin-top:8px;">
+    \[ p(t \mid x, \mathbf{w}, \sigma) = \mathcal{N}\!\left(t \;\middle|\; \mathbf{w}^T\boldsymbol{\phi}(x),\; \sigma^2\right) \]
+  </div>
+  <div id="recap-reg-plot" style="width:100%; height:280px; margin-top:6px;"></div>
+  <p class="fragment" style="text-align:center; margin-top:4px;">
+    The output is <strong>continuous</strong> and <strong>unbounded</strong>. But what if the target is a <span class="highlight">class</span>?
+  </p>
+</section>
+
+<!-- SLIDE: What if the output is a class? -->
+<section>
+  <h2>What If the Output Is a Class?</h2>
+  <p>Many problems require predicting a <strong>category</strong>, not a number. Here are three scenarios:</p>
+  <div id="classification-scenarios" style="display:flex; gap:8px; margin-top:10px;">
+    <div id="class-scene-a" style="flex:1; height:280px;"></div>
+    <div id="class-scene-b" style="flex:1; height:280px;"></div>
+    <div id="class-scene-c" style="flex:1; height:280px;"></div>
+  </div>
+  <div style="display:flex; gap:8px; margin-top:2px;">
+    <div style="flex:1; text-align:center; font-size:0.82em; color:#7f8c8d;">(a) Two classes, linearly separable</div>
+    <div style="flex:1; text-align:center; font-size:0.82em; color:#7f8c8d;">(b) Two classes, spiral pattern</div>
+    <div style="flex:1; text-align:center; font-size:0.82em; color:#7f8c8d;">(c) Three classes, overlapping</div>
+  </div>
+  <p class="fragment" style="margin-top:12px;">We still want a <strong>probability</strong>: &ldquo;how confident is the model that this event is signal?&rdquo;</p>
+</section>
+
+<!-- SLIDE: Generative view of classification -->
+<section>
+  <h2>The Generative View</h2>
+  <p style="margin-bottom:4px;">Classification data comes from a <strong>generative process</strong>:</p>
+  <ol style="font-size:0.9em; margin-top:4px;">
+    <li class="fragment" data-fragment-index="0">Pick class priors: \(\pi_1 = p(y\!=\!1)\), &ensp; \(\pi_0 = 1 - \pi_1\) &ensp; <span id="gen-class-priors" style="font-weight:600;"></span></li>
+    <li class="fragment" data-fragment-index="1">Pick class-conditional distributions \(p(\mathbf{x} \mid y\!=\!0)\) and \(p(\mathbf{x} \mid y\!=\!1)\)</li>
+    <li class="fragment" data-fragment-index="2">Draw \(N\) samples: for each, pick \(y \sim \text{Bernoulli}(\pi_1)\), then \(\mathbf{x} \sim p(\mathbf{x} \mid y)\)</li>
+  </ol>
+  <div style="display:flex; gap:20px; margin-top:4px; align-items:flex-start;">
+    <div style="flex:1;">
+      <div id="gen-class-plot" style="width:100%; height:300px;"></div>
+    </div>
+    <div style="flex:0 0 220px; margin-top:10px;">
+      <div style="display:flex; gap:10px; font-size:0.85em; flex-direction:column;">
+        <label>N = <span id="gen-class-n-val">100</span>
+          <input type="range" id="gen-class-n-slider" min="20" max="500" step="10" value="100" style="width:180px;">
+        </label>
+        <button id="gen-class-resample" style="padding:4px 16px; cursor:pointer;">Resample everything</button>
+      </div>
+      <div id="gen-class-counts" class="box" style="margin-top:12px; padding:8px; font-size:0.85em; text-align:center; visibility:hidden;">
+      </div>
+    </div>
+  </div>
+  <div class="fragment box" data-fragment-index="3" style="text-align:center; padding:8px 16px; margin-top:4px; border-left:4px solid #e67e22;">
+    <strong>Given the samples \(\{(\mathbf{x}_n, y_n)\}\), can we learn to predict \(y\) for a new \(\mathbf{x}\)?</strong>
+  </div>
+</section>
+
+<!-- SLIDE: From Bayes to Sigmoid -->
+<section>
+  <h2>From Bayes&rsquo; Rule to the Sigmoid</h2>
+  <p style="margin-bottom:4px;">We want \(p(y\!=\!1 \mid \mathbf{x})\). Bayes&rsquo; rule gives:</p>
+  <div class="box" style="text-align:center; padding:6px 12px;">
+    \[ p(y\!=\!1 \mid \mathbf{x}) = \frac{\pi_1 \, p(\mathbf{x} \mid y\!=\!1)}{\pi_0 \, p(\mathbf{x} \mid y\!=\!0) \;+\; \pi_1 \, p(\mathbf{x} \mid y\!=\!1)} \]
+  </div>
+  <div class="fragment" style="margin-top:8px;">
+    <p style="margin-bottom:4px;">Divide numerator and denominator by the numerator:</p>
+    <div class="box" style="text-align:center; padding:6px 12px;">
+      \[ p(y\!=\!1 \mid \mathbf{x}) = \frac{1}{1 + \frac{\pi_0 \, p(\mathbf{x} \mid y\!=\!0)}{\pi_1 \, p(\mathbf{x} \mid y\!=\!1)}} = \frac{1}{1 + e^{-a}} = \sigma(a) \]
+    </div>
+  </div>
+  <div class="box fragment" style="text-align:center; padding:8px 12px; margin-top:8px; border-left:4px solid #e67e22;">
+    <p style="margin:0;">where the <strong style="color:#e67e22;">logit</strong> is the <strong>log-odds ratio</strong>: &ensp; \(\displaystyle a(\mathbf{x}) = \ln \frac{\pi_1 \, p(\mathbf{x} \mid y\!=\!1)}{\pi_0 \, p(\mathbf{x} \mid y\!=\!0)}\)</p>
+    <p style="margin:4px 0 0; font-size:0.85em; color:#7f8c8d;">\(a > 0\): evidence favours class 1 &emsp; \(a < 0\): evidence favours class 0 &emsp; \(a = 0\): equal odds</p>
+  </div>
+</section>
+
+<!-- SLIDE: The Logit in Practice -->
+<section>
+  <h2>The Logit in Practice</h2>
+  <div style="margin-top:14px;">
+    <p style="margin-bottom:4px;">In practice we rarely know \(p(\mathbf{x} \mid y)\). Instead, we <strong>parametrise the logit directly</strong>:</p>
+    <div class="box" style="text-align:center; padding:8px 12px; font-size:1.05em;">
+      \[ a(\mathbf{x}) = \mathbf{w}^T\boldsymbol{\phi}(\mathbf{x}) \quad \Rightarrow \quad p(y\!=\!1 \mid \mathbf{x}) = \sigma\!\big(\mathbf{w}^T\boldsymbol{\phi}(\mathbf{x})\big) \]
+      <p style="margin:4px 0 0; font-size:0.82em; color:#7f8c8d;">This is <strong>logistic regression</strong>. With a neural net for \(a(\mathbf{x})\), it generalises to any decision boundary.</p>
+    </div>
+  </div>
+  <div class="fragment" style="display:flex; gap:10px; margin-top:10px;">
+    <div id="sig-linear-plot" style="flex:1; height:200px;"></div>
+    <div id="sig-squash-plot" style="flex:1; height:200px;"></div>
+  </div>
+  <p class="fragment" style="margin-top:8px; text-align:center; font-size:0.95em;">
+    We now have a model \(p(y \mid \mathbf{x}, \mathbf{w})\). <strong>What loss function should we minimise to fit \(\mathbf{w}\)?</strong>
+  </p>
+</section>
+
+<!-- SLIDE: Cross-entropy loss -->
+<section>
+  <h2>Cross-Entropy Loss</h2>
+  <p style="margin-bottom:4px;">In Lecture 1: Gaussian noise \(\Rightarrow\) likelihood \(\Rightarrow\) MSE loss. <strong>Same logic here:</strong></p>
+  <div class="box" style="margin-top:4px; padding:8px 12px;">
+    <p style="margin:0;"><strong>Bernoulli likelihood</strong> (label \(y_n \in \{0, 1\}\), prediction \(\hat{y}_n = \sigma(\mathbf{w}^T\boldsymbol{\phi}(x_n))\)):</p>
+    \[ p(y_n \mid x_n) = \begin{cases} \hat{y}_n & \text{if } y_n = 1 \\ 1 - \hat{y}_n & \text{if } y_n = 0 \end{cases} \;=\; \hat{y}_n^{\,y_n}(1 - \hat{y}_n)^{1 - y_n} \]
+  </div>
+  <div class="box fragment" style="margin-top:4px; padding:6px 12px;">
+    <p style="margin:0;"><strong>Negative log-likelihood = cross-entropy loss:</strong></p>
+    \[ E(\mathbf{w}) = -\sum_{n=1}^{N}\Big[ y_n \ln \hat{y}_n + (1 - y_n) \ln(1 - \hat{y}_n) \Big] \]
+  </div>
+  <p class="fragment" style="text-align:center; margin-top:6px; font-size:0.95em;">
+    <span class="box" style="display:inline-block; border-left:4px solid #2980b9; padding:3px 12px; margin-right:10px;"><strong style="color:#2980b9;">Gaussian</strong> \(\Rightarrow\) MSE</span>
+    <span class="box" style="display:inline-block; border-left:4px solid #e74c3c; padding:3px 12px;"><strong style="color:#e74c3c;">Bernoulli</strong> \(\Rightarrow\) Cross-entropy</span>
+    <br><em style="color:#7f8c8d; font-size:0.85em;">Every loss function has a probabilistic story.</em>
+  </p>
+</section>
+
+<!-- NOTE: Multi-class (softmax) and "Different Heads" slides moved to lecture5.html -->
+
+<!-- SLIDE 7: No closed form -->
+<section>
+  <h2>No Closed-Form Solution</h2>
+  <div style="display:flex; gap:20px; margin-top:12px;">
+    <div class="box" style="flex:1; border-left:4px solid #27ae60;">
+      <h3 style="margin-top:0; color:#27ae60;">Linear regression</h3>
+      <p>Loss is <strong>quadratic</strong> in \(\mathbf{w}\)</p>
+      <p>\(\nabla E = 0\) &rarr; closed-form solution</p>
+      <p>\(\mathbf{w}_{\text{ML}} = (\boldsymbol{\Phi}^T\boldsymbol{\Phi})^{-1}\boldsymbol{\Phi}^T\mathbf{t}\)</p>
+    </div>
+    <div class="box fragment" style="flex:1; border-left:4px solid #e74c3c;">
+      <h3 style="margin-top:0; color:#e74c3c;">Logistic regression</h3>
+      <p>Sigmoid makes the loss <strong>nonlinear</strong> in \(\mathbf{w}\)</p>
+      <p>No closed-form solution!</p>
+      <p>\(\nabla E = 0\) &rarr; \(\mathbf{w} = \;?\)</p>
+    </div>
+  </div>
+  <p class="fragment" style="text-align:center; margin-top:20px; font-size:1.1em;">
+    In situations where we cannot find a closed-form solution, we need a <strong style="color:#e67e22;">numerical method</strong> to find the minimum of \(E(\mathbf{w})\).
+    The most common one is <strong>(stochastic) gradient descent</strong>.
+  </p>
+</section>
+
+<!-- SLIDE 7: Gradient descent -->
+<section>
+<section>
+  <h2>Gradient Descent</h2>
+  <p>Start somewhere, then repeatedly step in the direction that <strong>decreases the loss</strong>:</p>
+  <div class="box" style="text-align:center; font-size:1.1em; padding:14px; margin-top:6px;">
+    \[ \mathbf{w} \;\leftarrow\; \mathbf{w} - \eta \,\nabla E(\mathbf{w}) \]
+  </div>
+  <p>\(\eta\) = <strong>learning rate</strong> &mdash; controls the step size.</p>
+  <div id="gd-narration" style="min-height:2em; margin-top:6px;">
+    <span style="color:#7f8c8d; font-size:0.9em;">Click <strong>Next &#9654;</strong> to see how the learning rate affects convergence.</span>
+  </div>
+  <div id="gd-plot" style="width:100%; height:260px;"></div>
+  <div style="display:flex; gap:12px; margin-top:4px; align-items:center;">
+    <button id="gd-story-next" style="padding:6px 24px; cursor:pointer; font-size:1.0em; font-weight:600;">Next &#9654;</button>
+    <button id="gd-story-replay" style="padding:6px 16px; cursor:pointer; font-size:0.9em;">&#8634; Replay</button>
+    <button id="gd-story-reset" style="padding:6px 16px; cursor:pointer; font-size:0.9em;">&#8634; Reset all</button>
+    <span id="gd-story-step" style="color:#7f8c8d; font-size:0.85em; margin-left:8px;"></span>
+  </div>
+</section>
+<section>
+  <h2>Gradient Descent &mdash; Details</h2>
+  <ul style="font-size:0.9em; line-height:1.7;">
+    <li>The loss \(E(\mathbf{w})\) measures how far the model predictions are from the targets (e.g. MSE or cross-entropy).</li>
+    <li>The gradient \(\nabla E(\mathbf{w})\) points in the direction of <strong>steepest increase</strong>. We step in the <em>opposite</em> direction.</li>
+    <li>The learning rate \(\eta\) controls step size: too small &rarr; slow convergence, too large &rarr; overshooting or divergence.</li>
+    <li>The optimal \(\eta\) depends on the <strong>curvature</strong> of the loss landscape (next slide).</li>
+    <li>GD uses all \(N\) training samples per step. For large datasets this is expensive &rarr; mini-batch SGD.</li>
+  </ul>
+</section>
+<section>
+  <h2>Gradient Descent &mdash; Pseudocode</h2>
+  <pre style="background:#2c3e50; color:#ecf0f1; padding:20px 24px; border-radius:10px; font-size:0.85em; line-height:1.6; text-align:left;"><code><span style="color:#7f8c8d;">// Given: training data {(x<sub>n</sub>, t<sub>n</sub>)}, loss function E, learning rate &eta;</span>
+
+initialise w randomly
+
+for step = 1, 2, ... until converged:
+    <span style="color:#7f8c8d;">// Compute gradient over all N samples</span>
+    g &larr; (1/N) &sum;<sub>n=1</sub><sup>N</sup> &nabla;<sub>w</sub> E<sub>n</sub>(w)
+
+    <span style="color:#7f8c8d;">// Update weights</span>
+    w &larr; w - &eta; &middot; g</code></pre>
+</section>
+</section>
+
+<!-- SLIDE: Step size and curvature -->
+<section>
+  <h2>Illustration: Step Size and Curvature</h2>
+  <p>How large should \(\eta\) be? Consider a simplistic quadratic loss \(E(w) = \tfrac{1}{2}\, \kappa\, w^2\) with curvature \(\kappa = E''(w)\).</p>
+  <div class="box" style="margin-top:6px; padding:8px 12px;">
+    <p style="margin:0;">One GD step: \(w_{i+1} = w_i - \eta\, \kappa\, w_i = (1 - \eta\, \kappa)\, w_i\). &ensp; 
+      Converges instantly when:</p>
+    \[ \eta = \frac{1}{\kappa} = \frac{1}{E''(w)} \qquad \text{(ideal for this toy case)} \]
+  </div>
+  <div class="fragment" style="display:flex; gap:6px; margin-top:6px;">
+    <div id="curv-plot-small" style="flex:1; height:200px;"></div>
+    <div id="curv-plot-opt" style="flex:1; height:200px;"></div>
+    <div id="curv-plot-large" style="flex:1; height:200px;"></div>
+  </div>
+  <p class="fragment" style="margin-top:4px; font-size:0.9em;">
+    <strong>Practical challenges:</strong> The optimal step size is related to the inverse curvature of the loss, which is typically not known.
+    Furthermore, in many dimensions, curvature differs per direction.
+  </p>
+</section>
+
+<!-- SLIDE: Mini-batch SGD -->
+<section>
+  <h2>Mini-Batch Stochastic Gradient Descent (SGD)</h2>
+  <p>Computing the full gradient over all \(N\) samples is expensive. Instead, approximate it with a random <strong>mini-batch</strong> \(\mathcal{B}\) of size \(B \ll N\):</p>
+  <div class="box" style="text-align:center; font-size:1.0em; padding:10px; margin-top:8px;">
+    \[ \nabla E(\mathbf{w}) = \frac{1}{N}\sum_{n=1}^{N} \nabla E_n(\mathbf{w}) \;\approx\; \frac{1}{B}\sum_{n \in \mathcal{B}} \nabla E_n(\mathbf{w}) \]
+  </div>
+  <div class="fragment" style="margin-top:12px;">
+    <p>One full pass through the data = one <strong>epoch</strong>. &ensp; Typical batch sizes: \(B\) = 32&ndash;256.</p>
+    <p style="font-size:0.85em; color:#7f8c8d; margin-top:4px;">When people say &ldquo;SGD&rdquo; they almost always mean mini-batch SGD.</p>
+  </div>
+</section>
+
+<!-- SLIDE: SGD as gradient + noise -->
+<section>
+  <h2>SGD = True Gradient + Noise</h2>
+  <p>The mini-batch gradient is a <strong>noisy estimate</strong> of the true gradient:</p>
+  <div class="box" style="text-align:center; padding:10px; margin-top:8px;">
+    \[ \underbrace{\frac{1}{B}\sum_{n \in \mathcal{B}} \nabla E_n}_{\text{mini-batch gradient}} = \underbrace{\nabla E(\mathbf{w})}_{\text{true gradient}} + \underbrace{\boldsymbol{\epsilon}}_{\text{noise}}, \qquad \mathrm{Var}(\boldsymbol{\epsilon}) = \frac{\sigma^2_{\nabla}}{B} \]
+    <p style="font-size:0.85em; color:#7f8c8d; margin:4px 0 0;">\(\sigma^2_{\nabla}\) = variance of individual sample gradients \(\nabla E_n\) across the dataset</p>
+  </div>
+  <div class="fragment" style="display:flex; gap:12px; margin-top:12px;">
+    <div class="box" style="flex:1; text-align:center;">
+      <strong style="color:#e67e22;">Large \(B\)</strong><br>
+      Low noise, precise gradient<br>
+      <span style="font-size:0.85em; color:#7f8c8d;">Expensive per step</span>
+    </div>
+    <div class="box" style="flex:1; text-align:center;">
+      <strong style="color:#e74c3c;">Small \(B\)</strong><br>
+      High noise, rough gradient<br>
+      <span style="font-size:0.85em; color:#7f8c8d;">Cheap per step, helps generalisation</span>
+    </div>
+  </div>
+</section>
+
+<!-- SLIDE: Logistic regression with basis functions -->
+<section>
+<section>
+  <h2>Logistic Regression in Action</h2>
+  <p style="margin-bottom:4px;">Binary classification with hand-picked basis functions \(\boldsymbol{\phi}(\mathbf{x})\). Can they solve the spiral?</p>
+  <div style="display:flex; gap:10px; font-size:0.82em; margin-top:4px; align-items:center; flex-wrap:wrap;">
+    <label>Dataset:
+      <select id="lr-cls-dataset" style="font-size:1em;">
+        <option value="linear" selected>Linearly separable</option>
+        <option value="spirals">Spirals</option>
+      </select>
+    </label>
+    <label>Basis:
+      <select id="lr-cls-basis" style="font-size:1em;">
+        <option value="linear" selected>Linear (M=3)</option>
+        <option value="poly3">Polynomial d=3</option>
+        <option value="poly6">Polynomial d=6</option>
+        <option value="gauss16">Gaussian RBF (M=16)</option>
+        <option value="gauss64">Gaussian RBF (M=64)</option>
+      </select>
+    </label>
+    <label>N = <span id="lr-cls-N-val">200</span>
+      <input type="range" id="lr-cls-N-slider" min="20" max="1000" step="10" value="200" style="width:80px;">
+    </label>
+    <label>B = <span id="lr-cls-B-val">64</span>
+      <input type="range" id="lr-cls-B-slider" min="0" max="8" step="1" value="6" style="width:80px;">
+    </label>
+    <label>&eta; = <span id="lr-cls-lr-val">1.000</span>
+      <input type="range" id="lr-cls-lr-slider" min="-2" max="0" step="0.1" value="0" style="width:80px;">
+    </label>
+    <button id="lr-cls-run-btn" style="padding:3px 14px; cursor:pointer; font-weight:600;">&#9654; Train</button>
+    <button id="lr-cls-reset-btn" style="padding:3px 14px; cursor:pointer;">&#8634; Reset</button>
+    <span id="lr-cls-epoch-label" style="color:#7f8c8d;"></span>
+  </div>
+  <div style="display:flex; gap:8px; margin-top:4px;">
+    <div id="lr-cls-boundary-plot" style="flex:1; height:300px;"></div>
+    <div id="lr-cls-loss-plot" style="flex:0 0 300px; height:300px;"></div>
+  </div>
+  <ul class="fragment" style="font-size:0.85em; margin-top:4px;">
+    <li><strong>Linear basis</strong> solves the linearly separable case &mdash; but fails on the spiral.</li>
+    <li>Higher-order polynomials or RBFs can help, but <strong>choosing \(\boldsymbol{\phi}\) by hand is fragile</strong>.</li>
+    <li class="fragment">What if we could <strong>learn the basis functions</strong> from the data?</li>
+  </ul>
+</section>
+<section>
+  <h2>Logistic Regression &mdash; Details</h2>
+  <ul style="font-size:0.9em; line-height:1.7;">
+    <li><strong>Model:</strong> \(p(y\!=\!1 \mid \mathbf{x}) = \sigma(\mathbf{w}^T\boldsymbol{\phi}(\mathbf{x}))\), where \(\boldsymbol{\phi}\) are hand-chosen basis functions (linear, polynomial, or Gaussian RBF).</li>
+    <li><strong>Loss:</strong> cross-entropy \(E = -\frac{1}{N}\sum_n [y_n \ln \hat{y}_n + (1-y_n)\ln(1-\hat{y}_n)]\). The gradient w.r.t. \(\mathbf{w}\) has the simple form \((\hat{y}_n - y_n)\,\boldsymbol{\phi}(\mathbf{x}_n)\).</li>
+    <li><strong>Training:</strong> mini-batch SGD with batch size \(B\). Each step picks \(B\) random samples, computes the average gradient, and updates \(\mathbf{w}\).</li>
+    <li><strong>Decision boundary:</strong> the contour where \(\sigma(\mathbf{w}^T\boldsymbol{\phi}) = 0.5\), i.e. where the logit is zero. Its shape is entirely determined by \(\boldsymbol{\phi}\).</li>
+    <li><strong>Limitation:</strong> the quality of the fit depends on the <em>choice</em> of basis functions &mdash; a linear basis cannot solve a non-linear problem.</li>
+  </ul>
+</section>
+<section>
+  <h2>Logistic Regression &mdash; Pseudocode</h2>
+  <pre style="background:#2c3e50; color:#ecf0f1; padding:20px 24px; border-radius:10px; font-size:0.82em; line-height:1.6; text-align:left;"><code><span style="color:#7f8c8d;">// Given: data {(x<sub>n</sub>, y<sub>n</sub>)}, basis &phi;, batch size B, learning rate &eta;</span>
+
+initialise w = 0
+
+for step = 1, 2, ... :
+    <span style="color:#7f8c8d;">// Draw random mini-batch of B samples</span>
+    sample B indices from {1, ..., N}
+
+    <span style="color:#7f8c8d;">// Compute predictions and gradient</span>
+    for each (x<sub>n</sub>, y<sub>n</sub>) in mini-batch:
+        a<sub>n</sub> &larr; w<sup>T</sup> &phi;(x<sub>n</sub>)                    <span style="color:#7f8c8d;">// logit</span>
+        &ycirc;<sub>n</sub> &larr; &sigma;(a<sub>n</sub>) = 1/(1+e<sup>-a<sub>n</sub></sup>)        <span style="color:#7f8c8d;">// predicted probability</span>
+
+    g &larr; (1/B) &sum;<sub>n&in;B</sub> (&ycirc;<sub>n</sub> - y<sub>n</sub>) &phi;(x<sub>n</sub>)    <span style="color:#7f8c8d;">// gradient of CE loss</span>
+    w &larr; w - &eta; &middot; g                        <span style="color:#7f8c8d;">// SGD update</span></code></pre>
+</section>
+</section>
+
+<!-- ============================================================ -->
+<!-- SECTION 2: LEARNABLE BASIS FUNCTIONS                         -->
+<!-- ============================================================ -->
+
+<!-- SLIDE 9: Section divider -->
+<section>
+  <div style="display:flex; align-items:center; justify-content:center; height:100%;">
+    <div style="text-align:center;">
+      <h1 style="font-size:2.0em; margin-bottom:0.2em;">Learning the Basis Functions</h1>
+      <div style="width:120px; height:4px; background: linear-gradient(90deg, #e67e22, #27ae60); margin:0 auto; border-radius:2px;"></div>
+      <p style="font-size:0.9em; color:#7f8c8d; margin-top:0.8em;">In Lecture 1 we chose \(\boldsymbol{\phi}\) by hand.<br>What if we let the model learn them?</p>
+    </div>
+  </div>
+</section>
+
+<!-- SLIDE 10: The phi problem -->
+<section>
+  <h2>The \(\boldsymbol{\phi}\) Problem</h2>
+  <p>Everything so far depends on <strong>hand-picked</strong> basis functions \(\boldsymbol{\phi}(x)\).</p>
+  <div style="display:flex; gap:12px; margin-top:10px;">
+    <div class="box" style="flex:1;">
+      <strong style="color:#27ae60;">Worked for 1D</strong><br>
+      We could visualise and choose polynomial, Gaussian, or sigmoidal templates.
+    </div>
+    <div class="box fragment" style="flex:1;">
+      <strong style="color:#e74c3c;">Doesn't scale</strong><br>
+      What are good basis functions for images? For particle jets? For spectra in 1000 dimensions?
+    </div>
+  </div>
+  <p class="fragment" style="margin-top:12px;">This limits <strong>both</strong> regression and classification &mdash; the bottleneck is always \(\boldsymbol{\phi}\).</p>
+  <div class="box fragment" style="text-align:center; font-size:1.05em; padding:14px; margin-top:8px;">
+    \[ \underbrace{\text{output}}_{\text{prediction}} = \text{head}\!\Big( \underbrace{\mathbf{w}^T \boldsymbol{\phi}(x)}_{\text{this is the bottleneck}} \Big) \]
+    <p style="margin-top:4px;">The head (identity or sigmoid) is trivial to swap. <strong>The hard part is \(\boldsymbol{\phi}\).</strong></p>
+  </div>
+</section>
+
+<!-- SLIDE 11: The building block g(Wx+b) in 1D -->
+<section>
+<section>
+  <h2>Towards Learnable Building Blocks</h2>
+  <p style="margin-bottom:4px;">Idea: Replace fixed templates with <strong>parametric</strong> functions. A simple building block:</p>
+  <div class="box" style="text-align:center; font-size:1.1em; padding:10px 14px; margin-top:4px;">
+    \[ \phi_j(\mathbf{x}) = g\!\left(\mathbf{v}_j^T \mathbf{x} + b_j\right) \]
+    <p style="font-size:0.85em; color:#7f8c8d; margin:2px 0 0 0;">\(g\) = nonlinear <strong>activation function</strong> &mdash; \(\mathbf{v}_j, b_j\) are <strong>learnable</strong> parameters</p>
+  </div>
+  <p style="margin-top:4px; margin-bottom:2px;">For a <strong>1D input</strong>, what does this look like with random \(\mathbf{v}, b\)?</p>
+  <div style="display:flex; gap:10px; font-size:0.85em; margin-top:2px; align-items:center;">
+    <label>Activation:
+      <select id="bb1d-act" style="padding:2px 6px; font-size:1em;">
+        <option value="relu" selected>ReLU</option>
+        <option value="sigmoid">Sigmoid</option>
+      </select>
+    </label>
+    <label>Neurons H = <span id="bb1d-h-val">6</span>
+      <input type="range" id="bb1d-h-slider" min="1" max="20" step="1" value="6" style="width:120px;">
+    </label>
+    <button id="bb1d-resample" style="padding:4px 16px; cursor:pointer; font-size:1em;">&#8635; Resample</button>
+  </div>
+  <div id="bb1d-plot" style="width:100%; height:255px; margin-top:2px;"></div>
+  <p style="text-align:center; font-size:0.8em; color:#7f8c8d; margin-top:0px;">
+    <em>Each coloured curve is one learnable basis function \(\phi_j(\mathbf{x}) = g(\mathbf{v}_j^T \mathbf{x} + b_j)\) with random \(\mathbf{v}_j, b_j\). Here: 1D input.</em>
+  </p>
+</section>
+<section>
+  <h2>Learnable Building Blocks &mdash; Details</h2>
+  <ul style="font-size:0.9em; line-height:1.7;">
+    <li><strong>Each neuron</strong> computes \(\phi_j(\mathbf{x}) = g(\mathbf{v}_j^T\mathbf{x} + b_j)\): an affine transformation followed by a nonlinearity.</li>
+    <li><strong>Parameters \(\mathbf{v}_j, b_j\)</strong> are learnable: \(\mathbf{v}_j\) controls which direction in input space the neuron responds to, \(b_j\) sets the activation threshold.</li>
+    <li><strong>In 1D:</strong> each ReLU neuron is a shifted ramp (a &ldquo;kink&rdquo;). A sigmoid neuron is a shifted step-like curve. Their weighted sum can approximate any shape.</li>
+    <li><strong>In higher dimensions:</strong> each neuron defines a hyperplane \(\mathbf{v}_j^T\mathbf{x} + b_j = 0\) and activates on one side of it.</li>
+  </ul>
+</section>
+<section>
+  <h2>Learnable Building Blocks &mdash; Pseudocode</h2>
+  <pre style="background:#2c3e50; color:#ecf0f1; padding:20px 24px; border-radius:10px; font-size:0.82em; line-height:1.6; text-align:left;"><code><span style="color:#7f8c8d;">// One learnable basis function (neuron)</span>
+
+&phi;<sub>j</sub>(x) = g(v<sub>j</sub> &middot; x + b<sub>j</sub>)
+
+<span style="color:#7f8c8d;">// where:</span>
+<span style="color:#7f8c8d;">//   v<sub>j</sub> = weight (direction in input space)</span>
+<span style="color:#7f8c8d;">//   b<sub>j</sub> = bias (activation threshold)</span>
+<span style="color:#7f8c8d;">//   g  = activation function (ReLU, sigmoid, ...)</span>
+
+<span style="color:#7f8c8d;">// H neurons together form a learnable basis:</span>
+&phi;(x) = [&phi;<sub>1</sub>(x), &phi;<sub>2</sub>(x), ..., &phi;<sub>H</sub>(x)]
+
+<span style="color:#7f8c8d;">// In matrix form:</span>
+&phi;(x) = g(V x + b)    <span style="color:#7f8c8d;">// V &isin; R<sup>H&times;d</sup>, b &isin; R<sup>H</sup></span></code></pre>
+</section>
+</section>
+
+<!-- SLIDE: Activation function zoo -->
+<section>
+  <h2>Common Activation Functions</h2>
+  <p>The nonlinearity \(g\) determines the shape of each building block. Common choices:</p>
+  <div style="display:flex; gap:5px; margin-top:8px;">
+    <div id="act-zoo-step" style="flex:1; height:200px;"></div>
+    <div id="act-zoo-sigmoid" style="flex:1; height:200px;"></div>
+    <div id="act-zoo-tanh" style="flex:1; height:200px;"></div>
+    <div id="act-zoo-relu" style="flex:1; height:200px;"></div>
+    <div id="act-zoo-gelu" style="flex:1; height:200px;"></div>
+  </div>
+  <div style="display:flex; gap:5px; margin-top:2px; font-size:0.78em; text-align:center;">
+    <div style="flex:1;"><strong>Step</strong><br>\(\mathbb{1}[x > 0]\)</div>
+    <div style="flex:1;"><strong>Sigmoid</strong><br>\(\frac{1}{1+e^{-x}}\)</div>
+    <div style="flex:1;"><strong>Tanh</strong><br>\(\tanh(x)\)</div>
+    <div style="flex:1;"><strong>ReLU</strong><br>\(\max(0, x)\)</div>
+    <div style="flex:1;"><strong>GELU</strong><br>\(x \cdot \sigma(1.7x)\)</div>
+  </div>
+  <div class="fragment" style="display:flex; gap:12px; margin-top:10px;">
+    <div class="box" style="flex:1; font-size:0.85em; text-align:center;">
+      <strong style="color:#2980b9;">ReLU</strong> &mdash; default for most networks. Simple, fast, sparse. Can &ldquo;die&rdquo; (zero gradient for \(x < 0\)).
+    </div>
+    <div class="box" style="flex:1; font-size:0.85em; text-align:center;">
+      <strong style="color:#8e44ad;">GELU</strong> &mdash; smooth approximation of ReLU. Used in transformers (GPT, BERT). Slightly better in practice.
+    </div>
+  </div>
+</section>
+
+<!-- SLIDE: The artificial neuron -->
+<section>
+  <h2>The Artificial Neuron</h2>
+  <p style="margin-bottom:6px;">Each building block \(\phi_j(\mathbf{x}) = g(\mathbf{v}_j^T \mathbf{x} + b_j)\) is called a <strong style="color:#27ae60;">neuron</strong>, by analogy with biology:</p>
+  <!-- Neuron diagram: pure flexbox, no absolute positioning -->
+  <div style="display:flex; align-items:center; justify-content:center; gap:0; margin-top:10px; font-size:0.88em;">
+    <!-- Inputs column -->
+    <div style="display:flex; flex-direction:column; align-items:center; gap:4px;">
+      <div style="background:#eaf2f8; border:2px solid #2980b9; border-radius:6px; padding:3px 12px;">\(x_1\)</div>
+      <div style="background:#eaf2f8; border:2px solid #2980b9; border-radius:6px; padding:3px 12px;">\(x_2\)</div>
+      <div style="color:#7f8c8d; font-size:1.1em;">\(\vdots\)</div>
+      <div style="background:#eaf2f8; border:2px solid #2980b9; border-radius:6px; padding:3px 12px;">\(x_d\)</div>
+    </div>
+    <!-- Arrows with weight labels -->
+    <div style="display:flex; flex-direction:column; align-items:center; padding:0 4px; gap:8px; font-size:0.8em; color:#7f8c8d;">
+      <div>\(\xrightarrow{v_1}\)</div>
+      <div>\(\xrightarrow{v_2}\)</div>
+      <div>&nbsp;</div>
+      <div>\(\xrightarrow{v_d}\)</div>
+    </div>
+    <!-- Neuron body -->
+    <div style="display:flex; flex-direction:column; align-items:center;">
+      <div style="background:linear-gradient(135deg, #eafaf1, #d5f5e3); border:3px solid #27ae60; border-radius:50%; width:130px; height:130px; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; line-height:1.6;">
+        <span style="font-size:0.85em;">\(\mathbf{v}^T\!\mathbf{x} + b\)</span>
+        <span style="color:#27ae60;">\(\downarrow\)</span>
+        <span style="font-size:0.85em;">\(g(\cdot)\)</span>
+      </div>
+      <div style="font-size:0.8em; margin-top:4px; color:#e67e22;">\(\uparrow\; b_j\) <span style="color:#7f8c8d;">(bias)</span></div>
+    </div>
+    <!-- Output arrow -->
+    <div style="font-size:1.4em; color:#7f8c8d; padding:0 8px;">&rarr;</div>
+    <!-- Output box -->
+    <div style="background:#f5eef8; border:2px solid #8e44ad; border-radius:8px; padding:10px 18px; text-align:center;">
+      <strong>output</strong><br>\(\phi_j = g(\mathbf{v}_j^T\mathbf{x} + b_j)\)
+    </div>
+  </div>
+  <div class="fragment" style="display:flex; gap:12px; margin-top:40px;">
+    <div class="box" style="flex:1; font-size:0.85em;">
+      <strong style="color:#2980b9;">Weights \(\mathbf{v}_j\)</strong> &mdash; determine which combination of inputs the neuron responds to
+    </div>
+    <div class="box" style="flex:1; font-size:0.85em;">
+      <strong style="color:#e67e22;">Bias \(b_j\)</strong> &mdash; sets the firing threshold
+    </div>
+    <div class="box" style="flex:1; font-size:0.85em;">
+      <strong style="color:#27ae60;">Activation \(g\)</strong> &mdash; shapes the response (on/off, smooth, etc.)
+    </div>
+  </div>
+</section>
+
+<!-- SLIDE: Combining into a single hidden layer -->
+<section>
+<section>
+  <h2>One Hidden Layer = Learnable \(\boldsymbol{\phi}\)</h2>
+  <p>Stack \(H\) of these neurons and let a final linear layer combine them:</p>
+  <div class="box" style="text-align:center; font-size:1.05em; padding:14px; margin-top:8px;">
+    \[ f(\mathbf{x}) = \sum_{j=1}^{H} w_j \;\underbrace{g(\mathbf{v}_j^T \mathbf{x} + b_j)}_{\text{learnable }\phi_j(\mathbf{x})} \;+\; w_0 \]
+  </div>
+  <p class="fragment" style="margin-top:6px;">This is <strong>exactly</strong> the Lecture 1 model \(f(\mathbf{x}) = \mathbf{w}^T\boldsymbol{\phi}(\mathbf{x})\), except now the basis functions have learnable parameters.</p>
+  <!-- Architecture diagram -->
+  <div class="fragment" style="display:flex; align-items:center; justify-content:center; gap:8px; margin-top:15px; font-size:0.9em;">
+    <div style="background:#eaf2f8; border:2px solid #2980b9; border-radius:8px; padding:10px 16px; text-align:center;">
+      <strong>Input</strong><br>\(\mathbf{x}\)
+    </div>
+    <div style="font-size:1.4em; color:#7f8c8d;">&rarr;</div>
+    <div style="background:#eafaf1; border:2px solid #27ae60; border-radius:8px; padding:10px 16px; text-align:center;">
+      <strong>Hidden layer</strong><br>\(h_j = g(\mathbf{v}_j^T \mathbf{x} + b_j)\)
+    </div>
+    <div style="font-size:1.4em; color:#7f8c8d;">&rarr;</div>
+    <div style="background:#f5eef8; border:2px solid #8e44ad; border-radius:8px; padding:10px 16px; text-align:center;">
+      <strong>Output</strong><br>linear or sigmoid head
+    </div>
+  </div>
+  <p class="fragment" style="text-align:center; margin-top:12px; font-size:1.0em;">
+    This is a <strong style="color:#27ae60;">neural network</strong> with one hidden layer. Stack more layers &rarr; a <strong>multi-layer perceptron</strong> (MLP).
+  </p>
+</section>
+<section>
+  <h2>One Hidden Layer &mdash; Details</h2>
+  <ul style="font-size:0.9em; line-height:1.7;">
+    <li><strong>Architecture:</strong> input \(\mathbf{x} \in \mathbb{R}^d\) &rarr; hidden layer with \(H\) neurons &rarr; output head. Total parameters: \(H(d+1) + (H+1)\).</li>
+    <li><strong>Hidden layer output:</strong> \(\mathbf{h} = g(W^{(1)}\mathbf{x} + \mathbf{b}^{(1)})\), where \(W^{(1)} \in \mathbb{R}^{H \times d}\), \(\mathbf{b}^{(1)} \in \mathbb{R}^H\).</li>
+    <li><strong>Output:</strong> \(f(\mathbf{x}) = \mathbf{w}^{(2)T}\mathbf{h} + b^{(2)}\) (regression) or \(\sigma(\mathbf{w}^{(2)T}\mathbf{h} + b^{(2)})\) (classification).</li>
+    <li><strong>Key insight:</strong> this is exactly the Lecture 1 model \(\mathbf{w}^T\boldsymbol{\phi}(\mathbf{x})\), but now \(\boldsymbol{\phi}\) has its own learnable parameters.</li>
+    <li><strong>All parameters</strong> (\(W^{(1)}, \mathbf{b}^{(1)}, \mathbf{w}^{(2)}, b^{(2)}\)) are trained jointly by SGD on the same loss function.</li>
+  </ul>
+</section>
+<section>
+  <h2>One Hidden Layer &mdash; Pseudocode</h2>
+  <pre style="background:#2c3e50; color:#ecf0f1; padding:20px 24px; border-radius:10px; font-size:0.82em; line-height:1.6; text-align:left;"><code><span style="color:#7f8c8d;">// One-hidden-layer neural network</span>
+<span style="color:#7f8c8d;">// Input: x &isin; R<sup>d</sup>, Output: scalar</span>
+
+<span style="color:#7f8c8d;">// Forward pass:</span>
+h = g(W<sup>(1)</sup> x + b<sup>(1)</sup>)        <span style="color:#7f8c8d;">// hidden layer: R<sup>d</sup> &rarr; R<sup>H</sup></span>
+f = w<sup>(2)T</sup> h + b<sup>(2)</sup>            <span style="color:#7f8c8d;">// output layer: R<sup>H</sup> &rarr; R</span>
+&ycirc; = head(f)                   <span style="color:#7f8c8d;">// identity (regression) or &sigma; (classification)</span>
+
+<span style="color:#7f8c8d;">// Parameters:</span>
+<span style="color:#7f8c8d;">//   W<sup>(1)</sup> &isin; R<sup>H&times;d</sup>   (hidden weights)</span>
+<span style="color:#7f8c8d;">//   b<sup>(1)</sup> &isin; R<sup>H</sup>       (hidden biases)</span>
+<span style="color:#7f8c8d;">//   w<sup>(2)</sup> &isin; R<sup>H</sup>       (output weights)</span>
+<span style="color:#7f8c8d;">//   b<sup>(2)</sup> &isin; R         (output bias)</span>
+<span style="color:#7f8c8d;">//   Total: H(d+1) + (H+1) parameters</span></code></pre>
+</section>
+</section>
+
+<!-- SLIDE 14: Universal approximation -->
+<section>
+<section>
+  <h2>Universal Approximation Theorem</h2>
+  <p>With <strong>enough neurons</strong>, a single hidden layer can approximate <strong>any continuous function</strong>.</p>
+  <p style="margin-top:4px;">Intuition: each ReLU neuron contributes a "kink". Combine enough kinks &rarr; any shape.</p>
+  <div style="display:flex; gap:10px; font-size:0.85em; margin-top:6px; align-items:center;">
+    <label>Activation:
+      <select id="ua-act" style="padding:2px 6px; font-size:1em;">
+        <option value="relu" selected>ReLU</option>
+        <option value="sigmoid">Sigmoid</option>
+      </select>
+    </label>
+    <label>Neurons H = <span id="ua-h-val">4</span>
+      <input type="range" id="ua-h-slider" min="1" max="20" step="1" value="4" style="width:150px;">
+    </label>
+    <button id="ua-resample" style="padding:4px 16px; cursor:pointer; font-size:1em;">&#8635; Resample</button>
+  </div>
+  <div id="ua-plot" style="width:100%; height:320px; margin-top:4px;"></div>
+  <p style="text-align:center; font-size:0.8em; color:#7f8c8d; margin-top:2px;">
+    <em>Grey: individual neurons \(w_j \cdot g(v_j x + b_j)\). Black: their sum. More neurons = more expressive.</em>
+  </p>
+</section>
+<section>
+  <h2>Universal Approximation &mdash; Details</h2>
+  <ul style="font-size:0.9em; line-height:1.7;">
+    <li><strong>Theorem (Cybenko 1989, Hornik 1991):</strong> a single hidden layer with any &ldquo;squashing&rdquo; activation can approximate any continuous function on a compact domain to arbitrary precision, given enough neurons \(H\).</li>
+    <li><strong>ReLU version:</strong> with \(H\) ReLU neurons, the network produces a piecewise-linear function with up to \(H\) &ldquo;kinks&rdquo;. As \(H \to \infty\), it can approximate any continuous target.</li>
+    <li><strong>Caveat:</strong> the theorem says such weights <em>exist</em>, not that SGD will <em>find</em> them. Training can get stuck in bad local minima, especially for shallow networks.</li>
+    <li><strong>Practical implication:</strong> width alone is sufficient in theory, but in practice <strong>depth</strong> is much more parameter-efficient (next section).</li>
+  </ul>
+</section>
+</section>
+
+<!-- SLIDE 15: MLP in action — regression (1D) -->
+<section>
+<section>
+  <h2>MLP in Action: Regression</h2>
+  <p>Train a one-hidden-layer MLP on 1D regression. Watch the fit evolve:</p>
+  <div style="display:flex; gap:10px; font-size:0.82em; margin-top:6px; align-items:center; flex-wrap:wrap;">
+    <label>Target:
+      <select id="mlpreg-target" style="padding:2px 6px; font-size:1em;">
+        <option value="sin" selected>sin(2&pi;x)</option>
+        <option value="step">Step function</option>
+        <option value="sawtooth">Sawtooth</option>
+      </select>
+    </label>
+    <label>Activation:
+      <select id="mlpreg-act" style="padding:2px 6px; font-size:1em;">
+        <option value="relu" selected>ReLU</option>
+        <option value="sigmoid">Sigmoid</option>
+      </select>
+    </label>
+    <label>Width = <span id="mlpreg-width-val">8</span>
+      <input type="range" id="mlpreg-width-slider" min="0" max="7" step="1" value="3" style="width:80px;">
+    </label>
+    <label>&eta; = <span id="mlpreg-lr-val">0.100</span>
+      <input type="range" id="mlpreg-lr-slider" min="-3" max="0" step="0.1" value="-1" style="width:80px;">
+    </label>
+    <button id="mlpreg-train-btn" style="padding:4px 16px; cursor:pointer; font-size:1em; font-weight:600;">&#9654; Train</button>
+    <button id="mlpreg-reset-btn" style="padding:4px 16px; cursor:pointer; font-size:1em;">&#8634; Reset</button>
+    <span id="mlpreg-epoch-label" style="color:#7f8c8d; font-size:0.9em;"></span>
+  </div>
+  <div style="display:flex; gap:10px;">
+    <div id="mlpreg-fit-plot" style="flex:1; height:340px;"></div>
+    <div id="mlpreg-loss-plot" style="flex:0 0 320px; height:340px;"></div>
+  </div>
+  <ul class="fragment" style="font-size:0.82em; margin-top:2px;">
+    <li>The hidden layer learns <strong>its own basis functions</strong> &mdash; no manual feature engineering.</li>
+    <li>Width controls expressiveness: too few neurons underfit, too many can overfit.</li>
+  </ul>
+</section>
+<section>
+  <h2>MLP Regression &mdash; Details</h2>
+  <ul style="font-size:0.9em; line-height:1.7;">
+    <li><strong>Architecture:</strong> \([1, H, 1]\) &mdash; 1D input, \(H\) hidden neurons with activation \(g\), linear output (no activation on the head).</li>
+    <li><strong>Loss:</strong> mean squared error \(\text{MSE} = \frac{1}{N}\sum_n (\hat{y}_n - t_n)^2\). Evaluated on the full dataset for stable monitoring.</li>
+    <li><strong>Training:</strong> mini-batch SGD with \(B = 64\) random samples per step. Each sample does a forward pass and a backward pass (weight update).</li>
+    <li><strong>Fit plot:</strong> shows the network&rsquo;s current function \(f(x)\) vs the target. With ReLU you see piecewise-linear kinks; with sigmoid, smooth curves.</li>
+    <li><strong>Grey loss curve:</strong> the mini-batch loss (noisy). <strong>Red curve:</strong> full-dataset loss (smooth). The gap shows SGD stochasticity.</li>
+  </ul>
+</section>
+<section>
+  <h2>MLP Regression &mdash; Pseudocode</h2>
+  <pre style="background:#2c3e50; color:#ecf0f1; padding:20px 24px; border-radius:10px; font-size:0.82em; line-height:1.6; text-align:left;"><code><span style="color:#7f8c8d;">// Given: data {(x<sub>n</sub>, t<sub>n</sub>)}, width H, activation g, lr &eta;, batch size B</span>
+
+initialise W<sup>(1)</sup> &isin; R<sup>H&times;1</sup>, b<sup>(1)</sup> &isin; R<sup>H</sup>, w<sup>(2)</sup> &isin; R<sup>H</sup>, b<sup>(2)</sup> &isin; R randomly
+
+for step = 1, 2, ... :
+    sample B indices from {1, ..., N}
+
+    for each (x<sub>n</sub>, t<sub>n</sub>) in mini-batch:
+        <span style="color:#7f8c8d;">// Forward pass</span>
+        h<sub>n</sub> &larr; g(W<sup>(1)</sup> x<sub>n</sub> + b<sup>(1)</sup>)          <span style="color:#7f8c8d;">// hidden: R &rarr; R<sup>H</sup></span>
+        &ycirc;<sub>n</sub> &larr; w<sup>(2)T</sup> h<sub>n</sub> + b<sup>(2)</sup>             <span style="color:#7f8c8d;">// output: R<sup>H</sup> &rarr; R (no activation)</span>
+
+        <span style="color:#7f8c8d;">// Backward pass + update</span>
+        L<sub>n</sub> = &frac12;(&ycirc;<sub>n</sub> - t<sub>n</sub>)&sup2;
+        update W<sup>(1)</sup>, b<sup>(1)</sup>, w<sup>(2)</sup>, b<sup>(2)</sup> via &nabla;L<sub>n</sub></code></pre>
+</section>
+</section>
+
+<!-- SLIDE 16: MLP in action — classification (2D) -->
+<section>
+<section>
+  <h2>MLP in Action: Classification</h2>
+  <p>The <strong>same architecture</strong>, now with a sigmoid head and cross-entropy loss on 2D data:</p>
+  <div style="display:flex; gap:10px; font-size:0.82em; margin-top:6px; align-items:center; flex-wrap:wrap;">
+    <label>Dataset:
+      <select id="mlp-dataset" style="padding:2px 6px; font-size:1em;">
+        <option value="circles" selected>Circles</option>
+        <option value="moons">Moons</option>
+        <option value="spirals">Spirals</option>
+      </select>
+    </label>
+    <label>Activation:
+      <select id="mlp-act" style="padding:2px 6px; font-size:1em;">
+        <option value="relu" selected>ReLU</option>
+        <option value="sigmoid">Sigmoid</option>
+      </select>
+    </label>
+    <label>Width = <span id="mlp-width-val">8</span>
+      <input type="range" id="mlp-width-slider" min="0" max="7" step="1" value="3" style="width:80px;">
+    </label>
+    <label>&eta; = <span id="mlp-lr-val">0.100</span>
+      <input type="range" id="mlp-lr-slider" min="-3" max="0" step="0.1" value="-1" style="width:80px;">
+    </label>
+    <button id="mlp-train-btn" style="padding:4px 16px; cursor:pointer; font-size:1em; font-weight:600;">&#9654; Train</button>
+    <button id="mlp-reset-btn" style="padding:4px 16px; cursor:pointer; font-size:1em;">&#8634; Reset</button>
+    <span id="mlp-epoch-label" style="color:#7f8c8d; font-size:0.9em;"></span>
+  </div>
+  <div style="display:flex; gap:10px;">
+    <div id="mlp-boundary-plot" style="flex:1; height:340px;"></div>
+    <div id="mlp-loss-plot" style="flex:0 0 320px; height:340px;"></div>
+  </div>
+  <ul class="fragment" style="font-size:0.82em; margin-top:2px;">
+    <li><strong>Same network, different head:</strong> swap output activation and loss to switch between regression and classification.</li>
+    <li>Complex structured features like the spiral remain challenging to learn with single hidden layer networks.</li>
+  </ul>
+</section>
+<section>
+  <h2>MLP Classification &mdash; Details</h2>
+  <ul style="font-size:0.9em; line-height:1.7;">
+    <li><strong>Architecture:</strong> \([2, H, 1]\) &mdash; 2D input, \(H\) hidden neurons, sigmoid output. Identical to regression except the head.</li>
+    <li><strong>Loss:</strong> cross-entropy \(E = -\frac{1}{N}\sum_n [y_n \ln \hat{y}_n + (1-y_n)\ln(1-\hat{y}_n)]\). Evaluated on full dataset (red curve) and mini-batch (grey curve).</li>
+    <li><strong>Decision boundary:</strong> the contour where \(\hat{y} = 0.5\). Contour lines at 10%&ndash;90% show the network&rsquo;s confidence. Blue-orange colorscale is colorblind-safe.</li>
+    <li><strong>Same network, different head:</strong> swapping \(\sigma\) for identity and CE for MSE turns this into regression. The hidden representation is shared.</li>
+    <li><strong>Try:</strong> circles (width 4 suffices), moons (need ~8), spirals (need &ge;16). Depth helps more than width for spirals (section 3).</li>
+  </ul>
+</section>
+<section>
+  <h2>MLP Classification &mdash; Pseudocode</h2>
+  <pre style="background:#2c3e50; color:#ecf0f1; padding:20px 24px; border-radius:10px; font-size:0.82em; line-height:1.6; text-align:left;"><code><span style="color:#7f8c8d;">// Given: data {(x<sub>n</sub>, y<sub>n</sub>)}, width H, activation g, lr &eta;, batch size B=64</span>
+
+initialise W<sup>(1)</sup> &isin; R<sup>H&times;2</sup>, b<sup>(1)</sup> &isin; R<sup>H</sup>, w<sup>(2)</sup> &isin; R<sup>H</sup>, b<sup>(2)</sup> &isin; R randomly
+
+for step = 1, 2, ... :
+    sample B indices from {1, ..., N}
+
+    for each (x<sub>n</sub>, y<sub>n</sub>) in mini-batch:
+        <span style="color:#7f8c8d;">// Forward pass</span>
+        h<sub>n</sub> &larr; g(W<sup>(1)</sup> x<sub>n</sub> + b<sup>(1)</sup>)          <span style="color:#7f8c8d;">// hidden: R<sup>2</sup> &rarr; R<sup>H</sup></span>
+        a<sub>n</sub> &larr; w<sup>(2)T</sup> h<sub>n</sub> + b<sup>(2)</sup>             <span style="color:#7f8c8d;">// logit: R<sup>H</sup> &rarr; R</span>
+        &ycirc;<sub>n</sub> &larr; &sigma;(a<sub>n</sub>)                      <span style="color:#7f8c8d;">// probability via sigmoid</span>
+
+        <span style="color:#7f8c8d;">// Backward pass + update</span>
+        L<sub>n</sub> = -[y<sub>n</sub> ln &ycirc;<sub>n</sub> + (1-y<sub>n</sub>) ln(1-&ycirc;<sub>n</sub>)]   <span style="color:#7f8c8d;">// CE loss</span>
+        update W<sup>(1)</sup>, b<sup>(1)</sup>, w<sup>(2)</sup>, b<sup>(2)</sup> via &nabla;L<sub>n</sub></code></pre>
+</section>
+</section>
+
+<!-- ============================================================ -->
+<!-- SECTION 3: GOING DEEP                                        -->
+<!-- ============================================================ -->
+
+<!-- SLIDE 17: Section divider -->
+<section>
+  <div style="display:flex; align-items:center; justify-content:center; height:100%;">
+    <div style="text-align:center;">
+      <h1 style="font-size:2.2em; margin-bottom:0.2em;">Going Deep</h1>
+      <div style="width:120px; height:4px; background: linear-gradient(90deg, #27ae60, #8e44ad); margin:0 auto; border-radius:2px;"></div>
+      <p style="font-size:0.9em; color:#7f8c8d; margin-top:0.8em;">One hidden layer is a universal approximator.<br>But what happens when we stack more?</p>
+    </div>
+  </div>
+</section>
+
+<!-- SLIDE 18: Deep nesting -->
+<section>
+  <h2>Stacking Layers</h2>
+  <p>Apply the same idea repeatedly: the output of one layer becomes the input to the next.</p>
+  <div style="display:flex; flex-direction:column; align-items:center; gap:6px; margin-top:12px; font-size:0.78em;">
+    <div style="display:flex; align-items:center; justify-content:center; gap:4px;">
+      <div style="background:#eaf2f8; border:2px solid #2980b9; border-radius:8px; padding:6px 10px; text-align:center;">
+        <strong>Input</strong><br>\(\mathbf{x}\)
+      </div>
+      <span style="color:#7f8c8d;">&rarr;</span>
+      <div style="background:#eafaf1; border:2px solid #27ae60; border-radius:8px; padding:6px 8px; text-align:center;">
+        <strong>Layer 1</strong><br>\(\mathbf{h}^{(1)}\!=\!g(W^{(1)}\mathbf{x}\!+\!\mathbf{b}^{(1)})\)
+      </div>
+      <span style="color:#7f8c8d;">&rarr;</span>
+      <div style="background:#eafaf1; border:2px solid #27ae60; border-radius:8px; padding:6px 8px; text-align:center;">
+        <strong>Layer 2</strong><br>\(\mathbf{h}^{(2)}\!=\!g(W^{(2)}\mathbf{h}^{(1)}\!+\!\mathbf{b}^{(2)})\)
+      </div>
+      <span style="color:#7f8c8d;">&rarr; &hellip;</span>
+    </div>
+    <div style="display:flex; align-items:center; justify-content:center; gap:4px;">
+      <span style="color:#7f8c8d;">&hellip; &rarr;</span>
+      <div style="background:#eafaf1; border:2px solid #27ae60; border-radius:8px; padding:6px 8px; text-align:center;">
+        <strong>Layer \(L\)</strong><br>\(\mathbf{h}^{(L)}\!=\!g(W^{(L)}\mathbf{h}^{(L-1)}\!+\!\mathbf{b}^{(L)})\)
+      </div>
+      <span style="color:#7f8c8d;">&rarr;</span>
+      <div style="background:#f5eef8; border:2px solid #8e44ad; border-radius:8px; padding:6px 8px; text-align:center;">
+        <strong>Head</strong><br>\(\mathbf{y}\!=\!\text{head}(\mathbf{h}^{(L)})\)
+      </div>
+    </div>
+  </div>
+  <div class="fragment" style="margin-top:15px;">
+    <p>From the output head's perspective, the last hidden layer provides <strong>effective basis functions</strong>.</p>
+    <p>With more layers, these effective basis functions become <strong>richer</strong> and more complex.</p>
+  </div>
+  <div class="box fragment" style="text-align:center; margin-top:10px; padding:14px;">
+    <strong>Key question:</strong> what do these effective basis functions look like?<br>
+    <span style="color:#7f8c8d;">Let's visualise them with random weights for different depths.</span>
+  </div>
+</section>
+
+<!-- SLIDE 19: Effective basis functions — depth comparison -->
+<section>
+  <h2>Effective Basis Functions by Depth</h2>
+  <p>Take networks with random weights. Plot what the <strong>last hidden layer neurons</strong> compute as functions of the 1D input:</p>
+  <div style="display:flex; gap:10px; font-size:0.85em; margin-top:6px; align-items:center;">
+    <label>Activation:
+      <select id="ebf-act" style="padding:2px 6px; font-size:1em;">
+        <option value="relu" selected>ReLU</option>
+        <option value="sigmoid">Sigmoid</option>
+      </select>
+    </label>
+    <label>Width = <span id="ebf-w-val">8</span>
+      <input type="range" id="ebf-w-slider" min="3" max="16" step="1" value="8" style="width:100px;">
+    </label>
+    <button id="ebf-resample" style="padding:4px 16px; cursor:pointer; font-size:1em;">&#8635; Resample</button>
+  </div>
+  <div style="display:flex; gap:8px; margin-top:6px;">
+    <div style="flex:1;">
+      <div id="ebf-1L" style="height:230px;"></div>
+      <p style="text-align:center; font-size:0.78em; color:#7f8c8d; margin:2px 0;">1 hidden layer</p>
+    </div>
+    <div style="flex:1;">
+      <div id="ebf-2L" style="height:230px;"></div>
+      <p style="text-align:center; font-size:0.78em; color:#7f8c8d; margin:2px 0;">2 hidden layers</p>
+    </div>
+    <div style="flex:1;">
+      <div id="ebf-3L" style="height:230px;"></div>
+      <p style="text-align:center; font-size:0.78em; color:#7f8c8d; margin:2px 0;">3 hidden layers</p>
+    </div>
+  </div>
+  <div class="box" style="margin-top:6px; text-align:center; font-size:0.9em;">
+    <strong>Deeper = richer basis functions.</strong> Each additional layer composes nonlinearities, creating more complex shapes from simpler ones.
+  </div>
+</section>
+
+<!-- SLIDE: Chain rule reminder -->
+<section>
+  <h2>How Do We Train Deep Networks?</h2>
+  <p style="margin-bottom:6px;">We need \(\nabla_{\mathbf{W}^{(l)}} L\) for every layer. The <strong>chain rule</strong> propagates gradients backwards:</p>
+  <div class="box" style="text-align:center; padding:10px 14px; font-size:1.0em;">
+    \[ \frac{\partial L}{\partial W^{(l)}} = \frac{\partial L}{\partial \hat{y}} \cdot \frac{\partial \hat{y}}{\partial \mathbf{h}^{(L)}} \cdot \frac{\partial \mathbf{h}^{(L)}}{\partial \mathbf{h}^{(L-1)}} \cdots \frac{\partial \mathbf{h}^{(l+1)}}{\partial \mathbf{h}^{(l)}} \cdot \frac{\partial \mathbf{h}^{(l)}}{\partial W^{(l)}} \]
+  </div>
+  <div class="fragment" style="margin-top:10px;">
+    <p>Each factor \(\partial \mathbf{h}^{(l+1)} / \partial \mathbf{h}^{(l)}\) involves the <strong>activation derivative</strong> \(g'(\cdot)\) and the weight matrix \(W^{(l+1)}\).</p>
+    <div style="display:flex; gap:12px; margin-top:8px;">
+      <div class="box" style="flex:1; text-align:center; font-size:0.9em;">
+        <strong style="color:#2980b9;">Forward pass</strong><br>
+        Compute \(\mathbf{h}^{(1)} \to \mathbf{h}^{(2)} \to \cdots \to \hat{y}\)
+      </div>
+      <div class="box" style="flex:1; text-align:center; font-size:0.9em;">
+        <strong style="color:#e74c3c;">Backward pass</strong><br>
+        Propagate \(\nabla L\) from output back to each \(W^{(l)}\)
+      </div>
+    </div>
+  </div>
+  <div class="box fragment" style="margin-top:10px; text-align:center; padding:10px; border-left:4px solid #e67e22;">
+    This is <strong>backpropagation</strong> &mdash; just the chain rule applied systematically.<br>
+    <span style="font-size:0.85em; color:#7f8c8d;">PyTorch does this automatically via <code>loss.backward()</code>. Details in Lecture 4.</span>
+  </div>
+</section>
+
+<!-- SLIDE 20: Deep MLP trainer -->
+<section>
+<section>
+  <h2>Deep MLP in Action</h2>
+  <p>Now with <strong>multiple hidden layers</strong> &mdash; compare depth and activation function:</p>
+  <div style="display:flex; gap:10px; font-size:0.82em; margin-top:6px; align-items:center; flex-wrap:wrap;">
+    <label>Dataset:
+      <select id="dmlp-dataset" style="padding:2px 6px; font-size:1em;">
+        <option value="circles">Circles</option>
+        <option value="moons">Moons</option>
+        <option value="spirals" selected>Spirals</option>
+      </select>
+    </label>
+    <label>Activation:
+      <select id="dmlp-act" style="padding:2px 6px; font-size:1em;">
+        <option value="relu" selected>ReLU</option>
+        <option value="sigmoid">Sigmoid</option>
+      </select>
+    </label>
+    <label>Layers:
+      <select id="dmlp-layers" style="padding:2px 6px; font-size:1em;">
+        <option value="1">1</option>
+        <option value="2" selected>2</option>
+        <option value="3">3</option>
+        <option value="4">4</option>
+      </select>
+    </label>
+    <label>Width = <span id="dmlp-width-val">16</span>
+      <input type="range" id="dmlp-width-slider" min="0" max="7" step="1" value="4" style="width:80px;">
+    </label>
+    <label>&eta; = <span id="dmlp-lr-val">0.050</span>
+      <input type="range" id="dmlp-lr-slider" min="-3" max="0" step="0.1" value="-1.3" style="width:80px;">
+    </label>
+    <button id="dmlp-train-btn" style="padding:4px 16px; cursor:pointer; font-size:1em; font-weight:600;">&#9654; Train</button>
+    <button id="dmlp-reset-btn" style="padding:4px 16px; cursor:pointer; font-size:1em;">&#8634; Reset</button>
+    <span id="dmlp-epoch-label" style="color:#7f8c8d; font-size:0.9em;"></span>
+  </div>
+  <div style="display:flex; gap:10px;">
+    <div id="dmlp-boundary-plot" style="flex:1; height:340px;"></div>
+    <div id="dmlp-loss-plot" style="flex:0 0 320px; height:340px;"></div>
+  </div>
+  <ul class="fragment" style="font-size:0.82em; margin-top:2px;">
+    <li><strong>Depth creates hierarchy:</strong> early layers learn simple features, later layers compose them.</li>
+    <li>Computing gradients through many layers is <strong>backpropagation</strong> &mdash; the topic of Lecture 4.</li>
+  </ul>
+</section>
+<section>
+  <h2>Deep MLP &mdash; Details</h2>
+  <ul style="font-size:0.9em; line-height:1.7;">
+    <li><strong>Architecture:</strong> \([2, H, H, \ldots, H, 1]\) with \(L\) hidden layers of width \(H\). Total parameters grow as \(\sim L \cdot H^2\).</li>
+    <li><strong>Depth vs width:</strong> deeper networks compose features hierarchically &mdash; early layers detect simple patterns, later layers combine them. This is more parameter-efficient than a single wide layer.</li>
+    <li><strong>Activation matters:</strong> sigmoid can cause <strong>vanishing gradients</strong> in deep networks (\(\sigma' \leq 0.25\) per layer). ReLU avoids this (\(g' \in \{0, 1\}\)). Details in Lecture 4.</li>
+    <li><strong>Training:</strong> mini-batch SGD with \(B = 64\). Gradients through all \(L\) layers are computed by <strong>backpropagation</strong> (chain rule, automated by PyTorch).</li>
+    <li><strong>Try:</strong> spirals with 1 vs 4 layers. One layer struggles; 3&ndash;4 layers solve it easily with the same total width.</li>
+  </ul>
+</section>
+<section>
+  <h2>Deep MLP &mdash; Pseudocode</h2>
+  <pre style="background:#2c3e50; color:#ecf0f1; padding:20px 24px; border-radius:10px; font-size:0.82em; line-height:1.6; text-align:left;"><code><span style="color:#7f8c8d;">// Given: data {(x<sub>n</sub>, y<sub>n</sub>)}, L layers of width H, activation g, lr &eta;, B=64</span>
+
+initialise W<sup>(1)</sup>, b<sup>(1)</sup>, ..., W<sup>(L)</sup>, b<sup>(L)</sup>, w<sup>out</sup>, b<sup>out</sup> randomly
+
+for step = 1, 2, ... :
+    sample B indices from {1, ..., N}
+
+    for each (x<sub>n</sub>, y<sub>n</sub>) in mini-batch:
+        <span style="color:#7f8c8d;">// Forward pass through L hidden layers</span>
+        h<sup>(0)</sup> &larr; x<sub>n</sub>
+        for l = 1, ..., L:
+            h<sup>(l)</sup> &larr; g(W<sup>(l)</sup> h<sup>(l-1)</sup> + b<sup>(l)</sup>)    <span style="color:#7f8c8d;">// R<sup>H</sup> &rarr; R<sup>H</sup></span>
+
+        <span style="color:#7f8c8d;">// Output head</span>
+        a<sub>n</sub> &larr; w<sup>out,T</sup> h<sup>(L)</sup> + b<sup>out</sup>            <span style="color:#7f8c8d;">// R<sup>H</sup> &rarr; R</span>
+        &ycirc;<sub>n</sub> &larr; head(a<sub>n</sub>)                     <span style="color:#7f8c8d;">// &sigma; (classification) or identity (regression)</span>
+
+        <span style="color:#7f8c8d;">// Backward pass (backpropagation through all L+1 layers)</span>
+        L<sub>n</sub> = loss(&ycirc;<sub>n</sub>, y<sub>n</sub>)                <span style="color:#7f8c8d;">// CE or MSE</span>
+        update all W<sup>(l)</sup>, b<sup>(l)</sup>, w<sup>out</sup>, b<sup>out</sup> via &nabla;L<sub>n</sub></code></pre>
+</section>
+</section>
+
+<!-- NOTE: "Why ReLU" (vanishing gradients) slide moved to lecture 4 (backpropagation) -->
+
+<!-- ============================================================ -->
+<!-- CLOSING                                                      -->
+<!-- ============================================================ -->
+
+<!-- SLIDE 22: Key takeaways -->
+<section>
+  <h2>Key Takeaways</h2>
+  <ul style="font-size:0.95em; line-height:1.6;">
+    <li class="fragment"><strong>Classification</strong> = regression with a sigmoid head and cross-entropy loss. Same framework, different output.</li>
+    <li class="fragment"><strong>No closed form</strong> &rarr; gradient descent. Mini-batch SGD: fast, noisy (noise helps!).</li>
+    <li class="fragment"><strong>The real bottleneck</strong> was always the basis functions \(\boldsymbol{\phi}\). Hand-picking them doesn't scale.</li>
+    <li class="fragment"><strong>Solution:</strong> make \(\boldsymbol{\phi}\) learnable. \(g(\mathbf{v}^T x + b)\) is the building block. This is a <strong>neural network</strong>.</li>
+    <li class="fragment"><strong>Depth matters:</strong> stacking layers creates richer effective basis functions.</li>
+  </ul>
+</section>
+
+<!-- SLIDE 23: Summary & next -->
+<section>
+  <h2>Summary &amp; What's Next</h2>
+  <div style="display:flex; gap:15px; font-size:0.9em;">
+    <div class="box" style="flex:1;">
+      <h3 style="margin-top:0; color:#2980b9;">What we covered</h3>
+      <ul style="font-size:0.9em; line-height:1.5;">
+        <li>Binary classification &amp; cross-entropy</li>
+        <li>Gradient descent &amp; SGD</li>
+        <li>Learnable basis functions = neural network</li>
+        <li>Depth &amp; effective basis functions</li>
+        <li>ReLU &amp; the vanishing gradient problem</li>
+      </ul>
+    </div>
+    <div class="box" style="flex:1;">
+      <h3 style="margin-top:0; color:#27ae60;">Key equations</h3>
+      <p style="font-size:0.85em;">\(\sigma(a) = \frac{1}{1+e^{-a}}\) &mdash; sigmoid</p>
+      <p style="font-size:0.85em;">\(\mathbf{w} \leftarrow \mathbf{w} - \eta\,\nabla E\) &mdash; gradient descent</p>
+      <p style="font-size:0.85em;">\(\phi_j(x) = g(v_j x + b_j)\) &mdash; learnable neuron</p>
+      <p style="font-size:0.85em;">\(f(x) = \sum_j w_j\, g(v_j x + b_j)\) &mdash; one hidden layer</p>
+    </div>
+  </div>
+  <p style="text-align:center; margin-top:15px; font-size:0.85em; color:#7f8c8d;">
+    Next lecture: Backpropagation, Adam, dropout, batch norm, spectral embeddings, &hellip;<br>
+    <strong>HW:</strong> Explore how MLPs behave on simple problems &mdash; depth, width, activation, learning rate.
+  </p>
+</section>
+
+</div>
+</div>
+
+<script src="lib/plotly.min.js"></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js-plugins@latest/chalkboard/style.css">
+<script src="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reveal.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/plugin/math/math.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/reveal.js-plugins@latest/chalkboard/plugin.js"></script>
+<script>
+// ── Seeded PRNG (mulberry32) ──
+function createRNG(seed) {
+  return function() {
+    seed |= 0; seed = seed + 0x6D2B79F5 | 0;
+    var t = Math.imul(seed ^ seed >>> 15, 1 | seed);
+    t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+    return ((t ^ t >>> 14) >>> 0) / 4294967296;
+  };
+}
+function boxMuller(rng) {
+  return Math.sqrt(-2 * Math.log(rng())) * Math.cos(2 * Math.PI * rng());
+}
+
+Reveal.initialize({
+  hash: true, center: false, transition: 'none', slideNumber: true,
+  width: 1214, height: 700, margin: 0.04, minScale: 0.2, maxScale: 2.0,
+  katex: { delimiters: [{left:'\\(',right:'\\)',display:false},{left:'\\[',right:'\\]',display:true}], ignoredTags: ['script','noscript','style','textarea','pre','code'] },
+  plugins: [ RevealMath.KaTeX, RevealChalkboard ]
+}).then(function() {
+  // Fix vertical stack scaling: force stack containers to configured slide height
+  // so Reveal's scaler doesn't shrink them
+  document.querySelectorAll('.reveal .slides > section.stack').forEach(function(stack) {
+    stack.style.height = '700px';
+    // Also observe for Reveal re-setting inline styles
+    var observer = new MutationObserver(function() {
+      if (stack.style.height !== '700px') stack.style.height = '700px';
+    });
+    observer.observe(stack, { attributes: true, attributeFilter: ['style'] });
+  });
+});
+
+document.querySelectorAll('.reveal .slides > section').forEach(function(slide) {
+  var footer = document.createElement('div');
+  footer.className = 'slide-footer';
+  footer.innerHTML = '<a href="index.html" style="color:#bdc3c7; text-decoration:none; pointer-events:auto;">&larr; Index</a><span>ML4PhA 2026 &mdash; Lecture 3</span><span>Christoph Weniger &mdash; GRAPPA / UvA</span>';
+  slide.appendChild(footer);
+});
+
+// Purge Plotly plots on previous slide to keep transitions fast
+// But don't purge if navigating within the same vertical stack
+Reveal.on('slidechanged', function(e) {
+  if (e.previousSlide && e.previousSlide.parentNode !== e.currentSlide.parentNode) {
+    e.previousSlide.querySelectorAll('[id$="-plot"]').forEach(function(el) {
+      if (el.data) Plotly.purge(el);
+    });
+  }
+});
+
+// ================================================================
+// DEMO: Recap regression
+// ================================================================
+(function() {
+  function render(e) {
+    if (!(e.currentSlide && e.currentSlide.querySelector('#recap-reg-plot'))) return;
+    var xF = [], yF = [], yU = [], yD = [], sigma = 0.3;
+    for (var t = 0; t <= 1; t += 0.005) { xF.push(t); var y = Math.sin(2*Math.PI*t); yF.push(y); yU.push(y+2*sigma); yD.push(y-2*sigma); }
+    var r = createRNG(101), xd = [], yd = [];
+    for (var i = 0; i < 20; i++) { var xi = r(); xd.push(xi); yd.push(Math.sin(2*Math.PI*xi) + sigma*boxMuller(r)); }
+    Plotly.react('recap-reg-plot', [
+      { x:xF, y:yU, mode:'lines', line:{width:0}, showlegend:false },
+      { x:xF, y:yD, mode:'lines', line:{width:0}, fill:'tonexty', fillcolor:'rgba(41,128,185,0.15)', showlegend:false },
+      { x:xF, y:yF, mode:'lines', name:'Mean prediction', line:{width:2.5,color:'#2980b9'} },
+      { x:xd, y:yd, mode:'markers', name:'Data', marker:{size:7,color:'#e74c3c'} }
+    ], { xaxis:{title:'x',range:[0,1]}, yaxis:{title:'y',range:[-2,2]}, margin:{t:5,r:20,b:35,l:45}, paper_bgcolor:'rgba(0,0,0,0)', plot_bgcolor:'rgba(0,0,0,0)', font:{size:13}, legend:{x:0.65,y:0.98} }, {displayModeBar:false});
+  }
+  Reveal.on('slidechanged', render);})();
+
+// ================================================================
+// DEMO: Classification scenarios (slide 4)
+// ================================================================
+(function() {
+  function render(e) {
+    if (!(e.currentSlide && e.currentSlide.querySelector('#classification-scenarios'))) return;
+    var rng, i, x1, x2;
+    var plotCfg = { displayModeBar: false };
+    var baseLay = {
+      margin: { t: 5, r: 5, b: 5, l: 5 },
+      paper_bgcolor: 'rgba(0,0,0,0)', plot_bgcolor: 'rgba(0,0,0,0)',
+      font: { size: 11 },
+      xaxis: { showticklabels: false, zeroline: false, showgrid: false },
+      yaxis: { showticklabels: false, zeroline: false, showgrid: false, scaleanchor: 'x' },
+      showlegend: false
+    };
+    // (a) Linearly separable
+    rng = createRNG(100);
+    var ax0=[],ay0=[],ax1=[],ay1=[];
+    for(i=0;i<60;i++){x1=2*rng()-1;x2=2*rng()-1;if(x1+0.5*x2+0.3*boxMuller(rng)>0){ax1.push(x1);ay1.push(x2);}else{ax0.push(x1);ay0.push(x2);}}
+    Plotly.react('class-scene-a',[
+      {x:ax0,y:ay0,mode:'markers',marker:{size:6,color:'#2166ac',opacity:0.8}},
+      {x:ax1,y:ay1,mode:'markers',marker:{size:6,color:'#e66101',opacity:0.8}}
+    ],Object.assign({},baseLay,{xaxis:Object.assign({},baseLay.xaxis,{range:[-1.2,1.2]}),yaxis:Object.assign({},baseLay.yaxis,{range:[-1.2,1.2],scaleanchor:'x'})}),plotCfg);
+    // (b) Spirals
+    rng = createRNG(200);
+    var bx0=[],by0=[],bx1=[],by1=[];
+    for(i=0;i<100;i++){var t=1.5*Math.PI*(0.4+1.6*(i/100));var n1=0.12*boxMuller(rng),n2=0.12*boxMuller(rng);bx0.push(t*Math.cos(t)/10+n1);by0.push(t*Math.sin(t)/10+n2);n1=0.12*boxMuller(rng);n2=0.12*boxMuller(rng);bx1.push(-t*Math.cos(t)/10+n1);by1.push(-t*Math.sin(t)/10+n2);}
+    Plotly.react('class-scene-b',[
+      {x:bx0,y:by0,mode:'markers',marker:{size:5,color:'#2166ac',opacity:0.8}},
+      {x:bx1,y:by1,mode:'markers',marker:{size:5,color:'#e66101',opacity:0.8}}
+    ],Object.assign({},baseLay,{xaxis:Object.assign({},baseLay.xaxis,{range:[-2,2]}),yaxis:Object.assign({},baseLay.yaxis,{range:[-2,2],scaleanchor:'x'})}),plotCfg);
+    // (c) Three classes
+    rng = createRNG(300);
+    var cx0=[],cy0=[],cx1=[],cy1=[],cx2=[],cy2=[];
+    var centers=[[0,0.8],[-0.7,-0.4],[0.7,-0.4]];
+    for(i=0;i<50;i++){cx0.push(centers[0][0]+0.45*boxMuller(rng));cy0.push(centers[0][1]+0.45*boxMuller(rng));cx1.push(centers[1][0]+0.45*boxMuller(rng));cy1.push(centers[1][1]+0.45*boxMuller(rng));cx2.push(centers[2][0]+0.45*boxMuller(rng));cy2.push(centers[2][1]+0.45*boxMuller(rng));}
+    Plotly.react('class-scene-c',[
+      {x:cx0,y:cy0,mode:'markers',marker:{size:5,color:'#2166ac',opacity:0.7}},
+      {x:cx1,y:cy1,mode:'markers',marker:{size:5,color:'#e66101',opacity:0.7}},
+      {x:cx2,y:cy2,mode:'markers',marker:{size:5,color:'#27ae60',opacity:0.7}}
+    ],Object.assign({},baseLay,{xaxis:Object.assign({},baseLay.xaxis,{range:[-2,2]}),yaxis:Object.assign({},baseLay.yaxis,{range:[-1.5,2],scaleanchor:'x'})}),plotCfg);
+  }
+  Reveal.on('slidechanged', render);})();
+
+// ================================================================
+// DEMO: Generative view of classification
+// ================================================================
+(function() {
+  // Box-Muller
+  var _spare = null;
+  function randn() {
+    if (_spare !== null) { var s = _spare; _spare = null; return s; }
+    var u, v, s;
+    do { u = Math.random()*2-1; v = Math.random()*2-1; s = u*u+v*v; } while (s >= 1 || s === 0);
+    s = Math.sqrt(-2*Math.log(s)/s);
+    _spare = v*s;
+    return u*s;
+  }
+
+  function randomCov() {
+    // Random 2x2 positive-definite covariance via random L
+    var s1 = 0.4 + Math.random()*0.6, s2 = 0.4 + Math.random()*0.6;
+    var rho = (Math.random()-0.5)*1.4; // correlation in roughly [-0.7, 0.7]
+    return [[s1*s1, rho*s1*s2],[rho*s1*s2, s2*s2]];
+  }
+
+  function randomMixture() {
+    var nComp = Math.random() < 0.5 ? 1 : 2;
+    var comps = [];
+    if (nComp === 1) {
+      comps.push({mu:[randn()*1.5, randn()*1.5], cov:randomCov(), w:1.0});
+    } else {
+      var w1 = 0.3 + Math.random()*0.4;
+      comps.push({mu:[randn()*1.5, randn()*1.5], cov:randomCov(), w:w1});
+      comps.push({mu:[randn()*1.5, randn()*1.5], cov:randomCov(), w:1-w1});
+    }
+    return comps;
+  }
+
+  function gaussPDF(x, y, mu, cov) {
+    var dx = x - mu[0], dy = y - mu[1];
+    var det = cov[0][0]*cov[1][1] - cov[0][1]*cov[1][0];
+    if (det < 1e-8) det = 1e-8;
+    var inv00 = cov[1][1]/det, inv11 = cov[0][0]/det, inv01 = -cov[0][1]/det;
+    var exponent = -0.5*(dx*dx*inv00 + 2*dx*dy*inv01 + dy*dy*inv11);
+    return Math.exp(exponent) / (2*Math.PI*Math.sqrt(det));
+  }
+
+  function mixturePDF(x, y, comps) {
+    var p = 0;
+    for (var i = 0; i < comps.length; i++) p += comps[i].w * gaussPDF(x, y, comps[i].mu, comps[i].cov);
+    return p;
+  }
+
+  function chol2(cov) {
+    var l00 = Math.sqrt(cov[0][0]);
+    var l10 = cov[1][0]/l00;
+    var l11sq = cov[1][1] - l10*l10;
+    var l11 = Math.sqrt(Math.max(l11sq, 1e-8));
+    return [l00, l10, l11];
+  }
+
+  function sampleMixture(comps, n) {
+    var xs = [], ys = [];
+    for (var i = 0; i < n; i++) {
+      var r = Math.random(), cum = 0, ci = 0;
+      for (var j = 0; j < comps.length; j++) { cum += comps[j].w; if (r < cum) { ci = j; break; } }
+      var L = chol2(comps[ci].cov);
+      var z0 = randn(), z1 = randn();
+      xs.push(comps[ci].mu[0] + L[0]*z0);
+      ys.push(comps[ci].mu[1] + L[1]*z0 + L[2]*z1);
+    }
+    return {x: xs, y: ys};
+  }
+
+  // State
+  var pi1 = 0.5;
+  var c0 = null, c1 = null;
+  var gridCache = null;
+  var currentSamples = null;
+  var lo = -5, hi = 5, gstep = 0.1;
+
+  function buildGrid() {
+    var gx = [], gy = [];
+    for (var v = lo; v <= hi; v += gstep) { gx.push(v); gy.push(v); }
+    var z0 = [], z1 = [];
+    for (var j = 0; j < gy.length; j++) {
+      var row0 = [], row1 = [];
+      for (var i = 0; i < gx.length; i++) {
+        row0.push(mixturePDF(gx[i], gy[j], c0));
+        row1.push(mixturePDF(gx[i], gy[j], c1));
+      }
+      z0.push(row0); z1.push(row1);
+    }
+    gridCache = {gx:gx, gy:gy, z0:z0, z1:z1};
+  }
+
+  function randomizeAll() {
+    pi1 = 0.2 + Math.random()*0.6;  // prior in [0.2, 0.8]
+    c0 = randomMixture();
+    c1 = randomMixture();
+    gridCache = null;
+    currentSamples = null;
+    // Update prior display
+    var el = document.getElementById('gen-class-priors');
+    if (el) el.innerHTML = '&rarr; \u03C0\u2081 = '+pi1.toFixed(2)+', \u03C0\u2080 = '+(1-pi1).toFixed(2);
+  }
+
+  function generateSamples() {
+    var N = parseInt(document.getElementById('gen-class-n-slider').value);
+    var n0 = 0, n1 = 0;
+    for (var i = 0; i < N; i++) { if (Math.random() < pi1) n1++; else n0++; }
+    currentSamples = { s0: sampleMixture(c0, n0), s1: sampleMixture(c1, n1) };
+    var countsDiv = document.getElementById('gen-class-counts');
+    countsDiv.innerHTML = '<span style="color:#2980b9;font-weight:600;">n<sub>0</sub> = '+n0+'</span> &nbsp; <span style="color:#e74c3c;font-weight:600;">n<sub>1</sub> = '+n1+'</span><br><span style="color:#7f8c8d;font-size:0.85em;">N = '+N+', stochastic split</span>';
+  }
+
+  function draw(showDensity, showSamples, greyOut) {
+    var traces = [];
+    if (showDensity) {
+      if (!gridCache) buildGrid();
+      var G = gridCache;
+      var cs0 = greyOut ? [[0,'rgba(255,255,255,0)'],[1,'rgba(180,180,180,0.15)']] : [[0,'rgba(255,255,255,0)'],[1,'rgba(41,128,185,0.5)']];
+      var cs1 = greyOut ? [[0,'rgba(255,255,255,0)'],[1,'rgba(180,180,180,0.15)']] : [[0,'rgba(255,255,255,0)'],[1,'rgba(231,76,60,0.5)']];
+      var lc0 = greyOut ? 'rgba(180,180,180,0.2)' : 'rgba(41,128,185,0.4)';
+      var lc1 = greyOut ? 'rgba(180,180,180,0.2)' : 'rgba(231,76,60,0.4)';
+      traces.push({x:G.gx, y:G.gy, z:G.z0, type:'contour', colorscale:cs0, showscale:false, contours:{coloring:'fill',showlines:true,size:0.015}, line:{width:0.5,color:lc0}, hoverinfo:'skip', name:'p(x|y=0)'});
+      traces.push({x:G.gx, y:G.gy, z:G.z1, type:'contour', colorscale:cs1, showscale:false, contours:{coloring:'fill',showlines:true,size:0.015}, line:{width:0.5,color:lc1}, hoverinfo:'skip', name:'p(x|y=1)'});
+    }
+    if (showSamples && currentSamples) {
+      traces.push({x:currentSamples.s0.x, y:currentSamples.s0.y, mode:'markers', marker:{size:5,color:'#2980b9',opacity:0.7}, name:'y=0 (n='+currentSamples.s0.x.length+')', type:'scatter'});
+      traces.push({x:currentSamples.s1.x, y:currentSamples.s1.y, mode:'markers', marker:{size:5,color:'#e74c3c',opacity:0.7}, name:'y=1 (n='+currentSamples.s1.x.length+')', type:'scatter'});
+    }
+    if (!traces.length) traces.push({x:[0],y:[0],mode:'markers',marker:{size:0,opacity:0},showlegend:false,type:'scatter'});
+    var layout = {
+      xaxis:{title:'x\u2081',range:[lo,hi]}, yaxis:{title:'x\u2082',range:[lo,hi],scaleanchor:'x'},
+      margin:{t:10,r:10,b:40,l:45}, paper_bgcolor:'rgba(0,0,0,0)', plot_bgcolor:'rgba(0,0,0,0)',
+      font:{size:12}, legend:{x:0.01,y:0.99,bgcolor:'rgba(255,255,255,0.7)',font:{size:11}},
+      showlegend: true
+    };
+    Plotly.react('gen-class-plot', traces, layout, {displayModeBar:false});
+  }
+
+  function onSlide(e) {
+    var sl = e.currentSlide || e;
+    if (!sl || !sl.querySelector('#gen-class-plot')) return;
+    var frags = sl.querySelectorAll('.fragment');
+    var maxVisible = -1;
+    frags.forEach(function(f) {
+      if (f.classList.contains('visible')) {
+        var idx = parseInt(f.getAttribute('data-fragment-index'));
+        if (idx > maxVisible) maxVisible = idx;
+      }
+    });
+    // fragment 0: priors (randomize on first enter)
+    // fragment 1: densities
+    // fragment 2: samples
+    var showDensity = maxVisible >= 1;
+    var showSamples = maxVisible >= 2;
+    var greyOut = maxVisible >= 3;
+
+    if (showSamples && !currentSamples) generateSamples();
+    var countsDiv = document.getElementById('gen-class-counts');
+    if (countsDiv) countsDiv.style.visibility = showSamples ? 'visible' : 'hidden';
+    draw(showDensity, showSamples, greyOut);
+  }
+
+  // Randomize on entering the slide
+  var initialized = false;
+  function onEnter(e) {
+    var sl = e.currentSlide || e;
+    if (!sl || !sl.querySelector('#gen-class-plot')) return;
+    randomizeAll();
+    currentSamples = null;
+    initialized = true;
+    onSlide(e);
+  }
+
+  document.getElementById('gen-class-n-slider').addEventListener('input', function() {
+    document.getElementById('gen-class-n-val').textContent = this.value;
+    generateSamples();
+    onSlide({currentSlide: Reveal.getCurrentSlide()});
+  });
+  document.getElementById('gen-class-resample').addEventListener('click', function() {
+    randomizeAll();
+    currentSamples = null;
+    // Reset fragments to step 0 state
+    var sl = Reveal.getCurrentSlide();
+    var frags = sl.querySelectorAll('.fragment');
+    var maxVisible = -1;
+    frags.forEach(function(f) {
+      if (f.classList.contains('visible')) {
+        var idx = parseInt(f.getAttribute('data-fragment-index'));
+        if (idx > maxVisible) maxVisible = idx;
+      }
+    });
+    if (maxVisible >= 2) generateSamples();
+    onSlide({currentSlide: sl});
+  });
+
+  Reveal.on('slidechanged', onEnter);
+  Reveal.on('fragmentshown', function(e) { onSlide({currentSlide: e.fragment.closest('section')}); });
+  Reveal.on('fragmenthidden', function(e) { onSlide({currentSlide: e.fragment.closest('section')}); });
+})();
+
+// ================================================================
+// DEMO: Sigmoid squashing (on slide 5 — static)
+// ================================================================
+(function() {
+  var xF = []; for (var t = -5; t <= 5; t += 0.05) xF.push(t);
+  function render(e) {
+    if (!(e.currentSlide && e.currentSlide.querySelector('#sig-squash-plot'))) return;
+    var logit = xF.map(function(x) { return 6*Math.sin(1.2*x) + 1.5*x; });
+    var squashed = logit.map(function(a) { return 1/(1+Math.exp(-a)); });
+    Plotly.react('sig-linear-plot', [
+      { x:xF, y:logit, mode:'lines', line:{width:2.5,color:'#2980b9'} }
+    ], { xaxis:{title:'x',range:[-5,5]}, yaxis:{title:'a(x)',range:[-15,15]}, margin:{t:30,r:10,b:35,l:45}, paper_bgcolor:'rgba(0,0,0,0)', plot_bgcolor:'rgba(0,0,0,0)', font:{size:12}, showlegend:false, title:{text:'Logit a(x) — unbounded',font:{size:12}} }, {displayModeBar:false});
+    Plotly.react('sig-squash-plot', [
+      { x:xF, y:squashed, mode:'lines', line:{width:2.5,color:'#e74c3c'} },
+      { x:[-5,5], y:[0.5,0.5], mode:'lines', showlegend:false, line:{width:1,color:'#bdc3c7',dash:'dash'} }
+    ], { xaxis:{title:'x',range:[-5,5]}, yaxis:{title:'\u03c3(a)',range:[-0.05,1.05]}, margin:{t:30,r:10,b:35,l:45}, paper_bgcolor:'rgba(0,0,0,0)', plot_bgcolor:'rgba(0,0,0,0)', font:{size:12}, showlegend:false, title:{text:'After sigmoid: p(y=1|x)',font:{size:12}} }, {displayModeBar:false});
+  }
+  Reveal.on('slidechanged', render);})();
+
+// ================================================================
+// DEMO: Gradient descent animation
+// ================================================================
+(function() {
+  function lossF(w) { return 0.5*(w-2)*(w-2) + 0.3*Math.sin(3*w); }
+  function gradF(w) { return (w-2) + 0.9*Math.cos(3*w); }
+  var xF = []; for (var t = -1; t <= 5; t += 0.02) xF.push(t);
+  var yF = xF.map(lossF);
+  var step = -1, animId = null;
+  var stories = [
+    { eta:0.01, w0:4.5, steps:80, msg:'<strong style="color:#2980b9;">Too small (\u03b7=0.01):</strong> Barely moves.' },
+    { eta:0.1, w0:4.5, steps:80, msg:'<strong style="color:#27ae60;">Slightly too small (\u03b7=0.1):</strong> Slow convergence.' },
+    { eta:0.2, w0:4.5, steps:80, msg:'<strong style="color:#16a085;">Close to optimal (\u03b7=0.2):</strong> Fast convergence in few steps.' },
+    { eta:0.5, w0:4.5, steps:80, msg:'<strong style="color:#e67e22;">Slightly too large (\u03b7=0.5):</strong> Overshoots and oscillates.' },
+    { eta:1.0, w0:4.5, steps:80, msg:'<strong style="color:#e74c3c;">Way too large (\u03b7=1.0):</strong> Diverges!' }
+  ];
+
+  function stopAnim() {
+    if (animId) { clearTimeout(animId); animId = null; }
+  }
+
+  function animate() {
+    stopAnim();
+    var s = stories[step];
+    document.getElementById('gd-narration').innerHTML = '<span style="font-size:0.95em;">' + s.msg + '</span>';
+    document.getElementById('gd-story-step').textContent = (step+1) + ' / ' + stories.length;
+    var w = s.w0, ws = [w], ls = [lossF(w)], i = 0;
+    function tick() {
+      if (i >= s.steps) return;
+      i++;
+      w = w - s.eta * gradF(w);
+      w = Math.max(-1, Math.min(5, w));
+      ws.push(w); ls.push(lossF(w));
+      Plotly.react('gd-plot', [
+        { x:xF, y:yF, mode:'lines', name:'Loss E(w)', line:{width:2,color:'#bdc3c7'} },
+        { x:ws, y:ls, mode:'lines+markers', name:'GD path', line:{width:2,color:'#e74c3c'}, marker:{size:4,color:'#e74c3c'} },
+        { x:[ws[ws.length-1]], y:[ls[ls.length-1]], mode:'markers', showlegend:false, marker:{size:12,color:'#2c3e50',symbol:'circle'} }
+      ], { xaxis:{title:'w',range:[-1,5]}, yaxis:{title:'E(w)',range:[-0.5,5]}, margin:{t:5,r:20,b:35,l:45}, paper_bgcolor:'rgba(0,0,0,0)', plot_bgcolor:'rgba(0,0,0,0)', font:{size:13}, legend:{x:0.02,y:0.98} }, {displayModeBar:false});
+      animId = setTimeout(tick, 120);
+    }
+    tick();
+  }
+
+  function showEmpty() {
+    Plotly.react('gd-plot', [
+      { x:xF, y:yF, mode:'lines', name:'Loss E(w)', line:{width:2,color:'#bdc3c7'} }
+    ], { xaxis:{title:'w',range:[-1,5]}, yaxis:{title:'E(w)',range:[-0.5,5]}, margin:{t:5,r:20,b:35,l:45}, paper_bgcolor:'rgba(0,0,0,0)', plot_bgcolor:'rgba(0,0,0,0)', font:{size:13}, legend:{x:0.02,y:0.98} }, {displayModeBar:false});
+  }
+
+  document.getElementById('gd-story-next').addEventListener('click', function(e) {
+    e.preventDefault(); e.stopPropagation();
+    stopAnim();
+    if (step < stories.length - 1) { step++; animate(); }
+  });
+  document.getElementById('gd-story-replay').addEventListener('click', function(e) {
+    e.preventDefault(); e.stopPropagation();
+    if (step >= 0) animate();
+  });
+  document.getElementById('gd-story-reset').addEventListener('click', function(e) {
+    e.preventDefault(); e.stopPropagation();
+    stopAnim();
+    step = -1;
+    document.getElementById('gd-narration').innerHTML = '<span style="color:#7f8c8d; font-size:0.9em;">Click <strong>Next &#9654;</strong> to see gradient descent in action.</span>';
+    document.getElementById('gd-story-step').textContent = '';
+    showEmpty();
+  });
+  function init(e) {
+    if (!(e.currentSlide && e.currentSlide.querySelector('#gd-plot'))) return;
+    stopAnim();
+    step = -1;
+    document.getElementById('gd-narration').innerHTML = '<span style="color:#7f8c8d; font-size:0.9em;">Click <strong>Next &#9654;</strong> to see gradient descent in action.</span>';
+    document.getElementById('gd-story-step').textContent = '';
+    showEmpty();
+  }
+  Reveal.on('slidechanged', init);})();
+
+
+// ================================================================
+// DEMO: Logistic regression with basis functions (slide 16)
+// ================================================================
+(function() {
+  // --- Data generation (reuse existing genClassData + add 'linear') ---
+  function genData(type, n) {
+    var rng = createRNG(42), X = [], Y = [];
+    for (var i = 0; i < n; i++) {
+      var x1, x2, label;
+      if (type === 'linear') {
+        rng = createRNG(100 + i);
+        x1 = 2*rng()-1; x2 = 2*rng()-1;
+        label = (x1 + 0.5*x2 + 0.3*boxMuller(rng) > 0) ? 1 : 0;
+      } else { // spirals
+        label = i < n/2 ? 0 : 1;
+        var rng2 = createRNG(200 + i);
+        var t = 1.5*Math.PI*(1 + 2*rng2());
+        if (label===0) { x1=t*Math.cos(t)/10+0.1*boxMuller(rng2); x2=t*Math.sin(t)/10+0.1*boxMuller(rng2); }
+        else { x1=-t*Math.cos(t)/10+0.1*boxMuller(rng2); x2=-t*Math.sin(t)/10+0.1*boxMuller(rng2); }
+      }
+      X.push([x1,x2]); Y.push(label);
+    }
+    return {X:X, Y:Y};
+  }
+
+  // --- Basis function expansions ---
+  // Returns phi(x1,x2) as array of features
+  function polyBasis(x1, x2, degree) {
+    var phi = [1]; // bias
+    for (var d = 1; d <= degree; d++) {
+      for (var k = 0; k <= d; k++) {
+        phi.push(Math.pow(x1, d-k) * Math.pow(x2, k));
+      }
+    }
+    return phi;
+  }
+
+  // Gaussian RBFs with fixed random centers
+  var gaussCenters = {};
+  function getGaussCenters(M) {
+    if (gaussCenters[M]) return gaussCenters[M];
+    var rng = createRNG(12345), centers = [];
+    for (var i = 0; i < M; i++) centers.push([4*rng()-2, 4*rng()-2]);
+    gaussCenters[M] = centers;
+    return centers;
+  }
+
+  function gaussBasis(x1, x2, M) {
+    var centers = getGaussCenters(M);
+    var s2 = 2 * Math.pow(4/Math.sqrt(M), 2); // scale ~ spacing^2
+    var phi = [1]; // bias
+    for (var i = 0; i < M; i++) {
+      var dx = x1 - centers[i][0], dy = x2 - centers[i][1];
+      phi.push(Math.exp(-(dx*dx + dy*dy) / s2));
+    }
+    return phi;
+  }
+
+  function getBasis(x1, x2, type) {
+    if (type === 'linear') return [1, x1, x2];
+    if (type === 'poly3') return polyBasis(x1, x2, 3);
+    if (type === 'poly6') return polyBasis(x1, x2, 6);
+    if (type === 'gauss16') return gaussBasis(x1, x2, 16);
+    if (type === 'gauss64') return gaussBasis(x1, x2, 64);
+    return [1, x1, x2];
+  }
+
+  // --- Logistic regression ---
+  function sigmoid(a) { return 1 / (1 + Math.exp(-Math.max(-500, Math.min(500, a)))); }
+
+  function dot(w, phi) {
+    var s = 0;
+    for (var i = 0; i < w.length; i++) s += w[i] * phi[i];
+    return s;
+  }
+
+  var data, weights, lossHist, epoch, animId = null;
+
+  function getB() { return Math.pow(2, parseInt(document.getElementById('lr-cls-B-slider').value)); }
+  function getLR() { return Math.pow(10, parseFloat(document.getElementById('lr-cls-lr-slider').value)); }
+
+  function reset() {
+    if (animId) { clearTimeout(animId); animId = null; }
+    var dsType = document.getElementById('lr-cls-dataset').value;
+    var N = parseInt(document.getElementById('lr-cls-N-slider').value);
+    data = genData(dsType, N);
+    var basisType = document.getElementById('lr-cls-basis').value;
+    var M = getBasis(0, 0, basisType).length;
+    weights = new Array(M);
+    for (var i = 0; i < M; i++) weights[i] = 0;
+    lossHist = []; batchLossHist = []; epoch = 0; lrClsLossInit = false;
+    document.getElementById('lr-cls-epoch-label').textContent = '';
+    renderBoundary();
+  }
+
+  function renderBoundary() {
+    var dsType = document.getElementById('lr-cls-dataset').value;
+    var basisType = document.getElementById('lr-cls-basis').value;
+    var xMin=-2,xMax=2,yMin=-2,yMax=2;
+    if(dsType==='linear'){xMin=-1.2;xMax=1.2;yMin=-1.2;yMax=1.2;}
+    var res=50;
+    var xg=[],yg=[],zg=[];
+    for(var j=0;j<res;j++){
+      var row=[];
+      var y2=yMin+(yMax-yMin)*j/(res-1);
+      if(j===0) for(var ii=0;ii<res;ii++) xg.push(xMin+(xMax-xMin)*ii/(res-1));
+      yg.push(y2);
+      for(var i=0;i<res;i++){
+        var x2=xMin+(xMax-xMin)*i/(res-1);
+        var phi=getBasis(x2,y2,basisType);
+        row.push(sigmoid(dot(weights,phi)));
+      }
+      zg.push(row);
+    }
+    var x0=[],y0=[],x1=[],y1=[];
+    for(var i=0;i<data.X.length;i++){
+      if(data.Y[i]===0){x0.push(data.X[i][0]);y0.push(data.X[i][1]);}
+      else{x1.push(data.X[i][0]);y1.push(data.X[i][1]);}
+    }
+    Plotly.react('lr-cls-boundary-plot',[
+      {x:xg,y:yg,z:zg,type:'contour',colorscale:[[0,'#2166ac'],[0.5,'#f7f7f7'],[1,'#e66101']],showscale:false,contours:{start:0.1,end:0.9,size:0.1},line:{width:1,color:'rgba(0,0,0,0.3)'},hoverinfo:'z',opacity:0.7},
+      {x:x0,y:y0,mode:'markers',marker:{size:5,color:'#2166ac',opacity:0.8},name:'y=0',hoverinfo:'skip'},
+      {x:x1,y:y1,mode:'markers',marker:{size:5,color:'#e66101',opacity:0.8},name:'y=1',hoverinfo:'skip'}
+    ],{xaxis:{title:'x\u2081',range:[xMin,xMax]},yaxis:{title:'x\u2082',range:[yMin,yMax]},margin:{t:10,r:10,b:35,l:45},paper_bgcolor:'rgba(0,0,0,0)',plot_bgcolor:'rgba(0,0,0,0)',font:{size:11},legend:{x:0.01,y:0.99,bgcolor:'rgba(255,255,255,0.8)',font:{size:10}}},{displayModeBar:false});
+
+  }
+
+  var lrClsLossInit=false;
+  function initLossPlot(){
+    Plotly.newPlot('lr-cls-loss-plot',[{x:[],y:[],mode:'lines',line:{width:2,color:'#e74c3c'},name:'CE loss'}],{xaxis:{title:'Step'},yaxis:{title:'Loss'},margin:{t:10,r:10,b:35,l:50},paper_bgcolor:'rgba(0,0,0,0)',plot_bgcolor:'rgba(0,0,0,0)',font:{size:11}},{displayModeBar:false});
+    lrClsLossInit=true;
+  }
+
+  var batchLossHist = [];
+
+  function trainStep() {
+    var basisType = document.getElementById('lr-cls-basis').value;
+    var lr = getLR(), B = getB(), N = data.X.length;
+    var rng = createRNG(epoch);
+
+    // Gradient from random mini-batch + mini-batch loss
+    var grad = new Array(weights.length);
+    for(var k=0;k<grad.length;k++) grad[k]=0;
+    var batchLoss = 0;
+    for(var b=0;b<B;b++){
+      var i=Math.floor(rng()*N);
+      var xi=data.X[i], yi=data.Y[i];
+      var phi=getBasis(xi[0],xi[1],basisType);
+      var p=sigmoid(dot(weights,phi));
+      var err=p-yi;
+      for(var k=0;k<phi.length;k++) grad[k]+=err*phi[k]/B;
+      p=Math.max(1e-7,Math.min(1-1e-7,p));
+      batchLoss+=-(yi*Math.log(p)+(1-yi)*Math.log(1-p));
+    }
+    for(var k=0;k<weights.length;k++) weights[k]-=lr*grad[k];
+    batchLossHist.push(batchLoss/B);
+
+    // Loss on full dataset (stable)
+    var totalLoss = 0;
+    for(var i=0;i<N;i++){
+      var xi=data.X[i], yi=data.Y[i];
+      var phi=getBasis(xi[0],xi[1],basisType);
+      var p=sigmoid(dot(weights,phi));
+      p=Math.max(1e-7,Math.min(1-1e-7,p));
+      totalLoss+=-(yi*Math.log(p)+(1-yi)*Math.log(1-p));
+    }
+    lossHist.push(totalLoss/N);
+    epoch++;
+  }
+
+  function trainLoop() {
+    if(!lrClsLossInit) initLossPlot();
+    trainStep();
+    document.getElementById('lr-cls-epoch-label').textContent='Step '+epoch;
+    // Boundary plot every 10 steps (expensive), loss plot every step
+    if(epoch%3===0) renderBoundary();
+    var ep=[]; for(var i=0;i<lossHist.length;i++) ep.push(i);
+    Plotly.react('lr-cls-loss-plot',[
+      {x:ep,y:batchLossHist,mode:'lines',line:{width:1,color:'#bdc3c7'},name:'Mini-batch'},
+      {x:ep,y:lossHist,mode:'lines',line:{width:2,color:'#e74c3c'},name:'Full dataset'}
+    ],{xaxis:{title:'Step',range:[0,Math.max(epoch,10)]},yaxis:{title:'CE loss'},margin:{t:10,r:10,b:35,l:50},paper_bgcolor:'rgba(0,0,0,0)',plot_bgcolor:'rgba(0,0,0,0)',font:{size:11},legend:{x:0.5,y:0.99,bgcolor:'rgba(255,255,255,0.8)',font:{size:9}}},{displayModeBar:false});
+    if(epoch<5000) animId=setTimeout(trainLoop,100);
+  }
+
+  document.getElementById('lr-cls-run-btn').addEventListener('click',function(){
+    if(animId){clearTimeout(animId);animId=null;return;}
+    trainLoop();
+  });
+  document.getElementById('lr-cls-reset-btn').addEventListener('click',reset);
+  document.getElementById('lr-cls-dataset').addEventListener('change',reset);
+  document.getElementById('lr-cls-basis').addEventListener('change',reset);
+  document.getElementById('lr-cls-N-slider').addEventListener('input',function(){
+    document.getElementById('lr-cls-N-val').textContent=this.value;
+  });
+  document.getElementById('lr-cls-N-slider').addEventListener('change',reset);
+  document.getElementById('lr-cls-B-slider').addEventListener('input',function(){
+    document.getElementById('lr-cls-B-val').textContent=Math.pow(2,parseInt(this.value));
+  });
+  document.getElementById('lr-cls-lr-slider').addEventListener('input',function(){
+    document.getElementById('lr-cls-lr-val').textContent=Math.pow(10,parseFloat(this.value)).toFixed(3);
+  });
+
+  function init(e){
+    if(!(e.currentSlide&&e.currentSlide.querySelector('#lr-cls-boundary-plot'))) return;
+    reset();
+  }
+  Reveal.on('slidechanged',init);
+})();
+
+// ================================================================
+// DEMO: Curvature and step size (static, slide 12)
+// ================================================================
+(function() {
+  var a = 2; // curvature
+  var xP = []; for (var t = -2; t <= 2; t += 0.02) xP.push(t);
+  var yP = xP.map(function(w) { return 0.5*a*w*w; });
+  var lo = {xaxis:{range:[-2.2,2.2],title:'w',dtick:1}, yaxis:{range:[-0.2,4.2],title:'E(w)',dtick:1}, margin:{t:28,r:8,b:32,l:36}, paper_bgcolor:'rgba(0,0,0,0)', plot_bgcolor:'rgba(0,0,0,0)', font:{size:11}, showlegend:false};
+
+  function gdPath(w0, eta, nSteps) {
+    var ws = [w0], ls = [0.5*a*w0*w0];
+    var w = w0;
+    for (var i = 0; i < nSteps; i++) {
+      w = w - eta * a * w;
+      ws.push(w); ls.push(0.5*a*w*w);
+    }
+    return {ws:ws, ls:ls};
+  }
+
+  function render(e) {
+    var sl = e.currentSlide || e;
+    if (!sl || !sl.querySelector('#curv-plot-opt')) return;
+    var w0 = 1.8, nSteps = 3;
+
+    // Too small
+    var p1 = gdPath(w0, 0.15, nSteps);
+    Plotly.react('curv-plot-small', [
+      {x:xP, y:yP, mode:'lines', line:{width:2,color:'#bdc3c7'}},
+      {x:p1.ws, y:p1.ls, mode:'lines+markers', line:{width:2,color:'#2980b9'}, marker:{size:7,color:'#2980b9'}},
+      {x:[p1.ws[0]], y:[p1.ls[0]], mode:'markers', marker:{size:10,color:'#2c3e50',symbol:'circle'}}
+    ], Object.assign({}, lo, {title:{text:'\u03b7 too small',font:{size:12,color:'#2980b9'}}}), {displayModeBar:false});
+
+    // Optimal
+    var p2 = gdPath(w0, 1/a, nSteps);
+    Plotly.react('curv-plot-opt', [
+      {x:xP, y:yP, mode:'lines', line:{width:2,color:'#bdc3c7'}},
+      {x:p2.ws, y:p2.ls, mode:'lines+markers', line:{width:2,color:'#27ae60'}, marker:{size:7,color:'#27ae60'}},
+      {x:[p2.ws[0]], y:[p2.ls[0]], mode:'markers', marker:{size:10,color:'#2c3e50',symbol:'circle'}}
+    ], Object.assign({}, lo, {title:{text:'\u03b7 = 1/\u03ba (optimal)',font:{size:12,color:'#27ae60'}}}), {displayModeBar:false});
+
+    // Too large
+    var p3 = gdPath(w0, 0.85, nSteps);
+    Plotly.react('curv-plot-large', [
+      {x:xP, y:yP, mode:'lines', line:{width:2,color:'#bdc3c7'}},
+      {x:p3.ws, y:p3.ls, mode:'lines+markers', line:{width:2,color:'#e67e22'}, marker:{size:7,color:'#e67e22'}},
+      {x:[p3.ws[0]], y:[p3.ls[0]], mode:'markers', marker:{size:10,color:'#2c3e50',symbol:'circle'}}
+    ], Object.assign({}, lo, {title:{text:'\u03b7 too large',font:{size:12,color:'#e67e22'}}}), {displayModeBar:false});
+  }
+  Reveal.on('slidechanged', render);  Reveal.on('fragmentshown', function(e) { render({currentSlide: e.fragment.closest('section')}); });
+})();
+
+// ================================================================
+// DEMO: Building block 1D
+// ================================================================
+(function() {
+  var seed = 42;
+  function update(resample) {
+    if (resample) seed++;
+    var rng = createRNG(seed);
+    var H = parseInt(document.getElementById('bb1d-h-slider').value);
+    var act = document.getElementById('bb1d-act').value;
+    document.getElementById('bb1d-h-val').textContent = H;
+    var xF = []; for (var t = -2; t <= 2; t += 0.01) xF.push(t);
+    var colors = ['#e74c3c','#2980b9','#27ae60','#e67e22','#8e44ad','#1abc9c','#d35400','#2c3e50','#c0392b','#16a085','#f39c12','#7f8c8d','#9b59b6','#34495e','#e91e63','#00bcd4','#ff9800','#795548','#607d8b','#3f51b5'];
+    var traces = [];
+    for (var j = 0; j < H; j++) {
+      var v = 3*(rng()-0.5)*2, b = (rng()-0.5)*4;
+      traces.push({
+        x: xF,
+        y: xF.map(function(x) { var a = v*x+b; return act==='relu' ? Math.max(0,a) : 1/(1+Math.exp(-a)); }),
+        mode:'lines', line:{width:2, color:colors[j%colors.length]}, name:'\u03c6'+(j+1), showlegend: j < 8
+      });
+    }
+    var yrange = act === 'relu' ? [-0.5, 5] : [-0.1, 1.1];
+    Plotly.react('bb1d-plot', traces, { xaxis:{title:'x',range:[-2,2]}, yaxis:{title:'g(vx+b)',range:yrange}, margin:{t:10,r:20,b:35,l:45}, paper_bgcolor:'rgba(0,0,0,0)', plot_bgcolor:'rgba(0,0,0,0)', font:{size:13}, legend:{x:0.82,y:0.98} }, {displayModeBar:false});
+  }
+  document.getElementById('bb1d-h-slider').addEventListener('input', function() { update(false); });
+  document.getElementById('bb1d-act').addEventListener('change', function() { update(false); });
+  document.getElementById('bb1d-resample').addEventListener('click', function() { update(true); });
+  function init(e) { if (e.currentSlide && e.currentSlide.querySelector('#bb1d-plot')) update(false); }
+  Reveal.on('slidechanged', init);})();
+
+// ================================================================
+// DEMO: Activation function zoo (static)
+// ================================================================
+(function() {
+  function render(e) {
+    var sl = e.currentSlide || e;
+    if (!sl || !sl.querySelector('#act-zoo-relu')) return;
+    var x = []; for (var t = -4; t <= 4; t += 0.05) x.push(t);
+    var step = x.map(function(v){return v > 0 ? 1 : 0;});
+    var sigm = x.map(function(v){return 1/(1+Math.exp(-v));});
+    var tanh_ = x.map(function(v){return Math.tanh(v);});
+    var relu = x.map(function(v){return Math.max(0,v);});
+    var gelu = x.map(function(v){ return v * (1/(1+Math.exp(-1.702*v))); });
+    var lo = {margin:{t:5,r:5,b:5,l:5}, paper_bgcolor:'rgba(0,0,0,0)', plot_bgcolor:'rgba(0,0,0,0)', font:{size:10}, xaxis:{range:[-4,4],showticklabels:false,zeroline:true,zerolinewidth:1,zerolinecolor:'#bdc3c7',showgrid:false}, yaxis:{range:[-0.3,1.3],showticklabels:false,zeroline:true,zerolinewidth:1,zerolinecolor:'#bdc3c7',showgrid:false}, showlegend:false};
+    var loWide = Object.assign({},lo,{yaxis:{range:[-1.5,4],showticklabels:false,zeroline:true,zerolinewidth:1,zerolinecolor:'#bdc3c7',showgrid:false}});
+    var loSym = Object.assign({},lo,{yaxis:{range:[-1.5,1.5],showticklabels:false,zeroline:true,zerolinewidth:1,zerolinecolor:'#bdc3c7',showgrid:false}});
+    Plotly.react('act-zoo-step',[{x:x,y:step,mode:'lines',line:{width:3,color:'#7f8c8d'}}], Object.assign({},lo), {displayModeBar:false});
+    Plotly.react('act-zoo-sigmoid',[{x:x,y:sigm,mode:'lines',line:{width:3,color:'#e67e22'}}], Object.assign({},lo), {displayModeBar:false});
+    Plotly.react('act-zoo-tanh',[{x:x,y:tanh_,mode:'lines',line:{width:3,color:'#27ae60'}}], Object.assign({},loSym), {displayModeBar:false});
+    Plotly.react('act-zoo-relu',[{x:x,y:relu,mode:'lines',line:{width:3,color:'#2980b9'}}], Object.assign({},loWide), {displayModeBar:false});
+    Plotly.react('act-zoo-gelu',[{x:x,y:gelu,mode:'lines',line:{width:3,color:'#8e44ad'}}], Object.assign({},loWide), {displayModeBar:false});
+  }
+  Reveal.on('slidechanged', render);  Reveal.on('fragmentshown', function(e) { render({currentSlide: e.fragment.closest('section')}); });
+})();
+
+// ================================================================
+// DEMO: Universal approximation
+// ================================================================
+(function() {
+  var seed = 42;
+  function update(resample) {
+    if (resample) seed++;
+    var rng = createRNG(seed);
+    var H = parseInt(document.getElementById('ua-h-slider').value);
+    var act = document.getElementById('ua-act').value;
+    document.getElementById('ua-h-val').textContent = H;
+    var xF = []; for (var t = -1; t <= 1; t += 0.005) xF.push(t);
+    var ws = [], bs = [], outs = [];
+    for (var j = 0; j < H; j++) { ws.push(4*(rng()-0.5)); bs.push(2*(rng()-0.5)); outs.push(2*(rng()-0.5)); }
+    var gfn = act === 'relu' ? function(a){return Math.max(0,a);} : function(a){return 1/(1+Math.exp(-a));};
+    var traces = [];
+    for (var j = 0; j < H; j++) {
+      (function(j) {
+        traces.push({ x:xF, y:xF.map(function(x){return outs[j]*gfn(ws[j]*x+bs[j]);}), mode:'lines', line:{width:1.2,color:'rgba(150,150,150,0.4)'}, showlegend:false });
+      })(j);
+    }
+    traces.push({ x:xF, y:xF.map(function(x){ var s=0; for(var j=0;j<H;j++) s+=outs[j]*gfn(ws[j]*x+bs[j]); return s; }), mode:'lines', name:'Sum (H='+H+')', line:{width:3,color:'#2c3e50'} });
+    Plotly.react('ua-plot', traces, { xaxis:{title:'x',range:[-1.1,1.1]}, yaxis:{title:'f(x)',range:[-3,3]}, margin:{t:10,r:20,b:35,l:45}, paper_bgcolor:'rgba(0,0,0,0)', plot_bgcolor:'rgba(0,0,0,0)', font:{size:13}, legend:{x:0.78,y:0.98} }, {displayModeBar:false});
+  }
+  document.getElementById('ua-h-slider').addEventListener('input', function(){update(false);});
+  document.getElementById('ua-act').addEventListener('change', function(){update(false);});
+  document.getElementById('ua-resample').addEventListener('click', function(){update(true);});
+  function init(e) { if (e.currentSlide && e.currentSlide.querySelector('#ua-plot')) update(false); }
+  Reveal.on('slidechanged', init);})();
+
+// ================================================================
+// DEMO: Effective basis functions by depth
+// ================================================================
+(function() {
+  var seed = 123;
+  function gRelu(a) { return Math.max(0, a); }
+  function gSigm(a) { return 1/(1+Math.exp(-a)); }
+
+  function computeEBF(nLayers, width, act, rng) {
+    // Build random weights for nLayers layers (1D input)
+    var layers = [];
+    var inSize = 1;
+    for (var l = 0; l < nLayers; l++) {
+      var W = [], b = [];
+      var scale = Math.sqrt(2.0 / inSize);
+      for (var i = 0; i < width; i++) {
+        var row = [];
+        for (var j = 0; j < inSize; j++) row.push(scale * boxMuller(rng));
+        W.push(row);
+        b.push(0.5 * boxMuller(rng));
+      }
+      layers.push({ W: W, b: b });
+      inSize = width;
+    }
+    // Forward pass for each x
+    var gfn = act === 'relu' ? gRelu : gSigm;
+    var xF = []; for (var t = -1; t <= 1; t += 0.01) xF.push(t);
+    var neuronOutputs = []; // neuronOutputs[j] = array of values for neuron j
+    for (var j = 0; j < width; j++) neuronOutputs.push([]);
+    for (var xi = 0; xi < xF.length; xi++) {
+      var h = [xF[xi]];
+      for (var l = 0; l < nLayers; l++) {
+        var hNew = [];
+        for (var i = 0; i < layers[l].W.length; i++) {
+          var s = layers[l].b[i];
+          for (var j = 0; j < h.length; j++) s += layers[l].W[i][j] * h[j];
+          hNew.push(gfn(s));
+        }
+        h = hNew;
+      }
+      for (var j = 0; j < width; j++) neuronOutputs[j].push(h[j]);
+    }
+    return { xF: xF, neurons: neuronOutputs };
+  }
+
+  function update(resample) {
+    if (resample) seed++;
+    var width = parseInt(document.getElementById('ebf-w-slider').value);
+    var act = document.getElementById('ebf-act').value;
+    document.getElementById('ebf-w-val').textContent = width;
+    var colors = ['#e74c3c','#2980b9','#27ae60','#e67e22','#8e44ad','#1abc9c','#d35400','#2c3e50','#c0392b','#16a085','#f39c12','#7f8c8d','#9b59b6','#34495e','#e91e63','#00bcd4'];
+
+    var ids = ['ebf-1L','ebf-2L','ebf-3L'];
+    for (var d = 0; d < 3; d++) {
+      var rng = createRNG(seed); // same seed for each depth for comparability
+      var result = computeEBF(d + 1, width, act, rng);
+      var traces = [];
+      for (var j = 0; j < Math.min(width, 16); j++) {
+        traces.push({ x:result.xF, y:result.neurons[j], mode:'lines', line:{width:1.5, color:colors[j%colors.length]}, showlegend:false });
+      }
+      var ymax = 0;
+      for (var j = 0; j < traces.length; j++) {
+        for (var k = 0; k < traces[j].y.length; k++) {
+          if (Math.abs(traces[j].y[k]) > ymax) ymax = Math.abs(traces[j].y[k]);
+        }
+      }
+      ymax = Math.max(ymax * 1.1, 0.5);
+      Plotly.react(ids[d], traces, { xaxis:{title:'x',range:[-1,1]}, yaxis:{range: act==='sigmoid'?[-0.1,1.1]:[-ymax,ymax]}, margin:{t:5,r:5,b:35,l:35}, paper_bgcolor:'rgba(0,0,0,0)', plot_bgcolor:'rgba(0,0,0,0)', font:{size:11} }, {displayModeBar:false});
+    }
+  }
+  document.getElementById('ebf-w-slider').addEventListener('input', function(){update(false);});
+  document.getElementById('ebf-act').addEventListener('change', function(){update(false);});
+  document.getElementById('ebf-resample').addEventListener('click', function(){update(true);});
+  function init(e) { if (e.currentSlide && e.currentSlide.querySelector('#ebf-1L')) update(false); }
+  Reveal.on('slidechanged', init);})();
+
+// ================================================================
+// Shared MLP implementation
+// ================================================================
+function MLPNet(layerSizes, actFn) {
+  this.actFn = actFn || 'relu';
+  this.W = []; this.b = [];
+  var rng = createRNG(12345);
+  for (var l = 0; l < layerSizes.length - 1; l++) {
+    var rows = layerSizes[l+1], cols = layerSizes[l];
+    var scale = Math.sqrt(2.0/cols);
+    var wl = [];
+    for (var i = 0; i < rows; i++) { var row = []; for (var j = 0; j < cols; j++) row.push(scale*boxMuller(rng)); wl.push(row); }
+    this.W.push(wl);
+    var bl = []; for (var i = 0; i < rows; i++) bl.push(0);
+    this.b.push(bl);
+  }
+}
+MLPNet.prototype.forward = function(x) {
+  this.acts = [x.slice()]; this.pres = [];
+  var h = x.slice();
+  var isRelu = this.actFn === 'relu';
+  for (var l = 0; l < this.W.length; l++) {
+    var z = [];
+    for (var i = 0; i < this.W[l].length; i++) {
+      var s = this.b[l][i];
+      for (var j = 0; j < h.length; j++) s += this.W[l][i][j]*h[j];
+      z.push(s);
+    }
+    this.pres.push(z);
+    if (l < this.W.length - 1) {
+      h = isRelu ? z.map(function(v){return Math.max(0,v);}) : z.map(function(v){return 1/(1+Math.exp(-v));});
+    } else {
+      h = [1/(1+Math.exp(-z[0]))]; // sigmoid output for classification
+    }
+    this.acts.push(h.slice());
+  }
+  return h[0];
+};
+MLPNet.prototype.backward = function(target, lr) {
+  var L = this.W.length;
+  var dz = this.acts[L][0] - target;
+  var isRelu = this.actFn === 'relu';
+  for (var l = L-1; l >= 0; l--) {
+    var a_prev = this.acts[l];
+    var dzArr;
+    if (l === L-1) { dzArr = [dz]; }
+    else { dzArr = this.pres[l].map(function(v,i){ return isRelu ? (v>0?dzNext[i]:0) : (function(){var s=1/(1+Math.exp(-v));return dzNext[i]*s*(1-s);})(); }); }
+    if (l > 0) {
+      var dzN = [];
+      for (var j = 0; j < this.W[l][0].length; j++) { var s = 0; for (var i = 0; i < dzArr.length; i++) s += this.W[l][i][j]*dzArr[i]; dzN.push(s); }
+    }
+    for (var i = 0; i < this.W[l].length; i++) {
+      for (var j = 0; j < this.W[l][i].length; j++) this.W[l][i][j] -= lr*dzArr[i]*a_prev[j];
+      this.b[l][i] -= lr*dzArr[i];
+    }
+    if (l > 0) var dzNext = dzN;
+  }
+};
+MLPNet.prototype.zeroGrad = function() {
+  this.gW = []; this.gb = [];
+  for (var l = 0; l < this.W.length; l++) {
+    var gw = []; for (var i = 0; i < this.W[l].length; i++) { var row = []; for (var j = 0; j < this.W[l][i].length; j++) row.push(0); gw.push(row); }
+    this.gW.push(gw);
+    var gb = []; for (var i = 0; i < this.b[l].length; i++) gb.push(0);
+    this.gb.push(gb);
+  }
+};
+MLPNet.prototype.accumGrad = function(target) {
+  var L = this.W.length;
+  var dz = this.acts[L][0] - target;
+  var isRelu = this.actFn === 'relu';
+  for (var l = L-1; l >= 0; l--) {
+    var a_prev = this.acts[l];
+    var dzArr;
+    if (l === L-1) { dzArr = [dz]; }
+    else { dzArr = this.pres[l].map(function(v,i){ return isRelu ? (v>0?dzNext[i]:0) : (function(){var s=1/(1+Math.exp(-v));return dzNext[i]*s*(1-s);})(); }); }
+    if (l > 0) {
+      var dzN = [];
+      for (var j = 0; j < this.W[l][0].length; j++) { var s = 0; for (var i = 0; i < dzArr.length; i++) s += this.W[l][i][j]*dzArr[i]; dzN.push(s); }
+    }
+    for (var i = 0; i < this.W[l].length; i++) {
+      for (var j = 0; j < this.W[l][i].length; j++) this.gW[l][i][j] += dzArr[i]*a_prev[j];
+      this.gb[l][i] += dzArr[i];
+    }
+    if (l > 0) var dzNext = dzN;
+  }
+};
+MLPNet.prototype.applyGrad = function(lr, B) {
+  for (var l = 0; l < this.W.length; l++) {
+    for (var i = 0; i < this.W[l].length; i++) {
+      for (var j = 0; j < this.W[l][i].length; j++) this.W[l][i][j] -= lr * this.gW[l][i][j] / B;
+      this.b[l][i] -= lr * this.gb[l][i] / B;
+    }
+  }
+};
+
+// Regression variant (linear output)
+function MLPReg(layerSizes, actFn) {
+  this.actFn = actFn || 'relu';
+  this.W = []; this.b = [];
+  var rng = createRNG(9999);
+  for (var l = 0; l < layerSizes.length - 1; l++) {
+    var rows = layerSizes[l+1], cols = layerSizes[l];
+    var scale = Math.sqrt(2.0/cols);
+    var wl = [];
+    for (var i = 0; i < rows; i++) { var row = []; for (var j = 0; j < cols; j++) row.push(scale*boxMuller(rng)); wl.push(row); }
+    this.W.push(wl);
+    var bl = []; for (var i = 0; i < rows; i++) bl.push(0);
+    this.b.push(bl);
+  }
+}
+MLPReg.prototype.forward = function(x) {
+  this.acts = [Array.isArray(x)?x.slice():[x]]; this.pres = [];
+  var h = this.acts[0];
+  var isRelu = this.actFn === 'relu';
+  for (var l = 0; l < this.W.length; l++) {
+    var z = [];
+    for (var i = 0; i < this.W[l].length; i++) {
+      var s = this.b[l][i]; for (var j = 0; j < h.length; j++) s += this.W[l][i][j]*h[j]; z.push(s);
+    }
+    this.pres.push(z);
+    h = (l < this.W.length-1) ? (isRelu ? z.map(function(v){return Math.max(0,v);}) : z.map(function(v){return 1/(1+Math.exp(-v));})) : z;
+    this.acts.push(h.slice());
+  }
+  return h[0];
+};
+MLPReg.prototype.backward = function(target, lr) {
+  var L = this.W.length, dz = this.acts[L][0] - target;
+  var isRelu = this.actFn === 'relu';
+  for (var l = L-1; l >= 0; l--) {
+    var a_prev = this.acts[l];
+    var dzArr;
+    if (l === L-1) { dzArr = [dz]; }
+    else { dzArr = this.pres[l].map(function(v,i){ return isRelu ? (v>0?dzNext[i]:0) : (function(){var s=1/(1+Math.exp(-v));return dzNext[i]*s*(1-s);})(); }); }
+    if (l > 0) { var dzN = []; for (var j = 0; j < this.W[l][0].length; j++) { var s = 0; for (var i = 0; i < dzArr.length; i++) s += this.W[l][i][j]*dzArr[i]; dzN.push(s); } }
+    for (var i = 0; i < this.W[l].length; i++) {
+      for (var j = 0; j < this.W[l][i].length; j++) this.W[l][i][j] -= lr*dzArr[i]*a_prev[j];
+      this.b[l][i] -= lr*dzArr[i];
+    }
+    if (l > 0) var dzNext = dzN;
+  }
+};
+
+// ================================================================
+// Data generation
+// ================================================================
+function genClassData(type, n) {
+  var rng = createRNG(42), X = [], Y = [];
+  for (var i = 0; i < n; i++) {
+    var x1, x2, label;
+    if (type === 'circles') {
+      var r = rng() < 0.5 ? 0.3+0.15*rng() : 0.7+0.15*rng();
+      var a = 2*Math.PI*rng(); x1 = r*Math.cos(a); x2 = r*Math.sin(a); label = r<0.5?0:1;
+    } else if (type === 'spirals') {
+      label = i<n/2?0:1; var t = 1.5*Math.PI*(1+2*rng());
+      if (label===0) { x1=t*Math.cos(t)/10+0.1*boxMuller(rng); x2=t*Math.sin(t)/10+0.1*boxMuller(rng); }
+      else { x1=-t*Math.cos(t)/10+0.1*boxMuller(rng); x2=-t*Math.sin(t)/10+0.1*boxMuller(rng); }
+    } else {
+      label = i<n/2?0:1; var a = Math.PI*rng();
+      if (label===0) { x1=Math.cos(a)+0.1*boxMuller(rng); x2=Math.sin(a)+0.1*boxMuller(rng); }
+      else { x1=1-Math.cos(a)+0.1*boxMuller(rng); x2=0.5-Math.sin(a)+0.1*boxMuller(rng); }
+    }
+    X.push([x1,x2]); Y.push(label);
+  }
+  return {X:X, Y:Y};
+}
+
+// ================================================================
+// DEMO: MLP classification trainer (1 hidden layer)
+// ================================================================
+(function() {
+  var net=null, data=null, lossHist=[], batchLossHist=[], epoch=0, animId=null;
+  function buildNet() {
+    var w = Math.pow(2, parseInt(document.getElementById('mlp-width-slider').value));
+    var act = document.getElementById('mlp-act').value;
+    return new MLPNet([2,w,1], act);
+  }
+  function reset() {
+    if (animId) { clearTimeout(animId); animId=null; }
+    data = genClassData(document.getElementById('mlp-dataset').value, 200);
+    net = buildNet(); lossHist=[]; batchLossHist=[]; epoch=0;
+    document.getElementById('mlp-epoch-label').textContent='';
+    renderBoundary();
+  }
+  function renderBoundary() {
+    var res=40, type=document.getElementById('mlp-dataset').value;
+    var xMin=-2,xMax=2,yMin=-2,yMax=2;
+    if(type==='moons'){xMin=-1;xMax=2.5;yMin=-1;yMax=1.5;}
+    var xg=[],yg=[],zg=[];
+    for(var i=0;i<res;i++){var row=[];var yi=yMin+(yMax-yMin)*i/(res-1);yg.push(yi);for(var j=0;j<res;j++){var xi=xMin+(xMax-xMin)*j/(res-1);if(i===0)xg.push(xi);row.push(net.forward([xi,yi]));}zg.push(row);}
+    var x0=[],y0=[],x1=[],y1=[];
+    for(var i=0;i<data.X.length;i++){if(data.Y[i]===0){x0.push(data.X[i][0]);y0.push(data.X[i][1]);}else{x1.push(data.X[i][0]);y1.push(data.X[i][1]);}}
+    Plotly.react('mlp-boundary-plot',[
+      {x:xg,y:yg,z:zg,type:'contour',colorscale:[[0,'#2166ac'],[0.5,'#f7f7f7'],[1,'#e66101']],showscale:false,contours:{start:0.1,end:0.9,size:0.1},line:{width:1,color:'rgba(0,0,0,0.3)'},hoverinfo:'z',opacity:0.7},
+      {x:x0,y:y0,mode:'markers',name:'Class 0',marker:{size:5,color:'#2166ac',opacity:0.8},hoverinfo:'skip'},
+      {x:x1,y:y1,mode:'markers',name:'Class 1',marker:{size:5,color:'#e66101',opacity:0.8},hoverinfo:'skip'}
+    ],{xaxis:{title:'x\u2081',range:[xg[0],xg[xg.length-1]]},yaxis:{title:'x\u2082',range:[yg[0],yg[yg.length-1]],scaleanchor:'x'},margin:{t:5,r:10,b:35,l:45},paper_bgcolor:'rgba(0,0,0,0)',plot_bgcolor:'rgba(0,0,0,0)',font:{size:12},legend:{x:0.02,y:0.98}},{displayModeBar:false});
+  }
+  function trainStep() {
+    var lr=Math.pow(10, parseFloat(document.getElementById('mlp-lr-slider').value));
+    var B=128, N=data.X.length;
+    var rng=createRNG(epoch);
+    // Pick B random samples, per-sample update
+    var bl=0;
+    for(var b=0;b<B;b++){var i=Math.floor(rng()*N);var p=net.forward(data.X[i]);var y=data.Y[i];p=Math.max(1e-7,Math.min(1-1e-7,p));bl+=-(y*Math.log(p)+(1-y)*Math.log(1-p));net.backward(y,lr);}
+    batchLossHist.push(bl/B);
+    // Full-dataset loss
+    var tl=0;
+    for(var i=0;i<N;i++){var p=net.forward(data.X[i]);var y=data.Y[i];p=Math.max(1e-7,Math.min(1-1e-7,p));tl+=-(y*Math.log(p)+(1-y)*Math.log(1-p));}
+    lossHist.push(tl/N); epoch++;
+    document.getElementById('mlp-epoch-label').textContent='Step '+epoch;
+  }
+  function trainLoop(){
+    trainStep();
+    if(epoch%3===0) renderBoundary();
+    var ep=[]; for(var i=0;i<lossHist.length;i++) ep.push(i);
+    Plotly.react('mlp-loss-plot',[
+      {x:ep,y:batchLossHist,mode:'lines',line:{width:1,color:'#bdc3c7'},name:'Mini-batch'},
+      {x:ep,y:lossHist,mode:'lines',line:{width:2,color:'#e74c3c'},name:'Full dataset'}
+    ],{xaxis:{title:'Step',range:[0,Math.max(epoch,10)]},yaxis:{title:'CE loss'},margin:{t:5,r:10,b:35,l:50},paper_bgcolor:'rgba(0,0,0,0)',plot_bgcolor:'rgba(0,0,0,0)',font:{size:12},legend:{x:0.5,y:0.99,bgcolor:'rgba(255,255,255,0.8)',font:{size:9}}},{displayModeBar:false});
+    if(epoch<5000)animId=setTimeout(trainLoop,100);
+  }
+  document.getElementById('mlp-train-btn').addEventListener('click',function(){if(animId){clearTimeout(animId);animId=null;return;}trainLoop();});
+  document.getElementById('mlp-reset-btn').addEventListener('click',reset);
+  document.getElementById('mlp-width-slider').addEventListener('input',function(){document.getElementById('mlp-width-val').textContent=Math.pow(2,parseInt(this.value));});
+  document.getElementById('mlp-lr-slider').addEventListener('input',function(){document.getElementById('mlp-lr-val').textContent=Math.pow(10,parseFloat(this.value)).toFixed(3);});
+  document.getElementById('mlp-dataset').addEventListener('change',reset);
+  document.getElementById('mlp-act').addEventListener('change',reset);
+  function init(e){if(e.currentSlide&&e.currentSlide.querySelector('#mlp-boundary-plot'))reset();}
+  Reveal.on('slidechanged',init);
+})();
+
+// ================================================================
+// DEMO: MLP regression trainer (1 hidden layer)
+// ================================================================
+(function() {
+  function targetFn(type,x){if(type==='sin')return Math.sin(2*Math.PI*x);if(type==='step')return x>0.5?1:-1;return 2*(x-Math.floor(x+0.5));}
+  var rnet=null,rdata=null,rloss=[],rbatchLoss=[],repoch=0,ranimId=null;
+  function genRD(type){var rng=createRNG(77),X=[],Y=[];for(var i=0;i<100;i++){var x=rng()-0.5;X.push(x);Y.push(targetFn(type,x+0.5)+0.15*boxMuller(rng));}return{X:X,Y:Y};}
+  function buildRN(){var w=Math.pow(2,parseInt(document.getElementById('mlpreg-width-slider').value));var act=document.getElementById('mlpreg-act').value;return new MLPReg([1,w,1],act);}
+  function resetR(){if(ranimId){clearTimeout(ranimId);ranimId=null;}rdata=genRD(document.getElementById('mlpreg-target').value);rnet=buildRN();rloss=[];rbatchLoss=[];repoch=0;rLossInitialized=false;document.getElementById('mlpreg-epoch-label').textContent='';renderR();}
+  var rLossInitialized=false;
+  function renderRFit(){
+    var type=document.getElementById('mlpreg-target').value;
+    var xF=[];for(var t=-0.5;t<=0.5;t+=0.005)xF.push(t);
+    var yT=xF.map(function(x){return targetFn(type,x+0.5);});
+    var yP=xF.map(function(x){return rnet.forward([x]);});
+    Plotly.react('mlpreg-fit-plot',[
+      {x:xF,y:yT,mode:'lines',name:'Target',line:{width:2,color:'#bdc3c7',dash:'dash'}},
+      {x:rdata.X,y:rdata.Y,mode:'markers',name:'Data',marker:{size:5,color:'#2980b9',opacity:0.6}},
+      {x:xF,y:yP,mode:'lines',name:'MLP fit',line:{width:2.5,color:'#e74c3c'}}
+    ],{xaxis:{title:'x',range:[-0.5,0.5]},yaxis:{title:'y',range:[-2,2]},margin:{t:5,r:10,b:35,l:45},paper_bgcolor:'rgba(0,0,0,0)',plot_bgcolor:'rgba(0,0,0,0)',font:{size:12},legend:{x:0.65,y:0.98},hovermode:false},{displayModeBar:false});
+  }
+  function renderRLossInit(){
+    Plotly.newPlot('mlpreg-loss-plot',[{x:[],y:[],mode:'lines',name:'MSE',line:{width:2,color:'#e74c3c'}}],{xaxis:{title:'Step'},yaxis:{title:'MSE',type:'log'},margin:{t:5,r:10,b:35,l:50},paper_bgcolor:'rgba(0,0,0,0)',plot_bgcolor:'rgba(0,0,0,0)',font:{size:12}},{displayModeBar:false});
+    rLossInitialized=true;
+  }
+  function renderR(){renderRFit();if(!rLossInitialized)renderRLossInit();}
+  function trainRS(){
+    var lr=Math.pow(10,parseFloat(document.getElementById('mlpreg-lr-slider').value));
+    var B=64,N=rdata.X.length;
+    var rng=createRNG(repoch);
+    // Pick B random samples, per-sample update
+    var bl=0;
+    for(var b=0;b<B;b++){var i=Math.floor(rng()*N);var p=rnet.forward([rdata.X[i]]);var y=rdata.Y[i];bl+=0.5*(p-y)*(p-y);rnet.backward(y,lr);}
+    rbatchLoss.push(bl/B);
+    // Full-dataset loss
+    var tl=0;for(var i=0;i<N;i++){var p=rnet.forward([rdata.X[i]]);var y=rdata.Y[i];tl+=0.5*(p-y)*(p-y);}
+    rloss.push(tl/N);repoch++;document.getElementById('mlpreg-epoch-label').textContent='Step '+repoch;
+  }
+  function trainRL(){
+    trainRS();
+    // Fit plot every 3 steps, loss plot every step
+    if(repoch%3===0) renderRFit();
+    var ep=[]; for(var i=0;i<rloss.length;i++) ep.push(i);
+    Plotly.react('mlpreg-loss-plot',[
+      {x:ep,y:rbatchLoss,mode:'lines',line:{width:1,color:'#bdc3c7'},name:'Mini-batch'},
+      {x:ep,y:rloss,mode:'lines',line:{width:2,color:'#e74c3c'},name:'Full dataset'}
+    ],{xaxis:{title:'Step',range:[0,Math.max(repoch,10)]},yaxis:{title:'MSE',type:'log'},margin:{t:5,r:10,b:35,l:50},paper_bgcolor:'rgba(0,0,0,0)',plot_bgcolor:'rgba(0,0,0,0)',font:{size:12},legend:{x:0.5,y:0.99,bgcolor:'rgba(255,255,255,0.8)',font:{size:9}}},{displayModeBar:false});
+    if(repoch<5000)ranimId=setTimeout(trainRL,100);
+  }
+  document.getElementById('mlpreg-train-btn').addEventListener('click',function(){if(ranimId){clearTimeout(ranimId);ranimId=null;return;}trainRL();});
+  document.getElementById('mlpreg-reset-btn').addEventListener('click',resetR);
+  document.getElementById('mlpreg-width-slider').addEventListener('input',function(){document.getElementById('mlpreg-width-val').textContent=Math.pow(2,parseInt(this.value));});
+  document.getElementById('mlpreg-lr-slider').addEventListener('input',function(){document.getElementById('mlpreg-lr-val').textContent=Math.pow(10,parseFloat(this.value)).toFixed(3);});
+  document.getElementById('mlpreg-target').addEventListener('change',resetR);
+  document.getElementById('mlpreg-act').addEventListener('change',resetR);
+  function init(e){if(e.currentSlide&&e.currentSlide.querySelector('#mlpreg-fit-plot'))resetR();}
+  Reveal.on('slidechanged',init);
+})();
+
+// ================================================================
+// DEMO: Deep MLP trainer (multi-layer)
+// ================================================================
+(function() {
+  var net=null,data=null,lossHist=[],batchLossHist=[],epoch=0,animId=null;
+  function buildNet(){
+    var nL=parseInt(document.getElementById('dmlp-layers').value);
+    var w=Math.pow(2,parseInt(document.getElementById('dmlp-width-slider').value));
+    var act=document.getElementById('dmlp-act').value;
+    var sizes=[2]; for(var i=0;i<nL;i++) sizes.push(w); sizes.push(1);
+    return new MLPNet(sizes, act);
+  }
+  function reset(){
+    if(animId){clearTimeout(animId);animId=null;}
+    data=genClassData(document.getElementById('dmlp-dataset').value,200);
+    net=buildNet();lossHist=[];batchLossHist=[];epoch=0;
+    document.getElementById('dmlp-epoch-label').textContent='';
+    renderB();
+  }
+  function renderB(){
+    var res=40,type=document.getElementById('dmlp-dataset').value;
+    var xMin=-2,xMax=2,yMin=-2,yMax=2;
+    if(type==='moons'){xMin=-1;xMax=2.5;yMin=-1;yMax=1.5;}
+    var xg=[],yg=[],zg=[];
+    for(var i=0;i<res;i++){var row=[];var yi=yMin+(yMax-yMin)*i/(res-1);yg.push(yi);for(var j=0;j<res;j++){var xi=xMin+(xMax-xMin)*j/(res-1);if(i===0)xg.push(xi);row.push(net.forward([xi,yi]));}zg.push(row);}
+    var x0=[],y0=[],x1=[],y1=[];
+    for(var i=0;i<data.X.length;i++){if(data.Y[i]===0){x0.push(data.X[i][0]);y0.push(data.X[i][1]);}else{x1.push(data.X[i][0]);y1.push(data.X[i][1]);}}
+    Plotly.react('dmlp-boundary-plot',[
+      {x:xg,y:yg,z:zg,type:'contour',colorscale:[[0,'#2166ac'],[0.5,'#f7f7f7'],[1,'#e66101']],showscale:false,contours:{start:0.1,end:0.9,size:0.1},line:{width:1,color:'rgba(0,0,0,0.3)'},hoverinfo:'z',opacity:0.7},
+      {x:x0,y:y0,mode:'markers',name:'Class 0',marker:{size:5,color:'#2166ac',opacity:0.8},hoverinfo:'skip'},
+      {x:x1,y:y1,mode:'markers',name:'Class 1',marker:{size:5,color:'#e66101',opacity:0.8},hoverinfo:'skip'}
+    ],{xaxis:{title:'x\u2081',range:[xg[0],xg[xg.length-1]]},yaxis:{title:'x\u2082',range:[yg[0],yg[yg.length-1]],scaleanchor:'x'},margin:{t:5,r:10,b:35,l:45},paper_bgcolor:'rgba(0,0,0,0)',plot_bgcolor:'rgba(0,0,0,0)',font:{size:12},legend:{x:0.02,y:0.98}},{displayModeBar:false});
+  }
+  function trainStep(){
+    var lr=Math.pow(10,parseFloat(document.getElementById('dmlp-lr-slider').value));
+    var B=128;
+    var N=data.X.length;
+    var rng=createRNG(epoch);
+    // Pick B random samples, per-sample update
+    var bl=0;
+    for(var b=0;b<B;b++){var i=Math.floor(rng()*N);var p=net.forward(data.X[i]);var y=data.Y[i];p=Math.max(1e-7,Math.min(1-1e-7,p));bl+=-(y*Math.log(p)+(1-y)*Math.log(1-p));net.backward(y,lr);}
+    batchLossHist.push(bl/B);
+    // Full-dataset loss
+    var tl=0;
+    for(var i=0;i<N;i++){var p=net.forward(data.X[i]);var y=data.Y[i];p=Math.max(1e-7,Math.min(1-1e-7,p));tl+=-(y*Math.log(p)+(1-y)*Math.log(1-p));}
+    lossHist.push(tl/N);epoch++;
+    document.getElementById('dmlp-epoch-label').textContent='Step '+epoch;
+  }
+  function trainLoop(){
+    trainStep();
+    if(epoch%3===0) renderB();
+    var ep=[]; for(var i=0;i<lossHist.length;i++) ep.push(i);
+    Plotly.react('dmlp-loss-plot',[
+      {x:ep,y:batchLossHist,mode:'lines',line:{width:1,color:'#bdc3c7'},name:'Mini-batch'},
+      {x:ep,y:lossHist,mode:'lines',line:{width:2,color:'#e74c3c'},name:'Full dataset'}
+    ],{xaxis:{title:'Step',range:[0,Math.max(epoch,10)]},yaxis:{title:'CE loss'},margin:{t:5,r:10,b:35,l:50},paper_bgcolor:'rgba(0,0,0,0)',plot_bgcolor:'rgba(0,0,0,0)',font:{size:12},legend:{x:0.5,y:0.99,bgcolor:'rgba(255,255,255,0.8)',font:{size:9}}},{displayModeBar:false});
+    if(epoch<5000)animId=setTimeout(trainLoop,100);
+  }
+  document.getElementById('dmlp-train-btn').addEventListener('click',function(){if(animId){clearTimeout(animId);animId=null;return;}trainLoop();});
+  document.getElementById('dmlp-reset-btn').addEventListener('click',reset);
+  document.getElementById('dmlp-width-slider').addEventListener('input',function(){document.getElementById('dmlp-width-val').textContent=Math.pow(2,parseInt(this.value));});
+  document.getElementById('dmlp-lr-slider').addEventListener('input',function(){document.getElementById('dmlp-lr-val').textContent=Math.pow(10,parseFloat(this.value)).toFixed(3);});
+  document.getElementById('dmlp-dataset').addEventListener('change',reset);
+  document.getElementById('dmlp-act').addEventListener('change',reset);
+  document.getElementById('dmlp-layers').addEventListener('change',reset);
+  function init(e){if(e.currentSlide&&e.currentSlide.querySelector('#dmlp-boundary-plot'))reset();}
+  Reveal.on('slidechanged',init);
+})();
+
+</script>
+</body>
+</html>

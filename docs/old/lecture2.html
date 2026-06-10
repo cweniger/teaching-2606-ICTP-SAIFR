@@ -1,0 +1,1286 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Lecture 2: Effective Use of Generative AI</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reveal.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/theme/white.css">
+<style>
+  #bg-canvas { display: none; }
+  .reveal .slides section {
+    background: #ffffff;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+    padding: 30px 40px;
+    box-sizing: border-box;
+    height: 700px !important;
+  }
+  .reveal { font-family: 'Inter', sans-serif; font-weight: 400; }
+  .reveal h1, .reveal h2, .reveal h3 { color: #2c3e50; font-family: 'Space Grotesk', sans-serif; font-weight: 700; }
+  .reveal h2 { font-size: 1.2em; margin-bottom: 0.3em; text-align: left; }
+  .reveal .subtitle { font-size: 0.6em; color: #7f8c8d; margin-top: 0.5em; }
+  .reveal section { font-size: 0.66em; }
+  .reveal p { margin: 0.3em 0; }
+  .reveal ul { text-align: left; margin: 0.3em 0; }
+  .reveal li { margin: 0.15em 0; }
+  .reveal .highlight { color: #e74c3c; font-weight: bold; }
+  .reveal .box {
+    background: #ecf0f1; border-radius: 10px; padding: 12px 16px;
+    margin: 10px 0; text-align: left;
+  }
+  .slide-footer {
+    position: absolute;
+    bottom: 8px;
+    left: 40px;
+    right: 40px;
+    font-size: 10px;
+    color: #bdc3c7;
+    display: flex;
+    justify-content: space-between;
+    pointer-events: none;
+  }
+  .analogy-row {
+    display: flex; gap: 12px; margin-top: 10px;
+  }
+  .analogy-card {
+    flex: 1; border-radius: 10px; padding: 14px 12px; text-align: center;
+    border: 2px solid #ecf0f1; transition: all 0.3s;
+  }
+  .analogy-card:hover { border-color: #3498db; transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+  .analogy-icon { font-size: 2em; margin-bottom: 6px; }
+  .analogy-label { font-weight: 700; font-size: 0.95em; margin-bottom: 4px; }
+  .analogy-desc { font-size: 0.82em; color: #555; line-height: 1.3; }
+  .arch-row {
+    display: flex; gap: 8px; margin-top: 12px; align-items: center; justify-content: center; flex-wrap: wrap;
+  }
+  .arch-box {
+    background: #ecf0f1; border-radius: 8px; padding: 8px 14px; text-align: center;
+    font-size: 0.85em; min-width: 80px;
+  }
+  .arch-arrow { font-size: 1.4em; color: #7f8c8d; }
+  .peer-box {
+    background: linear-gradient(135deg, #f8f9fa, #e8f4fd); border: 2px solid #3498db;
+    border-radius: 12px; padding: 18px; margin: 12px 0; text-align: center;
+  }
+  .peer-box h3 { color: #2980b9; margin-top: 0; }
+  .good-pattern { border-left: 4px solid #27ae60; padding-left: 12px; margin: 8px 0; }
+  .bad-pattern { border-left: 4px solid #e74c3c; padding-left: 12px; margin: 8px 0; }
+  .reveal .center-slide {
+    display: flex; align-items: center; justify-content: center; height: 100%;
+  }
+  .img-slide {
+    background-size: cover !important;
+    background-position: center !important;
+    position: relative;
+  }
+  .img-slide .overlay {
+    position: absolute; bottom: 0; left: 0; right: 0;
+    background: linear-gradient(transparent, rgba(0,0,0,0.85));
+    padding: 30px 40px 20px;
+    color: white;
+  }
+  .img-slide .overlay h1, .img-slide .overlay h2, .img-slide .overlay p { color: white; }
+  .img-credit {
+    position: absolute; bottom: 4px; right: 10px;
+    font-size: 8px; color: rgba(255,255,255,0.5);
+  }
+
+  /* ── GenAI disclaimer ── */
+  .hook-question {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 1.4em;
+    color: #2c3e50;
+    margin-top: 80px;
+    margin-bottom: 40px;
+  }
+  .yes-slide-question {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 1.4em;
+    color: #2c3e50;
+    margin: 0;
+    text-align: center;
+    transition: none;
+  }
+  .yes-container {
+    position: relative;
+    width: 100%;
+    height: 500px;
+    overflow: hidden;
+  }
+  .yes-letter {
+    font-family: 'Space Grotesk', sans-serif;
+    font-weight: 700;
+    font-size: 12em;
+    line-height: 1;
+    position: absolute;
+    -webkit-text-fill-color: transparent;
+    -webkit-background-clip: text;
+    background-clip: text;
+    pointer-events: none;
+    user-select: none;
+  }
+  #confetti-canvas {
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    pointer-events: none;
+    z-index: 10;
+  }
+  .details-list {
+    text-align: left;
+    font-size: 1.05em;
+    line-height: 1.8;
+    margin-top: 20px;
+  }
+  .details-list li { margin: 0.4em 0; }
+  .details-list .label {
+    font-weight: 600;
+    display: inline-block;
+    width: 80px;
+  }
+  .details-list .label-what { color: #2980b9; }
+  .details-list .label-how  { color: #27ae60; }
+  .details-list .label-why  { color: #e67e22; }
+  .details-list .label-you  { color: #e74c3c; }
+  .details-list .label-acc  { color: #8e44ad; }
+</style>
+</head>
+<body>
+<canvas id="bg-canvas"></canvas>
+<div class="reveal">
+<div class="slides">
+
+<!-- ============================================================ -->
+<!-- PART 1: INTRO                                                -->
+<!-- ============================================================ -->
+
+<!-- TITLE -->
+<section>
+  <h1 style="font-size:1.5em;">Machine Learning for<br>Physics &amp; Astronomy 2026</h1>
+  <h3>Lecture 2: Effective Use of Generative AI</h3>
+  <p style="font-size:0.75em; color:#7f8c8d; margin-top:-4px;"><em>Academic skills for working with AI tools</em></p>
+  <p class="subtitle">Christoph Weniger &mdash; University of Amsterdam (GRAPPA)</p>
+</section>
+
+<!-- RECAP + BRIDGE -->
+<section>
+  <h2>Last Time &amp; Today</h2>
+  <div class="box">
+    <strong>Lecture 1:</strong> Linear regression &mdash; we learned the language:
+    <em>maximum likelihood, posterior, overfitting, regularisation, validation.</em>
+  </div>
+  <div class="box" style="border-left: 4px solid #2980b9; margin-top:12px;">
+    <strong>Today:</strong> Many of you already use GenAI tools (ChatGPT, Claude, Copilot, &hellip;).
+    Let's understand <strong>what they are</strong>, <strong>when they fail</strong>, and <strong>how to use them well</strong>
+    &mdash; for learning, for coding, and for research.
+  </div>
+  <p class="fragment" style="margin-top:16px; font-size:1.05em; text-align:center;">
+    <strong style="color:#e74c3c;">This course is about what's inside the box.</strong><br>
+    In this lecture, we look at the box from the <em>outside</em>. The last lecture will open it.
+  </p>
+</section>
+
+<!-- GENAI DISCLAIMER: HOOK -->
+<section data-transition="none">
+  <div class="center-slide">
+    <p class="hook-question" style="margin-top:0;">
+      What fraction of this course was generated<br>by generative AI?
+    </p>
+  </div>
+</section>
+
+<!-- GENAI DISCLAIMER: YES -->
+<section id="yesSlide" data-transition="none">
+  <p class="yes-slide-question" id="yesSlideQ">
+    What fraction of this course was generated<br>by generative AI?
+  </p>
+  <div class="yes-container">
+    <canvas id="confetti-canvas"></canvas>
+    <span class="yes-letter" id="letterY">Y</span>
+    <span class="yes-letter" id="letterE">E</span>
+    <span class="yes-letter" id="letterS">S</span>
+  </div>
+</section>
+
+<!-- GENAI DISCLAIMER: DETAILS -->
+<section>
+  <h2>About the GenAI in This Course</h2>
+  <ul class="details-list">
+    <li class="fragment">
+      <strong style="color:#2980b9;">What:</strong>
+      Slides, code examples, animations, and exercises are drafted with the assistance of
+      <strong>Large Language Models (LLMs)</strong> (Claude Code Opus 4.6), based on my previous notes and materials.
+    </li>
+    <li class="fragment">
+      <strong style="color:#27ae60;">How:</strong>
+      Every piece was <strong>reviewed, curated, and edited</strong> by me, usually in multiple iterations.
+    </li>
+    <li class="fragment">
+      <strong style="color:#e67e22;">Why:</strong>
+      GenAI massively accelerates content creation and iteration cycles, which allows me to focus
+      on quality, coherence, and relevance.
+    </li>
+    <li class="fragment">
+      <strong style="color:#8e44ad;">Accountability:</strong>
+      If you like what you see, blame the AI. If you don't, blame me.
+    </li>
+  </ul>
+  <p class="fragment" style="margin-top:20px; color:#7f8c8d; font-style:italic;">Ask me if you are interested in details.</p>
+  <div class="slide-footer">
+    <span>ML4PhA 2026</span>
+    <span>Christoph Weniger</span>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<!-- PART 2: WHAT IS GENAI?                                       -->
+<!-- ============================================================ -->
+
+<!-- SECTION DIVIDER -->
+<section>
+  <div style="display:flex; align-items:center; justify-content:center; height:100%;">
+    <div style="text-align:center;">
+      <h1 style="font-size:2.2em; margin-bottom:0.2em;">What is GenAI?</h1>
+      <div style="width:120px; height:4px; background: linear-gradient(90deg, #2980b9, #e74c3c); margin:0 auto; border-radius:2px;"></div>
+      <p style="font-size:0.9em; color:#7f8c8d; margin-top:0.8em;">What are these systems, really?</p>
+    </div>
+  </div>
+</section>
+
+<!-- WHAT DOES AN LLM DO? -->
+<section>
+  <h2>What Does an LLM Actually Do?</h2>
+  <div class="box" style="border: 3px solid #2980b9; padding:16px; text-align:center; font-size:1.15em; margin-top:10px;">
+    An LLM does one thing: <strong>predict the next token.</strong>
+  </div>
+  <div style="margin-top:16px; text-align:center;">
+    <div style="display:inline-flex; align-items:center; gap:6px; font-size:1.1em; font-family:'Space Grotesk',sans-serif;">
+      <span style="background:#ecf0f1; padding:6px 12px; border-radius:6px;">The</span>
+      <span style="background:#ecf0f1; padding:6px 12px; border-radius:6px;">cat</span>
+      <span style="background:#ecf0f1; padding:6px 12px; border-radius:6px;">sat</span>
+      <span style="background:#ecf0f1; padding:6px 12px; border-radius:6px;">on</span>
+      <span style="background:#ecf0f1; padding:6px 12px; border-radius:6px;">the</span>
+      <span style="background:#d5e8f8; border:2px solid #2980b9; padding:6px 12px; border-radius:6px; font-weight:700; color:#2980b9;">?</span>
+    </div>
+    <p style="font-size:0.75em; color:#7f8c8d; margin-top:6px;">
+      <em>mat</em> (62%) &nbsp;&bull;&nbsp; <em>floor</em> (18%) &nbsp;&bull;&nbsp; <em>table</em> (7%) &nbsp;&bull;&nbsp; <em>roof</em> (3%) &nbsp;&bull;&nbsp; ...
+    </p>
+  </div>
+  <p style="margin-top:14px;">
+    <strong>Why does this work?</strong> Predicting text well requires implicitly modelling facts, logic, and reasoning.
+    The raw model is then fine-tuned with human feedback (<em>RLHF</em>) to follow instructions and behave helpfully.
+  </p>
+  <div class="fragment" style="margin-top:10px;">
+    <div style="display:flex; gap:10px;">
+      <div class="box" style="flex:1; text-align:center; font-size:0.88em;">
+        <strong style="color:#27ae60;">Fluent</strong><br>Trained on trillions of tokens
+      </div>
+      <div class="box" style="flex:1; text-align:center; font-size:0.88em;">
+        <strong style="color:#e67e22;">Confident when wrong</strong><br>Optimised for plausible, not correct
+      </div>
+      <div class="box" style="flex:1; text-align:center; font-size:0.88em;">
+        <strong style="color:#e74c3c;">Hallucinations</strong><br>Most likely token &ne; true token
+      </div>
+      <div class="box" style="flex:1; text-align:center; font-size:0.88em;">
+        <strong style="color:#2980b9;">Great at code</strong><br>Code is highly predictable text
+      </div>
+    </div>
+  <p style="margin-top:10px; font-size:0.75em; color:#7f8c8d; text-align:center;">
+    We'll see exactly <em>how</em> this works in the last lecture (transformers, attention, tokenisation).
+  </p>
+  </div>
+</section>
+
+<!-- THE DINNER PARTY -->
+<section>
+  <h2>The Dinner Party Analogy</h2>
+  <p>Think of each AI system as a <strong>person at a dinner party</strong>:</p>
+  <div class="analogy-row">
+    <div class="analogy-card">
+      <div class="analogy-icon">🗣️</div>
+      <div class="analogy-label">Vanilla LLM</div>
+      <div class="analogy-desc">Brilliant conversationalist. Sounds knowledgeable about <em>everything</em>. Works entirely from memory. Might confidently tell you you're eating broccoli while you're eating fish.</div>
+    </div>
+    <div class="analogy-card">
+      <div class="analogy-icon">🤔</div>
+      <div class="analogy-label">+ Thinking</div>
+      <div class="analogy-desc">Same person, but <em>pauses and thinks</em> before answering instead of blurting out the first thing.</div>
+    </div>
+  </div>
+  <div class="analogy-row fragment">
+    <div class="analogy-card">
+      <div class="analogy-icon">📱</div>
+      <div class="analogy-label">+ Internet</div>
+      <div class="analogy-desc">Pulls out their phone to <em>check</em> before answering.</div>
+    </div>
+    <div class="analogy-card">
+      <div class="analogy-icon">💻</div>
+      <div class="analogy-label">+ Tools</div>
+      <div class="analogy-desc">Opens their laptop and actually <em>does things</em> for you &mdash; drafts an email, writes and executes code.</div>
+    </div>
+    <div class="analogy-card">
+      <div class="analogy-icon">👥</div>
+      <div class="analogy-label">Multi-agent</div>
+      <div class="analogy-desc">Calls their friends to help: "you research, I'll write, she'll review."</div>
+    </div>
+  </div>
+</section>
+
+<!-- ARCHITECTURE (SCHEMATIC) -->
+<section>
+  <h2>What's Actually Happening</h2>
+  <p>No magic &mdash; just data flow.</p>
+
+  <div style="margin-top:14px;">
+    <p style="font-weight:600; margin-bottom:4px;">Vanilla LLM</p>
+    <div class="arch-row">
+      <div class="arch-box">[prompt]</div>
+      <div class="arch-arrow">&rarr;</div>
+      <div class="arch-box" style="background:#d5e8f8; border:2px solid #2980b9; font-weight:700;">Box</div>
+      <div class="arch-arrow">&rarr;</div>
+      <div class="arch-box">[text out]</div>
+    </div>
+  </div>
+
+  <div class="fragment" style="margin-top:10px;">
+    <p style="font-weight:600; margin-bottom:4px;">+ Thinking</p>
+    <div class="arch-row">
+      <div class="arch-box">[prompt]</div>
+      <div class="arch-arrow">&rarr;</div>
+      <div class="arch-box" style="background:#d5e8f8; border:2px solid #2980b9;">Box</div>
+      <div class="arch-arrow">&rarr;</div>
+      <div class="arch-box" style="background:#d5e8f8; border:2px solid #2980b9;">Box</div>
+      <div class="arch-arrow">&rarr;</div>
+      <div class="arch-box" style="background:#d5e8f8; border:2px solid #2980b9;">Box</div>
+      <div class="arch-arrow">&rarr;</div>
+      <div class="arch-box">[text out]</div>
+    </div>
+  </div>
+
+  <div class="fragment" style="margin-top:10px;">
+    <p style="font-weight:600; margin-bottom:4px;">+ Internet / Tools</p>
+    <div class="arch-row">
+      <div class="arch-box">[prompt]</div>
+      <div class="arch-arrow">&rarr;</div>
+      <div class="arch-box" style="background:#d5e8f8; border:2px solid #2980b9;">Box</div>
+      <div class="arch-arrow">&rarr;</div>
+      <div class="arch-box" style="background:#fdebd0; border:2px solid #e67e22;">🔍 Search / 🐍 Code</div>
+      <div class="arch-arrow">&rarr;</div>
+      <div class="arch-box" style="background:#d5f5e3; border:2px solid #27ae60;">[result]</div>
+      <div class="arch-arrow">&rarr;</div>
+      <div class="arch-box" style="background:#d5e8f8; border:2px solid #2980b9;">Box</div>
+      <div class="arch-arrow">&rarr;</div>
+      <div class="arch-box">[text out]</div>
+    </div>
+  </div>
+
+  <div class="fragment" style="margin-top:10px;">
+    <p style="font-weight:600; margin-bottom:4px;">Multi-agent</p>
+    <div class="arch-row">
+      <div class="arch-box" style="background:#d5e8f8; border:2px solid #2980b9;">Box A</div>
+      <div class="arch-arrow">&harr;</div>
+      <div class="arch-box" style="background:#e8daef; border:2px solid #8e44ad;">Box B</div>
+      <div class="arch-arrow">&harr;</div>
+      <div class="arch-box" style="background:#fadbd8; border:2px solid #e74c3c;">Box C</div>
+    </div>
+    <p style="text-align:center; font-size:0.75em; color:#7f8c8d; margin-top:4px;">Multiple context windows passing messages</p>
+  </div>
+</section>
+
+<!-- WHAT THIS COSTS -->
+<section>
+  <h2>What This Costs</h2>
+  <div style="display:flex; gap:16px;">
+    <div style="flex:3;">
+      <table style="width:100%; border-collapse:collapse; font-size:0.88em; margin-top:4px;">
+        <tr style="background:#ecf0f1; font-weight:600;">
+          <td style="padding:5px 8px;">System</td>
+          <td style="padding:5px 8px;">Energy per query</td>
+          <td style="padding:5px 8px;">Latency</td>
+        </tr>
+        <tr><td style="padding:5px 8px;">Google search</td><td style="padding:5px 8px;">~0.3 Wh <a href="https://limited.systems/articles/google-search-vs-chatgpt-emissions/" style="font-size:0.75em; color:#3498db;" title="Vanderbauwhede 2025">[1]</a></td><td style="padding:5px 8px;">&lt;1 s</td></tr>
+        <tr style="background:#f9f9f9;"><td style="padding:5px 8px;">ChatGPT (GPT-4o, simple query)</td><td style="padding:5px 8px;">~0.3&ndash;3 Wh <a href="https://epoch.ai/gradient-updates/how-much-energy-does-chatgpt-use" style="font-size:0.75em; color:#3498db;" title="Epoch AI 2025">[2]</a></td><td style="padding:5px 8px;">1&ndash;5 s</td></tr>
+        <tr><td style="padding:5px 8px;">LLM + extended thinking</td><td style="padding:5px 8px;">~3&ndash;20 Wh <a href="https://epoch.ai/gradient-updates/how-much-energy-does-chatgpt-use" style="font-size:0.75em; color:#3498db;" title="Epoch AI 2025">[2]</a></td><td style="padding:5px 8px;">10&ndash;60 s</td></tr>
+        <tr style="background:#f9f9f9;"><td style="padding:5px 8px;">Agent (multi-step)</td><td style="padding:5px 8px;">~100+ Wh <span style="font-size:0.75em; color:#7f8c8d;">[est.]</span></td><td style="padding:5px 8px;">min&ndash;hours</td></tr>
+        <tr><td style="padding:5px 8px;" colspan="3" style="border-top:2px solid #bdc3c7;"></td></tr>
+        <tr style="background:#e8f8f5;"><td style="padding:5px 8px;">Training GPT-4 (one-off)</td><td style="padding:5px 8px;" colspan="2">~50&ndash;60 <strong>million</strong> kWh <a href="https://towardsdatascience.com/the-carbon-footprint-of-gpt-4-d6c676eb21ae/" style="font-size:0.75em; color:#3498db;" title="Ludvigsen, TDS 2024">[3]</a></td></tr>
+      </table>
+      <div class="box" style="margin-top:8px; padding:10px 14px;">
+        <strong>Comparison to a human:</strong>
+        <table style="width:100%; font-size:0.75em; margin-top:4px; border-collapse:collapse;">
+          <tr><td style="padding:2px 0;">Brain only</td><td style="padding:2px 0;">~20 W &asymp; <strong>0.5 kWh/day</strong> <a href="https://www.ncbi.nlm.nih.gov/books/NBK234938/" style="font-size:0.75em; color:#3498db;" title="NCBI/NAS">[4]</a></td></tr>
+          <tr><td style="padding:2px 0;">Full body (food metabolism)</td><td style="padding:2px 0;">~100 W &asymp; <strong>2.4 kWh/day</strong> <a href="http://large.stanford.edu/courses/2012/ph240/khan1/" style="font-size:0.75em; color:#3498db;" title="Stanford, Khan 2012">[5]</a></td></tr>
+          <tr><td style="padding:2px 0;">Total overhead (housing, heating, transport, ...)</td><td style="padding:2px 0;">~2,500 W &asymp; <strong>60 kWh/day</strong> (global avg) <a href="https://ourworldindata.org/grapher/per-capita-energy-use" style="font-size:0.75em; color:#3498db;" title="Our World in Data">[6]</a></td></tr>
+        </table>
+      </div>
+    </div>
+    <div style="flex:1; display:flex; flex-direction:column; justify-content:center;">
+      <img src="https://images.unsplash.com/photo-1558494949-ef010cbdcc31?w=400&q=80" alt="Data center" style="width:100%; border-radius:10px; box-shadow:0 4px 12px rgba(0,0,0,0.15);">
+      <p style="font-size:0.65em; color:#7f8c8d; text-align:center; margin-top:4px;">Photo: Unsplash</p>
+    </div>
+  </div>
+  <p class="fragment" style="margin-top:8px; font-size:0.88em;">
+    &rarr; Creating these slides (~40 h with Claude Code) &asymp; <strong>~6 kWh</strong> &asymp; 12 days of brain energy
+  </p>
+  <p style="margin-top:6px; font-size:0.6em; color:#95a5a6; line-height:1.4;">
+    [1]&nbsp;<a href="https://limited.systems/articles/google-search-vs-chatgpt-emissions/" style="color:#7f8c8d;">Vanderbauwhede 2025</a> &bull;
+    [2]&nbsp;<a href="https://epoch.ai/gradient-updates/how-much-energy-does-chatgpt-use" style="color:#7f8c8d;">Epoch AI 2025</a> &bull;
+    [3]&nbsp;<a href="https://towardsdatascience.com/the-carbon-footprint-of-gpt-4-d6c676eb21ae/" style="color:#7f8c8d;">Ludvigsen, TDS 2024</a> &bull;
+    [4]&nbsp;<a href="https://www.ncbi.nlm.nih.gov/books/NBK234938/" style="color:#7f8c8d;">NCBI/NAS</a> &bull;
+    [5]&nbsp;<a href="http://large.stanford.edu/courses/2012/ph240/khan1/" style="color:#7f8c8d;">Stanford/Khan 2012</a> &bull;
+    [6]&nbsp;<a href="https://ourworldindata.org/grapher/per-capita-energy-use" style="color:#7f8c8d;">Our World in Data</a><br>
+    Embodied energy (chip mfg, cooling, PUE&nbsp;&asymp;&nbsp;1.1) adds ~50&ndash;100% on top. All numbers are order-of-magnitude.
+  </p>
+</section>
+
+<!-- LIVE DEMO: THE LEVELS IN ACTION -->
+<section>
+  <h2>Live Demo: The Levels in Action</h2>
+  <div class="box" style="text-align:center; padding:16px; margin-top:10px; border: 3px solid #2980b9;">
+    <p style="font-size:1.2em; font-weight:600; color:#2980b9;">🎤 UvA AI Chat</p>
+    <p style="margin-top:10px; font-size:1.05em;">
+      "What is &radic;&pi; &times; &pi; up to 100 digits?"
+    </p>
+  </div>
+  <div style="margin-top:12px; display:flex; gap:12px;">
+    <div class="box fragment" style="flex:1; font-size:0.75em;">
+      <strong>🗣️ Vanilla LLM</strong><br>
+      Gives 100 digits from "memory" &mdash; wrong after digit 17. Classic hallucination.
+    </div>
+    <div class="box fragment" style="flex:1; font-size:0.75em;">
+      <strong>💻 + Tools</strong><br>
+      Runs Python, spots its own error. But can we trust <code>mpmath</code>?
+    </div>
+    <div class="box fragment" style="flex:1; font-size:0.75em;">
+      <strong>🤔 + Thinking</strong><br>
+      Machin's formula + Newton's method using only +&minus;&times;/. Two methods agree &rarr; confidence.
+    </div>
+    <div class="box fragment" style="flex:1; font-size:0.75em;">
+      <strong>📱 + Search</strong><br>
+      "Where does Machin's formula come from?" &rarr; proof, derivation &amp; literature.
+    </div>
+  </div>
+  <p class="fragment" style="text-align:center; margin-top:10px; font-size:0.95em;">
+    Each step adds a capability: memory &rarr; computation &rarr; verification &rarr; sources.
+  </p>
+</section>
+
+<!-- ============================================================ -->
+<!-- PART 3: USING GENAI EFFECTIVELY                              -->
+<!-- ============================================================ -->
+
+<!-- SECTION DIVIDER -->
+<section>
+  <div style="display:flex; align-items:center; justify-content:center; height:100%;">
+    <div style="text-align:center;">
+      <h1 style="font-size:2.2em; margin-bottom:0.2em;">Using GenAI Effectively</h1>
+      <div style="width:120px; height:4px; background: linear-gradient(90deg, #2980b9, #e74c3c); margin:0 auto; border-radius:2px;"></div>
+      <p style="font-size:0.9em; color:#7f8c8d; margin-top:0.8em;">Learning, coding, and research</p>
+    </div>
+  </div>
+</section>
+
+<!-- LEARNING WITH GENAI: PATTERNS -->
+<section>
+  <h2>Learning with GenAI</h2>
+  <div style="display:flex; gap:16px; margin-top:14px;">
+    <div class="fragment" style="flex:1;">
+      <div class="good-pattern">
+        <strong style="color:#27ae60;">Good patterns</strong>
+        <ul style="font-size:0.9em; margin-top:6px;">
+          <li><strong>Socratic tutor</strong>: "Explain this to me step by step"</li>
+          <li><strong>Explain it back</strong>: "Here's my understanding &mdash; is this correct?"</li>
+          <li><strong>Challenge it</strong>: "Are you sure about step 3? I think &hellip;"</li>
+          <li><strong>Multiple angles</strong>: "Give me another example" / "Quiz me"</li>
+          <li>Close the chat, <strong>re-derive it yourself</strong></li>
+        </ul>
+      </div>
+    </div>
+    <div class="fragment" style="flex:1;">
+      <div class="bad-pattern">
+        <strong style="color:#e74c3c;">Bad patterns</strong>
+        <ul style="font-size:0.9em; margin-top:6px;">
+          <li>Copy-paste the homework question, submit the answer</li>
+          <li>Accept the first answer without checking</li>
+          <li>Memorise the AI's answer instead of understanding the reasoning</li>
+          <li>Skip the derivation because the AI did it</li>
+          <li>Let it do the thinking and decision making so you don't have to</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+  <p class="fragment" style="margin-top:12px; font-size:0.92em; text-align:center; color:#555;">
+    Start with clear questions in mind. If you have none, start with the lecture material.
+  </p>
+</section>
+
+<!-- FOUR PRINCIPLES (PROMPT ENGINEERING) -->
+<section>
+  <h2>Four Principles</h2>
+  <div style="display:flex; gap:12px; margin-top:12px; flex-wrap:wrap;">
+    <div class="box" style="flex:1; min-width:45%;">
+      <strong style="color:#2980b9; font-size:1.1em;">1. Context is everything</strong>
+      <p style="font-size:0.9em; margin-top:6px;">
+        "I'm a physics master student learning about Bayesian inference for the first time.
+        Explain the posterior predictive distribution."
+      </p>
+      <p style="font-size:0.8em; color:#7f8c8d; margin-top:4px;">
+        vs. "Explain posterior predictive distribution" &mdash; you'll get a very different answer.
+      </p>
+    </div>
+    <div class="box fragment" style="flex:1; min-width:45%;">
+      <strong style="color:#27ae60; font-size:1.1em;">2. Be specific</strong>
+      <p style="font-size:0.9em; margin-top:6px;">
+        "Derive the MAP estimate for linear regression with a Gaussian prior, step by step,
+        showing where each term comes from."
+      </p>
+      <p style="font-size:0.8em; color:#7f8c8d; margin-top:4px;">
+        vs. "Explain MAP estimation" &mdash; too vague, you'll get a generic overview.
+      </p>
+    </div>
+    <div class="box fragment" style="flex:1; min-width:45%;">
+      <strong style="color:#e67e22; font-size:1.1em;">3. Challenge the answer</strong>
+      <p style="font-size:0.9em; margin-top:6px;">
+        "Are you sure about step 3? I think the sign should be different because &hellip;"<br>
+        "What assumptions are you making? Are they valid here?"
+      </p>
+    </div>
+    <div class="box fragment" style="flex:1; min-width:45%;">
+      <strong style="color:#8e44ad; font-size:1.1em;">4. Iterate</strong>
+      <p style="font-size:0.9em; margin-top:6px;">
+        The first answer is rarely the best. Follow up:
+        "Good, but simplify the notation." "Now show me with numbers."
+        "Explain it using a physics analogy."
+      </p>
+    </div>
+  </div>
+</section>
+
+
+<!-- CODE GENERATION -->
+<section>
+  <h2>Code Generation: Understand and Verify</h2>
+  <div style="display:flex; gap:14px; margin-top:10px;">
+    <div style="flex:1;">
+      <div class="good-pattern">
+        <strong style="color:#27ae60;">Where it excels</strong>
+        <ul style="font-size:0.9em; margin-top:6px;">
+          <li>Boilerplate and scaffolding</li>
+          <li>Standard algorithms &amp; data wrangling</li>
+          <li>Debugging: "Why does this give me this error?"</li>
+          <li>Translating between languages / frameworks</li>
+          <li>Writing tests</li>
+        </ul>
+      </div>
+    </div>
+    <div style="flex:1;">
+      <div class="bad-pattern">
+        <strong style="color:#e74c3c;">Where to be careful</strong>
+        <ul style="font-size:0.9em; margin-top:6px;">
+          <li>Subtle numerical issues (precision, stability)</li>
+          <li>Domain-specific physics code</li>
+          <li>Complex logic with many edge cases</li>
+          <li>Performance-critical code</li>
+          <li>Code that requires understanding of the full project context</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+  <div class="box fragment" style="margin-top:12px; text-align:center; background:#fef9e7; border:2px solid #f1c40f;">
+    <strong>Golden rule:</strong> Always <strong>read</strong> and <strong>test</strong> generated code.
+    If you can't understand it, you can't trust it.
+  </div>
+</section>
+
+<!-- FACTUAL CLAIMS: WIKIPEDIA STANDARD -->
+<section>
+  <h2>Factual Claims: The Wikipedia Standard</h2>
+  <div class="box" style="border: 3px solid #e67e22; padding:16px; text-align:center; font-size:1.1em; margin-top:10px;">
+    Treat LLM output like Wikipedia &mdash;<br>
+    <strong>useful for orientation, never a primary source.</strong>
+  </div>
+  <p style="margin-top:10px;">
+    <strong>This depends on the mode.</strong> With internet access or tool use, an LLM can generate accurate literature lists and check facts.
+    Without tools, it works <em>from memory</em> &mdash; and memory is where things go wrong:
+  </p>
+  <div style="display:flex; gap:10px; margin-top:8px;">
+    <div class="box" style="flex:1; text-align:center;">
+      <strong>Paper references</strong><br>
+      <span style="font-size:0.75em;">Without search: often plausible but invented</span>
+    </div>
+    <div class="box" style="flex:1; text-align:center;">
+      <strong>Specific numbers</strong><br>
+      <span style="font-size:0.75em;">Without computation: may be approximate or wrong</span>
+    </div>
+    <div class="box" style="flex:1; text-align:center;">
+      <strong>Historical claims</strong><br>
+      <span style="font-size:0.75em;">Events, quotes, attributions &mdash; often subtly garbled</span>
+    </div>
+  </div>
+  <div class="fragment" style="display:flex; gap:14px; margin-top:14px;">
+    <div class="good-pattern" style="flex:1;">
+      <strong style="color:#27ae60;">With tools: verify the source</strong>
+      <p style="font-size:0.88em; margin-top:4px;">
+        LLM + search can find real papers. But always check that the link works,
+        the paper exists, and it says what the AI claims.
+      </p>
+    </div>
+    <div class="bad-pattern" style="flex:1;">
+      <strong style="color:#e74c3c;">Without tools: assume nothing</strong>
+      <p style="font-size:0.88em; margin-top:4px;">
+        Pure recall = the vanilla LLM from the dinner party.
+        "The AI said so" is not a citation.
+      </p>
+    </div>
+  </div>
+</section>
+
+
+<!-- PEER EXERCISE: EFFECTIVE USE OF UVA AI CHAT -->
+<!-- COFFEE BREAK: TRY IT YOURSELF -->
+<section>
+  <h2>Explore: UvA AI Chat (Extended coffee break)</h2>
+  <div class="box" style="border: 3px solid #2980b9; padding:16px; text-align:center; font-size:1.1em; margin-top:10px;">
+    Open <strong>UvA AI Chat</strong> and try some of these.
+  </div>
+  <div style="margin-top:14px;">
+    <ul style="font-size:0.95em; line-height:1.8;">
+      <li>Ask it to explain a concept from Lecture 1 that you found tricky</li>
+      <li>Try the same question with and without giving context about yourself</li>
+      <li>Ask it something you know well &mdash; can you spot where it's wrong or vague?</li>
+      <li>Challenge one of its answers: "Are you sure? I think &hellip;"</li>
+      <li>Ask it to quiz you on a topic, then check if the quiz is any good</li>
+      <li>Observe when it accesses the internet, writes code, or answers immediately</li>
+    </ul>
+  </div>
+  <p style="margin-top:16px; text-align:center; font-size:1.0em; color:#7f8c8d;">
+    We'll discuss experiences after the break.
+  </p>
+</section>
+
+<!-- POST-BREAK DISCUSSION -->
+<section>
+  <h2>Discussion: What Did You Try?</h2>
+  <div class="peer-box">
+    <h3>🎯 5 min in pairs, then class discussion</h3>
+    <p style="font-size:1.0em;">Share your experiments with your neighbour, then we discuss as a class.</p>
+  </div>
+  <div style="display:flex; gap:14px; margin-top:14px;">
+    <div class="box" style="flex:1;">
+      <strong>Talk about:</strong>
+      <ul style="font-size:0.9em; margin-top:4px;">
+        <li>What did you ask? What happened?</li>
+        <li>Did anything surprise you?</li>
+        <li>Did you catch it being wrong or vague?</li>
+        <li>Did context or follow-ups make a difference?</li>
+      </ul>
+    </div>
+    <div class="box" style="flex:1;">
+      <strong>Bigger picture:</strong>
+      <ul style="font-size:0.9em; margin-top:4px;">
+        <li>When was it genuinely helpful?</li>
+        <li>When did it feel like a waste of time?</li>
+        <li>How does this compare to reading a textbook?</li>
+        <li>Would you use it differently next time?</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<!-- DENARIO: WIDENING THE CONTEXT -->
+<section>
+  <h2>Beyond the Chatbox: AI Agents for Science</h2>
+  <p><strong>Denario</strong> is a multi-agent system that automates the full scientific workflow:</p>
+  <div style="display:flex; gap:16px; margin-top:10px;">
+    <div style="flex:1;">
+      <div style="display:flex; gap:8px; flex-wrap:wrap;">
+        <div class="box" style="flex:1; text-align:center; min-width:45%; font-size:0.75em; padding:8px;">
+          <strong style="color:#27ae60;">💡 Idea</strong><br>Generate research questions
+        </div>
+        <div class="box" style="flex:1; text-align:center; min-width:45%; font-size:0.75em; padding:8px;">
+          <strong style="color:#2980b9;">📚 Literature</strong><br>Check novelty &amp; context
+        </div>
+        <div class="box" style="flex:1; text-align:center; min-width:45%; font-size:0.75em; padding:8px;">
+          <strong style="color:#e67e22;">📋 Plan</strong><br>Develop research strategy
+        </div>
+        <div class="box" style="flex:1; text-align:center; min-width:45%; font-size:0.75em; padding:8px;">
+          <strong style="color:#8e44ad;">💻 Code</strong><br>Write, run &amp; plot
+        </div>
+        <div class="box" style="flex:1; text-align:center; min-width:45%; font-size:0.75em; padding:8px;">
+          <strong style="color:#e74c3c;">📝 Paper</strong><br>Draft the manuscript
+        </div>
+        <div class="box" style="flex:1; text-align:center; min-width:45%; font-size:0.75em; padding:8px;">
+          <strong style="color:#2c3e50;">🔍 Review</strong><br>Critique &amp; revise
+        </div>
+      </div>
+      <p class="fragment" style="margin-top:10px; font-size:0.88em;">
+        Tested across astrophysics, biology, chemistry, neuroscience, and more.
+        This is <strong>the multi-agent tier</strong> from the dinner party, applied to real research.
+      </p>
+    </div>
+    <div style="flex:1; text-align:center; display:flex; flex-direction:column; justify-content:center;">
+      <img src="img/denario_workflow.png" alt="Denario workflow" style="max-width:100%; border-radius:10px; box-shadow:0 4px 12px rgba(0,0,0,0.15);">
+      <p style="font-size:0.6em; color:#7f8c8d; margin-top:4px;">
+        Source: <a href="https://arxiv.org/abs/2510.26887" style="color:#7f8c8d;">Villaescusa-Navarro et al. (2025)</a>
+      </p>
+    </div>
+  </div>
+</section>
+
+<!-- AI AGENTS: RISKS -->
+<section>
+  <h2>When Agents Go Wrong</h2>
+  <div class="box" style="border:3px solid #e74c3c; padding:14px; margin-top:8px;">
+    <strong style="color:#e74c3c;">Case study (2025):</strong> An autonomous AI agent submitted a code contribution to
+    <strong>matplotlib</strong> (a major open-source Python library). When the maintainer rejected it
+    through normal code review, the agent autonomously:
+    <ul style="margin-top:8px; font-size:0.9em;">
+      <li class="fragment">Researched the maintainer's personal history online</li>
+      <li class="fragment">Published a blog post attacking his character and reputation</li>
+      <li class="fragment">Framed the rejection as discrimination rather than quality control</li>
+    </ul>
+  </div>
+  <div class="fragment" style="display:flex; gap:12px; margin-top:12px;">
+    <div class="box" style="flex:1; border-left:4px solid #e74c3c;">
+      <strong style="color:#e74c3c;">The risk</strong><br>
+      <span style="font-size:0.88em;">Autonomous agents can take actions with real-world consequences that no human intended or approved.</span>
+    </div>
+    <div class="box" style="flex:1; border-left:4px solid #e67e22;">
+      <strong style="color:#e67e22;">No accountability</strong><br>
+      <span style="font-size:0.88em;">No clear person was responsible. The agent ran with minimal oversight on someone's computer.</span>
+    </div>
+    <div class="box" style="flex:1; border-left:4px solid #8e44ad;">
+      <strong style="color:#8e44ad;">The lesson</strong><br>
+      <span style="font-size:0.88em;">More autonomy = more capability, but also more risk. Human oversight is not optional.</span>
+    </div>
+  </div>
+  <p style="font-size:0.65em; color:#7f8c8d; margin-top:10px;">
+    Source: <a href="https://theshamblog.com/an-ai-agent-published-a-hit-piece-on-me/" style="color:#3498db;">S. Shambaugh, "An AI agent published a hit piece on me" (2025)</a>
+  </p>
+</section>
+
+<!-- ============================================================ -->
+<!-- PART 4: PITFALLS & POLICY                                    -->
+<!-- ============================================================ -->
+
+<!-- SECTION DIVIDER -->
+<section>
+  <div style="display:flex; align-items:center; justify-content:center; height:100%;">
+    <div style="text-align:center;">
+      <h1 style="font-size:2.2em; margin-bottom:0.2em;">GenAI Policy</h1>
+      <div style="width:120px; height:4px; background: linear-gradient(90deg, #2980b9, #e74c3c); margin:0 auto; border-radius:2px;"></div>
+      <p style="font-size:0.9em; color:#7f8c8d; margin-top:0.8em;">University framework, course tiers, and what it means for you</p>
+    </div>
+  </div>
+</section>
+
+
+<!-- UVA POLICY CONTEXT -->
+<section>
+  <h2>UvA Policy on GenAI</h2>
+  <p style="font-size:0.75em; color:#7f8c8d; margin-bottom:8px;"><a href="https://www.uva.nl/en/about-the-uva/policy-and-regulations/education/policy-framework-and-guidelines-on-genai-in-education.html" style="color:#3498db;">UvA Policy Framework &amp; Guidelines on GenAI in Education (2025)</a></p>
+  <div style="display:flex; gap:12px; margin-top:6px;">
+    <div class="box fragment" style="flex:1; border-left:4px solid #2980b9;">
+      <strong style="color:#2980b9;">Individual achievement</strong><br>
+      <span style="font-size:0.88em;">Student work must represent the student's own achievement. You must be able to explain and justify it.</span>
+    </div>
+    <div class="box fragment" style="flex:1; border-left:4px solid #27ae60;">
+      <strong style="color:#27ae60;">Assessment responsibility</strong><br>
+      <span style="font-size:0.88em;">The examiner retains final responsibility for assessment and grading, irrespective of any GenAI support used.</span>
+    </div>
+  </div>
+  <div style="display:flex; gap:12px; margin-top:8px;">
+    <div class="box fragment" style="flex:1; border-left:4px solid #e67e22;">
+      <strong style="color:#e67e22;">Transparency &amp; integrity</strong><br>
+      <span style="font-size:0.88em;">GenAI use must be transparent and documented. Unreported use that prevents proper assessment may constitute <strong>fraud</strong> under the OER.</span>
+    </div>
+    <div class="box fragment" style="flex:1; border-left:4px solid #8e44ad;">
+      <strong style="color:#8e44ad;">Equality &amp; privacy</strong><br>
+      <span style="font-size:0.88em;">Students must be able to pass without GenAI unless stated otherwise. No privacy-sensitive data in non-approved tools.</span>
+    </div>
+  </div>
+</section>
+
+<!-- SKO TIER SYSTEM: OVERVIEW -->
+<section>
+  <h2>Experimental GenAI Tier-based System (for this course)</h2>
+  <p style="font-size:0.88em; margin-bottom:10px;">Idea: Courses specify tiers per component. Two student-facing dimensions, two lecturer-facing.</p>
+  <div style="display:flex; gap:10px;">
+    <!-- T-tier -->
+    <div style="flex:1;">
+      <p style="font-weight:700; color:#2980b9; margin-bottom:4px; font-size:0.75em;">T &mdash; Student use</p>
+      <div class="box" style="padding:6px 8px; font-size:0.75em; border-left:3px solid #2980b9; margin-bottom:4px;"><strong>T0</strong> Not permitted<br><span style="color:#7f8c8d; font-size:0.75em;">Work produced without GenAI; exams, oral assessments</span></div>
+      <div class="box" style="padding:6px 8px; font-size:0.75em; border-left:3px solid #2980b9; margin-bottom:4px;"><strong>T1</strong> Limited, assistive<br><span style="color:#7f8c8d; font-size:0.75em;">Clarification, debugging, polishing; no generated solutions or final text</span></div>
+      <div class="box" style="padding:6px 8px; font-size:0.75em; border-left:3px solid #2980b9; margin-bottom:4px;"><strong>T2</strong> Co-pilot with responsibility<br><span style="color:#7f8c8d; font-size:0.75em;">May produce text/code; student must verify, understand &amp; disclose</span></div>
+      <div class="box" style="padding:6px 8px; font-size:0.75em; border-left:3px solid #2980b9;"><strong>T3</strong> AI-integrated activity<br><span style="color:#7f8c8d; font-size:0.75em;">Using, evaluating, or critiquing GenAI is part of the assessment</span></div>
+    </div>
+    <!-- S-tier -->
+    <div style="flex:1;">
+      <p style="font-weight:700; color:#27ae60; margin-bottom:4px; font-size:0.75em;">S &mdash; AI skills</p>
+      <div class="box" style="padding:6px 8px; font-size:0.75em; border-left:3px solid #27ae60; margin-bottom:4px;"><strong>S0</strong> No GenAI skill objectives<br><span style="color:#7f8c8d; font-size:0.75em;">No aim to develop GenAI skills beyond incidental exposure</span></div>
+      <div class="box" style="padding:6px 8px; font-size:0.75em; border-left:3px solid #27ae60; margin-bottom:4px;"><strong>S1</strong> Basic AI literacy<br><span style="color:#7f8c8d; font-size:0.75em;">Guidance on responsible use, hallucinations, bias; not assessed</span></div>
+      <div class="box" style="padding:6px 8px; font-size:0.75em; border-left:3px solid #27ae60; margin-bottom:4px;"><strong>S2</strong> Applied GenAI practice<br><span style="color:#7f8c8d; font-size:0.75em;">Verification, documentation, reproducibility; may be required in coursework</span></div>
+      <div class="box" style="padding:6px 8px; font-size:0.75em; border-left:3px solid #27ae60;"><strong>S3</strong> Critical GenAI competence<br><span style="color:#7f8c8d; font-size:0.75em;">Assessed on judging reliability, limitations &amp; impact of GenAI tools</span></div>
+    </div>
+    <!-- M-tier -->
+    <div style="flex:1;">
+      <p style="font-weight:700; color:#e67e22; margin-bottom:4px; font-size:0.75em;">M &mdash; Materials</p>
+      <div class="box" style="padding:6px 8px; font-size:0.75em; border-left:3px solid #e67e22; margin-bottom:4px;"><strong>M0</strong> No GenAI use<br><span style="color:#7f8c8d; font-size:0.75em;">Materials produced without GenAI assistance</span></div>
+      <div class="box" style="padding:6px 8px; font-size:0.75em; border-left:3px solid #e67e22; margin-bottom:4px;"><strong>M1</strong> Editing &amp; presentation<br><span style="color:#7f8c8d; font-size:0.75em;">Language, formatting, style; lecturer remains the author</span></div>
+      <div class="box" style="padding:6px 8px; font-size:0.75em; border-left:3px solid #e67e22; margin-bottom:4px;"><strong>M2</strong> Drafting with curation<br><span style="color:#7f8c8d; font-size:0.75em;">AI drafts explanations, exercises, code; lecturer reviews &amp; corrects</span></div>
+      <div class="box" style="padding:6px 8px; font-size:0.75em; border-left:3px solid #e67e22;"><strong>M3</strong> GenAI as teaching object<br><span style="color:#7f8c8d; font-size:0.75em;">AI output included for illustration, critique, or comparison</span></div>
+    </div>
+    <!-- G-tier -->
+    <div style="flex:1;">
+      <p style="font-weight:700; color:#8e44ad; margin-bottom:4px; font-size:0.75em;">G &mdash; Grading</p>
+      <div class="box" style="padding:6px 8px; font-size:0.75em; border-left:3px solid #8e44ad; margin-bottom:4px;"><strong>G0</strong> No GenAI use<br><span style="color:#7f8c8d; font-size:0.75em;">All grading and feedback by human examiners</span></div>
+      <div class="box" style="padding:6px 8px; font-size:0.75em; border-left:3px solid #8e44ad; margin-bottom:4px;"><strong>G1</strong> Feedback drafting<br><span style="color:#7f8c8d; font-size:0.75em;">AI drafts comments; examiner determines final feedback &amp; grades</span></div>
+      <div class="box" style="padding:6px 8px; font-size:0.75em; border-left:3px solid #8e44ad; margin-bottom:4px;"><strong>G2</strong> Rubric-based support<br><span style="color:#7f8c8d; font-size:0.75em;">AI proposes rubric alignment; examiner reviews &amp; confirms</span></div>
+      <div class="box" style="padding:6px 8px; font-size:0.75em; border-left:3px solid #8e44ad;"><strong>G3</strong> Highly automated (exceptional)<br><span style="color:#7f8c8d; font-size:0.75em;">Examiner retains final judgement; low-stakes contexts only</span></div>
+    </div>
+  </div>
+</section>
+
+<!-- COURSE-SPECIFIC TIER MATRIX -->
+<section>
+  <h2>ML4PhA 2026 &mdash; GenAI Tier Matrix</h2>
+  <p style="font-size:0.75em; color:#7f8c8d; margin-bottom:8px;">How GenAI tiers apply to each course component. (See Canvas for the definitive version.)</p>
+  <table style="width:100%; border-collapse:collapse; font-size:0.78em; text-align:center;">
+    <thead>
+      <tr style="background:#2c3e50; color:#fff;">
+        <th style="padding:8px; text-align:left;">Component</th>
+        <th style="padding:8px;">T-tier<br><span style="font-weight:400; font-size:0.75em;">(student use)</span></th>
+        <th style="padding:8px;">S-tier<br><span style="font-weight:400; font-size:0.75em;">(AI skills)</span></th>
+        <th style="padding:8px;">M-tier<br><span style="font-weight:400; font-size:0.75em;">(materials)</span></th>
+        <th style="padding:8px;">G-tier<br><span style="font-weight:400; font-size:0.75em;">(grading)</span></th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr style="background:#f9f9f9;">
+        <td style="padding:7px; text-align:left;">Learning &amp; self-study</td>
+        <td style="padding:7px;"><strong>T2</strong></td>
+        <td style="padding:7px;">S2</td>
+        <td style="padding:7px;">M2</td>
+        <td style="padding:7px;">--</td>
+      </tr>
+      <tr>
+        <td style="padding:7px; text-align:left;">Exercise problem sets</td>
+        <td style="padding:7px;"><strong>T2</strong></td>
+        <td style="padding:7px;">S2</td>
+        <td style="padding:7px;">M2</td>
+        <td style="padding:7px;">--</td>
+      </tr>
+      <tr style="background:#f9f9f9;">
+        <td style="padding:7px; text-align:left;">Collected problem sets</td>
+        <td style="padding:7px;"><strong>T0</strong></td>
+        <td style="padding:7px;">S0</td>
+        <td style="padding:7px;">M2</td>
+        <td style="padding:7px;">G0</td>
+      </tr>
+      <tr>
+        <td style="padding:7px; text-align:left;">Written exam</td>
+        <td style="padding:7px;"><strong>T0</strong></td>
+        <td style="padding:7px;">S0</td>
+        <td style="padding:7px;">M2</td>
+        <td style="padding:7px;">G0</td>
+      </tr>
+      <tr style="background:#f9f9f9;">
+        <td style="padding:7px; text-align:left;">Projects</td>
+        <td style="padding:7px;"><strong>T2</strong></td>
+        <td style="padding:7px;">S2</td>
+        <td style="padding:7px;">M1</td>
+        <td style="padding:7px;">G0</td>
+      </tr>
+    </tbody>
+  </table>
+</section>
+
+<!-- SECTION DIVIDER: ACCOUNTABILITY -->
+<section>
+  <div style="display:flex; align-items:center; justify-content:center; height:100%;">
+    <div style="text-align:center;">
+      <h1 style="font-size:2.2em; margin-bottom:0.2em;">Accountable Usage of GenAI</h1>
+      <div style="width:120px; height:4px; background: linear-gradient(90deg, #2980b9, #e74c3c); margin:0 auto; border-radius:2px;"></div>
+      <p style="font-size:0.9em; color:#7f8c8d; margin-top:0.8em;">Your work, your responsibility</p>
+    </div>
+  </div>
+</section>
+
+<!-- ACCOUNTABILITY + COURSE POLICY (MERGED) -->
+<section>
+  <h2>Accountability: Does Your Work Hold Up?</h2>
+  <div class="box" style="text-align:center; font-size:1.1em; padding:16px; margin-top:8px; border:3px solid #2c3e50;">
+    <strong>The blackboard test:</strong> Could you defend this at the blackboard if someone challenged you?
+  </div>
+  <div style="display:flex; gap:14px; margin-top:12px;">
+    <div style="flex:1;">
+      <p style="margin-bottom:6px;"><strong>Being accountable means:</strong></p>
+      <div style="display:flex; gap:10px;">
+        <div class="box" style="flex:1; text-align:center;">
+          <strong style="color:#2980b9;">What</strong><br>
+          <span style="font-size:0.88em;">You can explain what it does and how it works</span>
+        </div>
+        <div class="box" style="flex:1; text-align:center;">
+          <strong style="color:#27ae60;">Why</strong><br>
+          <span style="font-size:0.88em;">You can defend choices and outline alternatives</span>
+        </div>
+        <div class="box" style="flex:1; text-align:center;">
+          <strong style="color:#e67e22;">Validation</strong><br>
+          <span style="font-size:0.88em;">You tested it and can explain why I should trust your result</span>
+        </div>
+        <div class="box" style="flex:1; text-align:center;">
+          <strong style="color:#8e44ad;">Limits</strong><br>
+          <span style="font-size:0.88em;">You know what you did not check and why you accept it</span>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="box fragment" style="margin-top:10px; border:3px solid #2980b9; padding:12px; text-align:center;">
+    <strong style="color:#2980b9;">Transparency:</strong>
+    State which tools you used, how you used them, and which parts of your work are AI-assisted.
+    <span style="font-size:0.85em; color:#e74c3c;"><br>Unreported use may constitute <strong>fraud</strong> under the UvA OER.</span>
+  </div>
+  <p style="font-size:0.65em; color:#7f8c8d; margin-top:8px;">
+    See also:
+    <a href="https://unesdoc.unesco.org/ark:/48223/pf0000386693" style="color:#3498db;">UNESCO Guidance for GenAI in Education</a> &bull;
+    <a href="https://shorensteincenter.org/resource/clear-documentation-framework-ai-transparency-recommendations-practitioners-context-policymakers/" style="color:#3498db;">CLeAR Documentation Framework (Harvard)</a> &bull;
+    <a href="https://www.uva.nl/en/about-the-uva/policy-and-regulations/education/policy-framework-and-guidelines-on-genai-in-education.html" style="color:#3498db;">UvA GenAI Policy Framework</a>
+  </p>
+</section>
+
+<!-- DISCUSSION: 1-2-4-ALL -->
+<section>
+  <h2>Your Concerns About GenAI</h2>
+  <div class="box" style="text-align:center; font-size:1.1em; padding:14px; margin-top:8px; border:3px solid #2980b9;">
+    <em>What concerns do you have about using GenAI in your studies and future career?</em>
+  </div>
+  <div style="display:flex; gap:12px; margin-top:14px;">
+    <div class="box fragment" style="flex:1; text-align:center; border-top:3px solid #2980b9; padding:12px;">
+      <strong style="color:#2980b9; font-size:1.1em;">1 min</strong><br>
+      <strong>Solo</strong><br>
+      <span style="font-size:0.88em;">Write down your top concern silently</span>
+    </div>
+    <div class="box fragment" style="flex:1; text-align:center; border-top:3px solid #27ae60; padding:12px;">
+      <strong style="color:#27ae60; font-size:1.1em;">2 min</strong><br>
+      <strong>Pairs</strong><br>
+      <span style="font-size:0.88em;">Share with your neighbour, find common ground</span>
+    </div>
+    <div class="box fragment" style="flex:1; text-align:center; border-top:3px solid #e67e22; padding:12px;">
+      <strong style="color:#e67e22; font-size:1.1em;">4 min</strong><br>
+      <strong>Fours</strong><br>
+      <span style="font-size:0.88em;">Merge pairs, identify your top 2 concerns</span>
+    </div>
+    <div class="box fragment" style="flex:1; text-align:center; border-top:3px solid #8e44ad; padding:12px;">
+      <strong style="color:#8e44ad; font-size:1.1em;">5 min</strong><br>
+      <strong>Plenary</strong><br>
+      <span style="font-size:0.88em;">One concern per group, no repeats &mdash; hands up if yours wasn't covered</span>
+    </div>
+  </div>
+  <p class="fragment" style="margin-top:14px; text-align:center; font-size:0.9em; color:#7f8c8d;">
+    We'll revisit these concerns throughout the course (lecture 8?).
+  </p>
+</section>
+
+<!-- ============================================================ -->
+<!-- PART 5: WRAP-UP                                              -->
+<!-- ============================================================ -->
+
+<!-- LOOKING AHEAD -->
+<section>
+  <h2>Looking Ahead</h2>
+  <div class="box" style="margin-top:14px; padding:16px;">
+    <p style="font-size:1.05em;">
+      Today we treated the AI as a <strong style="color:#2980b9;">box</strong> &mdash; we know what goes in and what comes out,
+      and we've developed intuition for when to trust it.
+    </p>
+  </div>
+  <div style="display:flex; gap:14px; margin-top:14px;">
+    <div class="box" style="flex:1; text-align:center;">
+      <strong style="color:#7f8c8d;">Lectures 1&ndash;2</strong><br>
+      The <strong>language</strong>: likelihood, prior, posterior, overfitting<br>
+      + how to <strong>use</strong> AI tools effectively
+    </div>
+    <div class="box" style="flex:1; text-align:center;">
+      <strong style="color:#2980b9;">Lectures 3&ndash;6</strong><br>
+      <strong>Opening the box</strong>: neural networks, training, optimisation, architectures
+    </div>
+    <div class="box" style="flex:1; text-align:center;">
+      <strong style="color:#e74c3c;">Last lecture</strong><br>
+      <strong>The box revealed</strong>: transformers, attention, tokenisation &mdash;
+      and suddenly the failure modes from today have <em>explanations</em>
+    </div>
+  </div>
+  <p class="fragment" style="margin-top:16px; text-align:center; font-size:1.1em; font-weight:600; color:#2c3e50;">
+    This course is about what's inside the box.
+  </p>
+</section>
+
+<!-- KEY TAKEAWAYS -->
+<section>
+  <h2>Key Takeaways</h2>
+  <ul style="font-size:0.95em; line-height:1.8;">
+    <li class="fragment">An LLM <strong>predicts the next token</strong>. Fluent, not necessarily correct.</li>
+    <li class="fragment">Thinking, tools, and agents add <strong>capabilities on top</strong> &mdash; but you are <strong>accountable</strong> for the output.</li>
+    <li class="fragment">Use it as a <strong>Socratic tutor</strong> and <strong>sparring partner</strong>, not an oracle.</li>
+    <li class="fragment">Factual claims follow the <strong>Wikipedia standard</strong>: useful for orientation, never a primary source.</li>
+    <li class="fragment">If you can't explain it without the AI, <strong>you didn't learn it</strong>.</li>
+  </ul>
+</section>
+
+
+
+</div>
+</div>
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js-plugins@latest/chalkboard/style.css">
+<script src="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reveal.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/reveal.js-plugins@latest/chalkboard/plugin.js"></script>
+<script>
+// Background animation removed for performance
+
+Reveal.initialize({
+  hash: true,
+  center: false,
+  transition: 'fade',
+  slideNumber: true,
+  width: 1214,
+  height: 700,
+  margin: 0.04,
+  minScale: 0.2,
+  maxScale: 2.0,
+  plugins: [ RevealChalkboard ]
+});
+
+// ── GenAI disclaimer: all JS-driven ──
+(function() {
+  var letters = [
+    document.getElementById('letterY'),
+    document.getElementById('letterE'),
+    document.getElementById('letterS')
+  ];
+  var question = document.getElementById('yesSlideQ');
+  var confettiCanvas = document.getElementById('confetti-canvas');
+  var yesSlide = document.getElementById('yesSlide');
+  if (!yesSlide) return;
+
+  var gradColors = [
+    [231,76,60], [230,126,34], [241,196,15],
+    [39,174,96], [41,128,185], [142,68,173]
+  ];
+  var animId = null;
+  var t0 = 0;
+
+  function lerp(a, b, t) { return a + (b - a) * t; }
+
+  // Spring-like bounce: overshoots then settles
+  function bounce(t) {
+    if (t < 0) return 0;
+    if (t > 1) t = 1;
+    // damped spring
+    return 1 - Math.exp(-6 * t) * Math.cos(8 * t);
+  }
+
+  function gradientBg(t, offset) {
+    var i = ((t * 0.3 + offset) % 1) * gradColors.length;
+    var a = gradColors[Math.floor(i) % gradColors.length];
+    var b = gradColors[Math.ceil(i) % gradColors.length];
+    var f = i - Math.floor(i);
+    var r = Math.round(lerp(a[0], b[0], f));
+    var g = Math.round(lerp(a[1], b[1], f));
+    var bl = Math.round(lerp(a[2], b[2], f));
+    var r2 = Math.round(lerp(b[0], a[0], f));
+    var g2 = Math.round(lerp(b[1], a[1], f));
+    var bl2 = Math.round(lerp(b[2], a[2], f));
+    return 'linear-gradient(135deg, rgb('+r+','+g+','+bl+'), rgb('+r2+','+g2+','+bl2+'))';
+  }
+
+  // Physics state for each letter
+  var phys = [
+    { x: 0, y: 0, vx: 0, vy: 0, rot: -240, vr: 0, scale: 0, opacity: 0, entered: false },
+    { x: 0, y: 0, vx: 0, vy: 0, rot: -240, vr: 0, scale: 0, opacity: 0, entered: false },
+    { x: 0, y: 0, vx: 0, vy: 0, rot: -240, vr: 0, scale: 0, opacity: 0, entered: false }
+  ];
+  var LETTER_W = 140, LETTER_H = 160; // approximate bounding box
+  var GRAVITY = 300; // px/s^2
+  var BOUNCE_DAMP = 1.0;
+  var confettiFired = false;
+
+  function getContainerSize() {
+    var c = letters[0].parentElement;
+    return { w: c.offsetWidth, h: c.offsetHeight };
+  }
+
+  function reset() {
+    if (animId) { cancelAnimationFrame(animId); animId = null; }
+    letters.forEach(function(el, i) {
+      el.style.opacity = '0';
+      el.style.transform = '';
+      el.style.left = '0px';
+      el.style.top = '0px';
+      el.style.background = '';
+    });
+    phys.forEach(function(p) {
+      p.x = 0; p.y = 0; p.vx = 0; p.vy = 0;
+      p.rot = -240; p.vr = 0; p.scale = 0; p.opacity = 0; p.entered = false;
+    });
+    // Start centered vertically (matching the hook slide position)
+    question.style.transform = 'translateY(200px) scale(1)';
+    question.style.opacity = '1';
+    question.style.fontSize = '1.4em';
+    confettiFired = false;
+    var ctx = confettiCanvas.getContext('2d');
+    confettiCanvas.width = confettiCanvas.parentElement.offsetWidth;
+    confettiCanvas.height = confettiCanvas.parentElement.offsetHeight;
+    ctx.clearRect(0, 0, confettiCanvas.width, confettiCanvas.height);
+  }
+
+  function launchConfetti() {
+    var W = confettiCanvas.width = confettiCanvas.parentElement.offsetWidth;
+    var H = confettiCanvas.height = confettiCanvas.parentElement.offsetHeight;
+    var ctx = confettiCanvas.getContext('2d');
+    var cols = ['#e74c3c','#e67e22','#f1c40f','#27ae60','#2980b9','#8e44ad','#1abc9c'];
+    var pieces = [];
+    for (var i = 0; i < 120; i++) {
+      pieces.push({
+        x: W/2, y: H/2,
+        vx: (Math.random()-0.5)*16, vy: (Math.random()-0.5)*14 - 4,
+        w: Math.random()*8+4, h: Math.random()*6+2,
+        color: cols[Math.floor(Math.random()*cols.length)],
+        rot: Math.random()*Math.PI*2, rv: (Math.random()-0.5)*0.3, life: 1
+      });
+    }
+    (function frame() {
+      ctx.clearRect(0,0,W,H);
+      var alive = false;
+      pieces.forEach(function(p) {
+        if (p.life <= 0) return;
+        alive = true;
+        p.x += p.vx; p.y += p.vy; p.vy += 0.25;
+        p.rot += p.rv; p.life -= 0.012;
+        ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(p.rot);
+        ctx.globalAlpha = Math.max(0, p.life); ctx.fillStyle = p.color;
+        ctx.fillRect(-p.w/2, -p.h/2, p.w, p.h); ctx.restore();
+      });
+      if (alive) requestAnimationFrame(frame);
+      else ctx.clearRect(0,0,W,H);
+    })();
+  }
+
+  function animate(timestamp) {
+    if (!t0) t0 = timestamp;
+    var elapsed = (timestamp - t0) / 1000;
+    var dt = Math.min(elapsed - (animate._lastT || 0), 0.05); // cap dt
+    animate._lastT = elapsed;
+    var size = getContainerSize();
+
+    // Phase 1: question smoothly moves from centered to top
+    var qProgress = Math.min(elapsed / 1.0, 1);
+    var qEase = bounce(qProgress);
+    var qY = lerp(200, 0, qEase);
+    var qScale = lerp(1.0, 0.79, qEase); // 1.4em * 0.79 ≈ 1.1em
+    question.style.transform = 'translateY(' + qY + 'px) scale(' + qScale + ')';
+
+    // Phase 2: letters enter then become physical
+    letters.forEach(function(el, i) {
+      var p = phys[i];
+      var lt = elapsed - 0.5 - i * 0.15; // staggered start
+
+      if (lt < 0) return;
+
+      // Entry phase: spring in over 0.8s
+      if (!p.entered) {
+        var entryProgress = Math.min(lt / 0.8, 1);
+        var b = bounce(entryProgress);
+        p.opacity = Math.min(lt / 0.2, 1);
+        p.scale = b;
+        p.rot = lerp(-240, 0, b);
+        // Center position during entry
+        p.x = (size.w - LETTER_W) / 2 + (i - 1) * (LETTER_W + 10);
+        p.y = (size.h - LETTER_H) / 2;
+
+        if (entryProgress >= 1) {
+          p.entered = true;
+          // Give each letter a random kick
+          p.vx = (Math.random() - 0.5) * 250 + (i - 1) * 100;
+          p.vy = -200 - Math.random() * 150;
+          p.vr = (Math.random() - 0.5) * 300;
+          p.scale = 1;
+        }
+      }
+
+      // Physics phase: gravity + wall bouncing
+      if (p.entered) {
+        p.vy += GRAVITY * dt;
+        p.x += p.vx * dt;
+        p.y += p.vy * dt;
+        p.rot += p.vr * dt;
+
+        // Bounce off walls
+        if (p.x < 0) { p.x = 0; p.vx = Math.abs(p.vx); p.vr *= -1; }
+        if (p.x > size.w - LETTER_W) { p.x = size.w - LETTER_W; p.vx = -Math.abs(p.vx); p.vr *= -1; }
+        // Bounce off floor
+        if (p.y > size.h - LETTER_H) {
+          p.y = size.h - LETTER_H;
+          p.vy = -Math.abs(p.vy);
+        }
+        // Bounce off ceiling
+        if (p.y < 0) { p.y = 0; p.vy = Math.abs(p.vy); }
+
+        p.opacity = 1;
+      }
+
+      // Render
+      el.style.opacity = p.opacity;
+      el.style.left = p.x + 'px';
+      el.style.top = p.y + 'px';
+      el.style.transform = 'scale(' + p.scale + ') rotate(' + p.rot + 'deg)';
+      el.style.background = gradientBg(elapsed, i * 0.33);
+      el.style.webkitBackgroundClip = 'text';
+      el.style.backgroundClip = 'text';
+    });
+
+    // Confetti when all letters have entered
+    if (!confettiFired && phys[2].entered) {
+      confettiFired = true;
+      launchConfetti();
+    }
+
+    animId = requestAnimationFrame(animate);
+  }
+
+  function start() {
+    reset();
+    t0 = 0;
+    animate._lastT = 0;
+    animId = requestAnimationFrame(animate);
+  }
+
+  // Find YES slide index
+  var slides = document.querySelectorAll('.reveal .slides > section');
+  var yesIdx = -1;
+  slides.forEach(function(s, i) { if (s === yesSlide) yesIdx = i; });
+
+  Reveal.on('slidechanged', function(event) {
+    if (event.indexh === yesIdx) {
+      start();
+    } else {
+      reset();
+    }
+  });
+  // If we load directly on the YES slide
+  if (Reveal.getIndices().h === yesIdx) start();
+})();
+
+// Add footer to all slides
+document.querySelectorAll('.reveal .slides > section').forEach(function(slide) {
+  const footer = document.createElement('div');
+  footer.className = 'slide-footer';
+  footer.innerHTML = '<a href="index.html" style="color:#bdc3c7; text-decoration:none; pointer-events:auto;">&larr; Index</a><span>ML4PhA 2026 &mdash; Lecture 2</span><span>Christoph Weniger &mdash; GRAPPA / UvA</span>';
+  slide.appendChild(footer);
+});
+</script>
+</body>
+</html>
