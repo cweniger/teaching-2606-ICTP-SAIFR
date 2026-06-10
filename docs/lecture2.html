@@ -138,34 +138,37 @@
   </p>
 </section>
 
-<!-- A1 -->
+<!-- A0b — the simplest possible model: q = N(μ_θ(x), σ_θ²) -->
 <section>
-  <h2>What \(\chi^2\)-fitting really is</h2>
-  <p>You already know the procedure: pick a model \(\mu(x;\mathbf{w})\), define
-    \(\;\chi^2(\mathbf{w}) = \sum_n (t_n - \mu(x_n;\mathbf{w}))^2/\sigma^2\), and minimise. What is rarely spelt out: this <em>is</em> a probabilistic statement.</p>
-  <div class="box">
-    <p>Assume Gaussian noise \(t_n = \mu(x_n;\mathbf{w})+\varepsilon\), \(\varepsilon\sim\mathcal{N}(0,\sigma^2)\). The log-likelihood is</p>
-    \[ \ln p(\mathbf{t}\mid\mathbf{w},\sigma) = \text{const} \;-\; \frac{1}{2\sigma^2}\,\chi^2(\mathbf{w}) \]
-    <p>So \(\chi^2 = -2\ln L + \text{const}\), and "minimise \(\chi^2\)" is just <strong>maximum likelihood</strong> (MLE).</p>
+  <h2>The simplest model for \(q(\theta\mid x)\)</h2>
+  <div style="display:flex; gap:14px;">
+    <div style="flex:0 0 38%; text-align:left;">
+      <p>Fit a curve \(\mu_\theta(x)\) through the cloud and assume the slice at every \(x\) is Gaussian with the same width \(\sigma_\theta\).</p>
+      <div class="box" style="text-align:center; margin:8px 0;">
+        \[ q_\phi(\theta\mid x) \;=\; \mathcal{N}\!\bigl(\theta\,\big|\,\mu_\theta(x),\,\sigma_\theta^{2}\bigr) \]
+      </div>
+      <p>Trainable parameters \(\phi = (\mathbf{w}, \sigma_\theta)\): the curve and the band width.</p>
+      <p style="font-size:0.9em; color:#7f8c8d;">Black line: \(\mu_\theta(x)\). Shaded: \(\mu_\theta(x) \pm 2\sigma_\theta\).</p>
+    </div>
+    <div style="flex:1 1 0; min-width:0; overflow:hidden;">
+      <div id="gband-plot" style="width:100%; max-width:100%; height:400px;"></div>
+    </div>
   </div>
-  <p class="fragment" style="text-align:center; font-size:1.05em; margin-top:8px;">
-    Every \(\chi^2\) fit is a hidden density model. Let us make it visible.
-  </p>
 </section>
 
-<!-- A2 -->
+<!-- A2 — template functions & fitting parameters -->
 <section>
   <h2>The linear-basis picture</h2>
-  <p>The classical \(\chi^2\) workflow uses a <strong>linear combination of basis functions</strong>:</p>
-  <div class="box" style="text-align:center;">
-    \[ \mu(x;\mathbf{w}) \;=\; \sum_{j=0}^{M-1} w_j\,\phi_j(x) \;=\; \mathbf{w}^T\boldsymbol{\phi}(x) \]
+  <p>Pick <strong>basis functions</strong> \(\phi_j(x)\) that encode plausible functional behaviour. Combine \(M\) of them with free parameters:</p>
+  <div class="box" style="text-align:center; font-size:1.05em;">
+    \[ \mu_\theta(x; \mathbf{w}) \;=\; \sum_{j=0}^{M-1} w_j\,\phi_j(x) \;=\; \mathbf{w}^T\boldsymbol{\phi}(x), \qquad \mathbf{w} \in \mathbb{R}^M \]
   </div>
-  <ul>
-    <li>\(\{\phi_j\}\) &mdash; chosen templates: polynomials \(x^j\), Gaussian RBFs, sigmoids, Fourier modes...</li>
-    <li>\(\mathbf{w}\) &mdash; weights, the only thing MLE solves for.</li>
-    <li>"Linear" refers to <strong>linearity in \(\mathbf{w}\)</strong>, not in \(x\). The basis itself can be very nonlinear.</li>
+  <ul style="font-size:0.95em; margin-top:6px;">
+    <li class="fragment"><strong>Basis functions</strong> \(\phi_j(x)\) &mdash; fixed templates capturing expected shapes</li>
+    <li class="fragment"><strong>Weight vector</strong> \(\mathbf{w} = (w_0, \ldots, w_{M-1})^T\) &mdash; \(M\) free parameters, fitted to data</li>
+    <li class="fragment">"Linear" refers to linearity in \(\mathbf{w}\), not in \(x\) &mdash; the templates themselves can be nonlinear</li>
   </ul>
-  <p style="margin-top:14px; font-size:1.0em;">
+  <p class="fragment" style="margin-top:14px; font-size:1.0em;">
     The modelling decision is the choice of \(\boldsymbol{\phi}\). Everything that follows in this lecture is one continuous attack on that choice.
   </p>
 </section>
@@ -191,41 +194,70 @@
   <div id="basis-plot" style="width:100%; height:340px; margin-top:10px;"></div>
 </section>
 
-<!-- A3 — the role-swap (NEW slide, the conceptual core) -->
+<!-- A2c — sampling realisations from a random linear model -->
 <section>
-  <h2>The role-swap &mdash; the most important slide of the lecture</h2>
-  <div style="display:flex; gap:14px; margin-top:6px;">
-    <div class="box box-blue" style="flex:1;">
-      <strong>Old view (point estimate)</strong>
-      <p style="margin:6px 0;">Given \(x\), output a single best guess of \(\theta\).</p>
-      \[ x \;\longrightarrow\; \hat\theta(x) \]
-    </div>
-    <div class="box box-orange" style="flex:1;">
-      <strong>New view (conditional density)</strong>
-      <p style="margin:6px 0;">Given \(x\), output a whole distribution over \(\theta\).</p>
-      \[ x \;\longrightarrow\; q(\theta\mid x) \]
-    </div>
+  <h2>Sampling random linear model realisations</h2>
+  <p>Pick random weights \(\mathbf{w}\); they define a function \(\mu_\theta(x) = \mathbf{w}^T\boldsymbol{\phi}(x)\). Observe noisy samples \(\theta_n = \mu_\theta(x_n) + \varepsilon\), \(\varepsilon \sim \mathcal{N}(0, \sigma_\theta^{2})\).</p>
+  <div class="ctrl-row" style="margin-top:4px;">
+    <label>Basis
+      <select id="dgp2-basis" style="padding:3px 8px; font-size:1em;">
+        <option value="polynomial" selected>Polynomial</option>
+        <option value="gaussian">Gaussian</option>
+        <option value="sigmoidal">Sigmoidal</option>
+      </select>
+    </label>
+    <label>\(M\) = <span id="dgp2-m-val">5</span>
+      <input type="range" id="dgp2-m-slider" min="2" max="10" step="1" value="5" style="width:100px;"></label>
+    <label>\(N\) = <span id="dgp2-n-val">20</span>
+      <input type="range" id="dgp2-n-slider" min="3" max="80" step="1" value="20" style="width:100px;"></label>
+    <label>\(\sigma_\theta\) = <span id="dgp2-noise-val">0.30</span>
+      <input type="range" id="dgp2-noise-slider" min="0.05" max="1.5" step="0.05" value="0.30" style="width:100px;"></label>
+    <button id="dgp2-resample-btn">&#x21bb; Resample</button>
   </div>
-  <div id="roleswap-plot" style="width:100%; height:240px; margin-top:8px;"></div>
-  <p style="text-align:center; font-size:0.8em; color:#7f8c8d; margin-top:2px;">
-    Same data, two readings: regression curve and Gaussian band \(\mathcal{N}(\mu(x),\sigma^2)\) &mdash; the density we have implicitly been fitting all along.
+  <div id="dgp2-plot" style="width:100%; height:340px; margin-top:8px;"></div>
+  <p style="text-align:center; font-size:0.85em; color:#7f8c8d; margin-top:4px;">
+    Black: true curve \(\mu_\theta(x)\). Red points: noisy samples \(\theta_n\). Given only the points, can you recover the black curve?
   </p>
 </section>
 
-<!-- A4 -->
+<!-- A3 — from likelihood to loss function -->
 <section>
-  <h2>Closed-form MLE, and where \(\sigma^2\) hides</h2>
-  <div class="box" style="text-align:center;">
-    With design matrix \(\boldsymbol\Phi_{nj} = \phi_j(x_n)\),
-    \[ \mathbf{w}_{\mathrm{ML}} = (\boldsymbol\Phi^T\boldsymbol\Phi)^{-1}\boldsymbol\Phi^T\mathbf{t}, \qquad
-       \sigma^2_{\mathrm{ML}} = \frac{1}{N}\sum_{n}\bigl(t_n - \mathbf{w}_{\mathrm{ML}}^T\boldsymbol{\phi}(x_n)\bigr)^2 \]
+  <h2>From model likelihood to loss function</h2>
+  <p>With independent Gaussian noise, the joint likelihood factorises:</p>
+  <div class="box">
+    \[ p(\boldsymbol\theta \mid \mathbf{w}, \sigma_\theta) \;=\; \prod_{n=1}^{N} \mathcal{N}\!\bigl(\theta_n \,\big|\, \mu_\theta(x_n;\mathbf{w}),\, \sigma_\theta^{2}\bigr) \]
+    <p class="fragment" style="margin:6px 0 0;">Take the log and write the constant explicitly in terms of \(N\) and \(\sigma_\theta\):</p>
+    <div class="fragment">
+    \[ \ln p(\boldsymbol\theta \mid \mathbf{w}, \sigma_\theta) \;=\; -\frac{N}{2}\ln\!\bigl(2\pi\sigma_\theta^{2}\bigr) \;-\; \frac{1}{2\sigma_\theta^{2}}\sum_{n=1}^{N}\bigl(\theta_n - \mu_\theta(x_n;\mathbf{w})\bigr)^{2} \]
+    </div>
   </div>
-  <ul>
-    <li>Convex problem. One global minimum. No optimiser, no learning rate.</li>
-    <li>The residuals <em>define</em> \(\sigma^2\) for us &mdash; we did not have to specify it.</li>
-    <li class="fragment"><strong>But \(\sigma^2\) here is a single number, the same everywhere</strong>. The Gaussian band has constant width across \(x\).</li>
-    <li class="fragment">This is the first thing we will break in Block D: real noise depends on \(x\).</li>
-  </ul>
+  <p class="fragment" style="margin-top:8px;">Negate to turn maximising the likelihood into minimising a loss:</p>
+  <div class="box fragment" style="text-align:center;">
+    \[ E(\mathbf{w}, \sigma_\theta) \;=\; \frac{N}{2}\ln\!\bigl(2\pi\sigma_\theta^{2}\bigr) \;+\; \frac{1}{2\sigma_\theta^{2}}\sum_{n=1}^{N}\bigl(\theta_n - \mu_\theta(x_n;\mathbf{w})\bigr)^{2} \]
+  </div>
+</section>
+
+<!-- A4 — closed-form MLE for w and σ_θ -->
+<section>
+  <h2>Solving for the weights and the variance</h2>
+  <p>Split the loss into a \(\sigma_\theta\)-independent shape \(S(\mathbf{w})\) and a \(\sigma_\theta\)-only piece:</p>
+  <div class="box" style="text-align:center;">
+    \[ E(\mathbf{w}, \sigma_\theta) \;=\; \frac{N}{2}\ln\!\bigl(2\pi\sigma_\theta^{2}\bigr) \;+\; \frac{S(\mathbf{w})}{2\sigma_\theta^{2}}, \qquad
+       S(\mathbf{w}) = \sum_{n}\bigl(\theta_n - \mathbf{w}^T\boldsymbol{\phi}(x_n)\bigr)^{2} \]
+  </div>
+  <p class="fragment" style="margin-top:6px;"><strong>Step 1 &mdash; weights.</strong> The \(\sigma_\theta\) prefactor is positive, so minimising \(E\) in \(\mathbf{w}\) is the same as minimising \(S(\mathbf{w})\). Set \(\nabla_\mathbf{w} S = 0\); with the design matrix \(\boldsymbol\Phi_{nj} = \phi_j(x_n)\),</p>
+  <div class="box fragment" style="text-align:center;">
+    \[ \mathbf{w}_{\mathrm{ML}} \;=\; (\boldsymbol\Phi^T\boldsymbol\Phi)^{-1}\boldsymbol\Phi^T\boldsymbol\theta \]
+  </div>
+  <p class="fragment" style="margin-top:6px;"><strong>Step 2 &mdash; variance.</strong> Plug \(\mathbf{w}_{\mathrm{ML}}\) back and set \(\partial E/\partial\sigma_\theta = 0\):</p>
+  <div class="box fragment" style="text-align:center;">
+    \[ \frac{N}{\sigma_\theta} \;-\; \frac{S(\mathbf{w}_{\mathrm{ML}})}{\sigma_\theta^{3}} \;=\; 0
+       \quad\Longrightarrow\quad
+       \sigma_\theta^{2} \;=\; \frac{1}{N}\sum_{n}\bigl(\theta_n - \mu_\theta(x_n;\mathbf{w}_{\mathrm{ML}})\bigr)^{2} \]
+  </div>
+  <p class="fragment" style="font-size:0.85em; color:#7f8c8d; margin-top:6px;">
+    The MLE divides by \(N\). The unbiased estimator divides by \(N-M\) (Bessel-style correction for the \(M\) fitted weights); the two agree as \(N \to \infty\).
+  </p>
 </section>
 
 <!-- A5 — worked example interactive -->
@@ -965,30 +997,113 @@ function baseLayout(opts={}) {
 })();
 
 // ============================================================
-// Slide A3 — role-swap visual
+// Slide A0b — Static fit: μ_θ(x) + ±2σ_θ band on the joint cloud
 // ============================================================
 (function(){
-  var rng = createRNG(7);
-  const xs=[], ts=[];
-  for (let i=0;i<30;i++){ const x=-2+4*rng(); const t = 0.6*x + 0.5*Math.sin(2*x) + 0.35*gaussN(rng); xs.push(x); ts.push(t); }
-  const w = fitPoly(xs, ts, 5);
-  const xLine=[]; for (let x=-2.2; x<=2.2; x+=0.03) xLine.push(x);
+  const rng = createRNG(23);
+  const N = 1200;
+  const xs = new Array(N), ths = new Array(N);
+  for (let i = 0; i < N; i++) {
+    const th = -2 + 4*rng();
+    const x  = 0.55*th + 0.35*Math.sin(2*th) + 0.25*gaussN(rng);
+    ths[i] = th; xs[i] = x;
+  }
+  // Fit μ_θ(x): degree-5 polynomial in x predicting θ.
+  const w = fitPoly(xs, ths, 6);
+  let ss = 0;
+  for (let i = 0; i < N; i++) { const r = ths[i] - polyEval(w, xs[i]); ss += r*r; }
+  const sigmaT = Math.sqrt(ss / N);
+  const xLine = []; for (let x = -2.0; x <= 2.0; x += 0.02) xLine.push(x);
   const muLine = xLine.map(x => polyEval(w, x));
-  let sumSq=0; for (let i=0;i<xs.length;i++){ const r = ts[i]-polyEval(w,xs[i]); sumSq+=r*r; }
-  const sigma = Math.sqrt(sumSq/xs.length);
+  const upper = muLine.map(v => v + 2*sigmaT);
+  const lower = muLine.map(v => v - 2*sigmaT);
   function draw(e){
-    if (!e.currentSlide.querySelector('#roleswap-plot')) return;
-    const upper = muLine.map(v=>v+2*sigma), lower = muLine.map(v=>v-2*sigma);
-    Plotly.react('roleswap-plot', [
-      { x:xs, y:ts, mode:'markers', name:'data', marker:{size:8, color:'#2c3e50'} },
-      { x:xLine, y:muLine, mode:'lines', name:'μ(x)', line:{width:3, color:'#e74c3c'} },
-      { x:xLine.concat(xLine.slice().reverse()),
-        y:upper.concat(lower.slice().reverse()),
-        fill:'toself', fillcolor:'rgba(231,76,60,0.18)', line:{width:0},
-        name:'q(θ|x) = N(μ(x), σ²)', hoverinfo:'skip' }
-    ], baseLayout({ xaxis:{title:'x'}, yaxis:{title:'θ'} }), {displayModeBar:false});
+    if (e && !e.currentSlide.querySelector('#gband-plot')) return;
+    Plotly.react('gband-plot', [
+      { x: xs, y: ths, mode:'markers', name:'simulator (θ, x)',
+        marker:{ size:3, color:'rgba(127,140,141,0.45)' } },
+      { x: xLine.concat(xLine.slice().reverse()),
+        y: upper.concat(lower.slice().reverse()),
+        fill:'toself', fillcolor:'rgba(44,62,80,0.18)', line:{width:0},
+        name:'μ_θ(x) ± 2σ_θ', hoverinfo:'skip' },
+      { x: xLine, y: muLine, mode:'lines', name:'μ_θ(x)',
+        line:{ color:'#2c3e50', width:3 } }
+    ], baseLayout({
+      autosize: true,
+      xaxis:{ title:'x', range:[-2.0, 2.0] },
+      yaxis:{ title:'θ', range:[-2.2, 2.2] },
+      legend:{ x:0.02, y:0.98, bgcolor:'rgba(255,255,255,0.6)' }
+    }), { displayModeBar:false, responsive:true });
+    Plotly.Plots.resize('gband-plot');
   }
   Reveal.on('slidechanged', draw); Reveal.on('ready', draw);
+})();
+
+// ============================================================
+// Slide A2c — Sampling random linear model realisations (dgp2)
+// ============================================================
+(function(){
+  const xFine = [];
+  for (let t = -1; t <= 1; t += 0.01) xFine.push(t);
+  let dgp2Seed = 555;
+  function basisFn2(type, j, M, x) {
+    if (type === 'polynomial') return Math.pow(x, j);
+    if (type === 'gaussian') {
+      const mu = -0.8 + 1.6 * j / (M - 1);
+      const s = 0.8 / M + 0.08;
+      return Math.exp(-0.5 * ((x - mu) / s) ** 2);
+    }
+    if (type === 'sigmoidal') {
+      const mu = -0.8 + 1.6 * j / (M - 1);
+      const s = 0.15;
+      return 1 / (1 + Math.exp(-(x - mu) / s));
+    }
+    return 0;
+  }
+  function evalSum(type, w, M, x) {
+    let s = 0;
+    for (let j = 0; j < M; j++) s += w[j] * basisFn2(type, j, M, x);
+    return s;
+  }
+  function update(resample) {
+    if (resample) dgp2Seed++;
+    const dgpRng = createRNG(dgp2Seed);
+    const M = parseInt(document.getElementById('dgp2-m-slider').value);
+    const N = parseInt(document.getElementById('dgp2-n-slider').value);
+    const sigma = parseFloat(document.getElementById('dgp2-noise-slider').value);
+    const type = document.getElementById('dgp2-basis').value;
+    document.getElementById('dgp2-m-val').textContent = M;
+    document.getElementById('dgp2-n-val').textContent = N;
+    document.getElementById('dgp2-noise-val').textContent = sigma.toFixed(2);
+    const w = [];
+    for (let j = 0; j < M; j++) w.push(2 * dgpRng() - 1);
+    const yTrue = xFine.map(x => evalSum(type, w, M, x));
+    const xData = [], yData = [];
+    for (let i = 0; i < N; i++) {
+      const xi = -1 + 2 * dgpRng();
+      xData.push(xi);
+      yData.push(evalSum(type, w, M, xi) + sigma * gaussN(dgpRng));
+    }
+    Plotly.react('dgp2-plot', [
+      { x: xFine, y: yTrue, mode:'lines', name:'true μ_θ(x)',
+        line:{ width:2.5, color:'#2c3e50' } },
+      { x: xData, y: yData, mode:'markers', name:'noisy θ_n',
+        marker:{ size:7, color:'#e74c3c', opacity:0.8 } }
+    ], baseLayout({
+      autosize:true,
+      xaxis:{ title:'x', range:[-1.1, 1.1] },
+      yaxis:{ title:'θ', range:[-4, 4] },
+      legend:{ x:0.02, y:0.98, bgcolor:'rgba(255,255,255,0.6)' }
+    }), { displayModeBar:false, responsive:true });
+    Plotly.Plots.resize('dgp2-plot');
+  }
+  document.getElementById('dgp2-resample-btn').addEventListener('click', () => update(true));
+  document.getElementById('dgp2-m-slider').addEventListener('input', () => update(false));
+  document.getElementById('dgp2-n-slider').addEventListener('input', () => update(false));
+  document.getElementById('dgp2-noise-slider').addEventListener('input', () => update(false));
+  document.getElementById('dgp2-basis').addEventListener('change', () => update(false));
+  function init(e) { if (e.currentSlide.querySelector('#dgp2-plot')) update(false); }
+  Reveal.on('slidechanged', init); Reveal.on('ready', init);
 })();
 
 // ============================================================
