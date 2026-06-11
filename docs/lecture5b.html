@@ -1,0 +1,977 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Lecture 5b: Rank-based diagnostics and failure modes</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reveal.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/theme/white.css">
+<link rel="stylesheet" href="lib/lecture.css">
+<style>
+  .tax-table { width:100%; border-collapse:collapse; font-size:0.95em; margin-top:8px; }
+  .tax-table th, .tax-table td { padding:8px 10px; border-bottom:1px solid #ecf0f1; text-align:left; vertical-align:top; }
+  .tax-table th { background:#f8f9fa; color:#2c3e50; font-weight:600; }
+  .tax-table td.type { font-weight:600; color:#2c3e50; white-space:nowrap; }
+  .tax-table tr.aleo td { color:#7f8c8d; font-style:italic; }
+  .quote { font-style:italic; color:#7f8c8d; font-size:0.95em; margin-top:6px; }
+</style>
+</head>
+<body data-lecture="5b">
+<div class="reveal">
+<div class="slides">
+
+<!-- ============================================================ -->
+<!-- 1. TITLE                                                     -->
+<!-- ============================================================ -->
+<section>
+  <h1 style="font-size:1.5em;">Machine Learning for Astroparticle Physics: <br> A Crash-course in SBI</h1>
+  <h3>Lecture 5b - Rank-based diagnostics and failure modes</h3>
+  <p class="subtitle">Christoph Weniger &mdash; University of Amsterdam (GRAPPA)</p>
+</section>
+
+<!-- ============================================================ -->
+<!-- 2. ROADMAP                                                   -->
+<!-- ============================================================ -->
+<section>
+  <h2>Today's Roadmap</h2>
+  <div class="box" style="margin-top:18px; text-align:center; font-size:1.0em;">
+    <strong>The question:</strong> our network spat out a posterior \(q_\phi(\theta\mid x)\). How do we know if it is right, and how can it fool us?
+  </div>
+  <div class="fragment" style="display:flex; gap:8px; margin-top:18px;">
+    <div class="box box-blue" style="flex:1; text-align:center;">
+      <strong style="color:#2980b9;">1</strong><br>
+      Rank Diagnostics<br>
+      <span style="font-size:0.85em;">Forward-backward consistency, SBC, HPDR coverage</span>
+    </div>
+    <div style="align-self:center; font-size:1.4em; color:#bdc3c7;">&rarr;</div>
+    <div class="box box-orange" style="flex:1; text-align:center;">
+      <strong style="color:#e67e22;">2</strong><br>
+      Failure Modes &amp; Generalization<br>
+      <span style="font-size:0.85em;">Where rank tests are blind, and the unifying framework</span>
+    </div>
+  </div>
+  <div class="box fragment" style="margin-top:18px; text-align:center; font-size:0.95em;">
+    <strong>The thread:</strong> rank tests turn one universal property, the uniformity of ranks, into a deck of complementary diagnostics. No single one is sufficient.
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<!-- 3. SETUP: TAXONOMY + FW-BW PRINCIPLE                         -->
+<!-- ============================================================ -->
+<section>
+  <h2>Where can our inference go wrong?</h2>
+  <p style="font-size:0.95em;">A taxonomy of <strong>epistemic uncertainties</strong> in SBI: three failure modes, each with its own diagnostic strategy.</p>
+  <table class="tax-table">
+    <thead>
+      <tr><th style="width:11%;">Category</th><th style="width:14%;">Type</th><th>Description</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td rowspan="3" style="font-weight:600; color:#2c3e50;">Epistemic</td>
+        <td class="type">Type A</td>
+        <td>Misspecified model<br><span class="quote">"I'm simulating the wrong world"</span></td>
+      </tr>
+      <tr>
+        <td class="type">Type B</td>
+        <td>Lossy summary<br><span class="quote">"I'm discarding relevant information"</span></td>
+      </tr>
+      <tr>
+        <td class="type">Type C</td>
+        <td>Inexact inference<br><span class="quote">"I can't compute the posterior exactly"</span></td>
+      </tr>
+      <tr class="aleo"><td>Aleatoric</td><td>&mdash;</td><td>Irreducible randomness in the data</td></tr>
+    </tbody>
+  </table>
+  <p class="fragment" style="margin-top:10px; font-size:0.9em; color:#7f8c8d;">
+    Today's diagnostics live in the <strong>forward&ndash;backward family</strong>: they test <strong>Type C</strong> well, can hint at <strong>Type B</strong> with the right ordering, and are <strong>blind to Type A</strong> by construction.
+  </p>
+</section>
+
+<!-- ============================================================ -->
+<!-- 4. SECTION DIVIDER 1                                         -->
+<!-- ============================================================ -->
+<section>
+  <div style="display:flex; align-items:center; justify-content:center; height:100%;">
+    <div style="text-align:center;">
+      <div style="width:200px; height:4px; background:linear-gradient(90deg,#2980b9,#e74c3c); margin:0 auto 25px;"></div>
+      <h1 style="font-size:2em; margin:0;">Rank Diagnostics</h1>
+      <p style="font-size:1.1em; color:#7f8c8d; margin-top:15px;">Letting the inference "walk on its own": forward vs backward, judged by ranks.</p>
+      <div style="width:200px; height:4px; background:linear-gradient(90deg,#2980b9,#e74c3c); margin:25px auto 0;"></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<!-- 5. SBC: RANK STATISTIC                                       -->
+<!-- ============================================================ -->
+<section>
+  <h2>The forward&ndash;backward consistency principle</h2>
+  <p>Compare two joint distributions on \((\theta, x)\):</p>
+  <div class="box" style="text-align:center; margin:10px auto; max-width:620px;">
+    \[ \underbrace{q_\phi(\theta\mid x)\,p(x)}_{\text{backward (inference)}} \;\;\overset{?}{=}\;\; \underbrace{p(x\mid\theta)\,p(\theta)}_{\text{forward (simulator)}} \]
+  </div>
+  <p>If \(q_\phi(\theta\mid x) = p(\theta\mid x)\), the two coincide. Any discrepancy flags inference error.</p>
+  <p class="fragment"><strong>Simulation-based calibration (SBC).</strong> Given an observation \(x\), draw one parameter from the true posterior, \(\theta^* \sim p(\theta\mid x)\), and \(L\) further draws from the learned posterior, \(\theta_{1:L} \sim q_\phi(\theta\mid x)\). By Bayes' theorem this is equivalent to:</p>
+  <div class="box" style="text-align:center; margin:8px auto; max-width:640px;">
+    \[ \theta^* \sim p(\theta),\quad x \sim p(x\mid\theta^*),\quad \theta_{1:L} \sim q_\phi(\theta\mid x) \]
+  </div>
+  <p class="fragment"><strong>Rank statistic:</strong> position of \(\theta^*\) among \(\theta_{1:L}\), i.e. \(F(\theta^*) = \tfrac{1}{L}\sum_i \mathbb{1}(\theta_i \le \theta^*)\). Under \(q_\phi = p\), all \(L+1\) positions are equally likely:</p>
+  <div class="box box-blue" style="text-align:center; margin:8px auto; max-width:520px;">
+    \[ F(\theta^*) \;\sim\; \text{Uniform}\bigl(\{0, \tfrac{1}{L}, \ldots, 1\}\bigr) \]
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<!-- 6. WHAT SBC ACTUALLY DOES (visual)                           -->
+<!-- ============================================================ -->
+<section>
+  <h2>What SBC actually does, in one picture</h2>
+  <div style="display:flex; gap:14px;">
+    <div style="flex:0 0 36%; text-align:left;">
+      <p>For each of \(N\) simulated experiments we get one rank between \(0\) and \(L\). Aggregate them into a histogram.</p>
+      <ol style="font-size:0.95em; margin-top:6px;">
+        <li>Draw \(\theta^*\) from the prior.</li>
+        <li>Run the simulator to get \(x\).</li>
+        <li>Draw \(L\) samples \(\theta_{1:L}\) from the learned posterior \(q_\phi(\theta\mid x)\).</li>
+        <li>Count how many of the \(\theta_i\) are below \(\theta^*\).</li>
+        <li>Repeat \(N\) times; histogram the ranks.</li>
+      </ol>
+      <p style="font-size:0.9em; color:#7f8c8d;">Under \(q_\phi=p\), the histogram is flat; any structure is a calibration signature.</p>
+    </div>
+    <div style="flex:1 1 0; min-width:0; overflow:hidden;">
+      <div id="sbc-cartoon-plot" style="width:100%; max-width:100%; height:400px;"></div>
+      <p style="text-align:center; font-size:0.85em; color:#7f8c8d; margin:4px 0 0;">Top: a single trial &mdash; samples (orange) vs. true value (red &times;). Bottom: how the rank of the trial above falls into the histogram.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<!-- 7. DEMO A: READING SBC HISTOGRAMS                            -->
+<!-- ============================================================ -->
+<section>
+  <h2>Demo: reading SBC rank histograms</h2>
+  <div style="display:flex; gap:14px;">
+    <div style="flex:0 0 34%; text-align:left;">
+      <p>Simulator: \(\theta\sim\mathcal{U}(-1,1)\), \(x\mid\theta\sim\mathcal{N}(\theta, \sigma^2)\) with \(\sigma=0.1\).</p>
+      <p>Learned posterior:</p>
+      <div class="box" style="text-align:center; margin:6px 0;">
+        \[ q_\phi(\theta\mid x) = \mathcal{N}(\theta;\,x+b,\,(s\sigma)^2) \]
+      </div>
+      <ul style="font-size:0.92em;">
+        <li><strong>Bias</strong> \(b\): shifts the mean</li>
+        <li><strong>Scale</strong> \(s\): \(s<1\) underdispersed; \(s>1\) overdispersed</li>
+      </ul>
+      <div class="box box-orange" style="font-size:0.9em;">
+        <strong>Watch for:</strong> bias &rarr; <em>skew</em>; underdispersion &rarr; <em>U-shape</em>; overdispersion &rarr; <em>inverse U-shape</em>.
+      </div>
+    </div>
+    <div style="flex:1 1 0; min-width:0; overflow:hidden;">
+      <div id="demoA-plot" style="width:100%; max-width:100%; height:340px;"></div>
+      <div class="ctrl-row" style="justify-content:center; margin-top:6px;">
+        <label><input type="range" id="demoA-bias" min="-0.15" max="0.15" step="0.005" value="0" style="width:200px;">
+          &nbsp;bias \(b\) = <span id="demoA-bias-val" style="display:inline-block; min-width:3em;">0.000</span></label>
+        <label><input type="range" id="demoA-scale" min="0.4" max="2.0" step="0.02" value="1.0" style="width:200px;">
+          &nbsp;scale \(s\) = <span id="demoA-scale-val" style="display:inline-block; min-width:2.5em;">1.00</span></label>
+      </div>
+      <div class="ctrl-row" style="justify-content:center; margin-top:4px;">
+        <label><input type="range" id="demoA-L" min="5" max="40" step="1" value="20" style="width:140px;">
+          &nbsp;\(L\) = <span id="demoA-L-val" style="display:inline-block; min-width:2em;">20</span></label>
+        <button id="demoA-resample">&#x21bb; Resample</button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<!-- 8. HPDR COVERAGE                                             -->
+<!-- ============================================================ -->
+<section>
+  <h2>HPDR coverage: same machinery, different ordering</h2>
+  <p>The <strong>highest posterior density region</strong> at level \(1-\alpha\):</p>
+  <div class="box" style="text-align:center; margin:6px auto; max-width:560px;">
+    \[ \mathcal{C}_{1-\alpha}(x) = \{\theta : q_\phi(\theta\mid x) \ge \gamma_{1-\alpha}\}, \quad \int_{\mathcal{C}_{1-\alpha}(x)} q_\phi(\theta\mid x)\,d\theta = 1 - \alpha \]
+  </div>
+  <p>If \(q_\phi = p\), a fraction \(1-\alpha\) of true parameters \(\theta^*\) should fall inside. Plot empirical vs nominal coverage: the <strong>pp-plot</strong>.</p>
+  <p class="fragment">Equivalently, this is a rank test with ordering function \(q_\phi(\theta\mid x)\):</p>
+  <div class="box" style="text-align:center; margin:6px auto; max-width:600px;">
+    \[ F_x(\theta^*) = \tfrac{1}{L}\sum_{i=1}^{L} \mathbb{1}\bigl(q_\phi(\theta_i\mid x) \ge q_\phi(\theta^*\mid x)\bigr) \]
+  </div>
+  <ul class="fragment" style="font-size:0.95em;">
+    <li>Overdispersed \(q_\phi\) &rarr; <strong>overcoverage</strong> (pp-curve above diagonal)</li>
+    <li>Underdispersed \(q_\phi\) &rarr; <strong>undercoverage</strong> (pp-curve below diagonal)</li>
+    <li>Pure bias produces only a <strong>mild</strong> pp-plot deviation, far less dramatic than the SBC histogram</li>
+  </ul>
+</section>
+
+<!-- ============================================================ -->
+<!-- 9. DEMO B: SBC vs HPDR SIDE-BY-SIDE                          -->
+<!-- ============================================================ -->
+<section>
+  <h2>Demo: SBC vs HPDR, side-by-side</h2>
+  <div style="display:flex; gap:14px;">
+    <div style="flex:0 0 30%; text-align:left;">
+      <p>Same Gaussian setup as before; now we look at both diagnostics at once.</p>
+      <div class="box box-blue" style="font-size:0.9em;">
+        <strong>SBC</strong> orders by \(\theta_i\). Picks up bias, dispersion, and the symmetry-broken kind of asymmetric mismatch.
+      </div>
+      <div class="box box-orange" style="font-size:0.9em;">
+        <strong>HPDR</strong> orders by \(q_\phi(\theta_i\mid x)\). Tracks dispersion well, only mildly responds to pure bias.
+      </div>
+      <p style="font-size:0.88em; color:#7f8c8d;">Crank up the bias slider with scale at 1: SBC screams, the pp-plot barely budges.</p>
+    </div>
+    <div style="flex:1 1 0; min-width:0; overflow:hidden;">
+      <div style="display:flex; gap:8px;">
+        <div id="demoB-sbc" style="flex:1; height:280px;"></div>
+        <div id="demoB-pp" style="flex:1; height:280px;"></div>
+      </div>
+      <div class="ctrl-row" style="justify-content:center; margin-top:6px;">
+        <label><input type="range" id="demoB-bias" min="-0.2" max="0.2" step="0.005" value="0.1" style="width:200px;">
+          &nbsp;bias \(b\) = <span id="demoB-bias-val" style="display:inline-block; min-width:3em;">0.100</span></label>
+        <label><input type="range" id="demoB-scale" min="0.4" max="2.0" step="0.02" value="1.0" style="width:200px;">
+          &nbsp;scale \(s\) = <span id="demoB-scale-val" style="display:inline-block; min-width:2.5em;">1.00</span></label>
+      </div>
+      <div class="ctrl-row" style="justify-content:center; margin-top:4px;">
+        <button id="demoB-resample">&#x21bb; Resample</button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<!-- 10. SECTION DIVIDER 2                                        -->
+<!-- ============================================================ -->
+<section>
+  <div style="display:flex; align-items:center; justify-content:center; height:100%;">
+    <div style="text-align:center;">
+      <div style="width:200px; height:4px; background:linear-gradient(90deg,#2980b9,#e74c3c); margin:0 auto 25px;"></div>
+      <h1 style="font-size:2em; margin:0;">Failure Modes &amp; Generalization</h1>
+      <p style="font-size:1.1em; color:#7f8c8d; margin-top:15px;">Where rank tests stay blind, and the framework that ties them together.</p>
+      <div style="width:200px; height:4px; background:linear-gradient(90deg,#2980b9,#e74c3c); margin:25px auto 0;"></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<!-- 11. DEMO C: SPATIALLY VARYING BIAS                           -->
+<!-- ============================================================ -->
+<section>
+  <h2>Failure 1: spatially varying bias hides in the average</h2>
+  <div style="display:flex; gap:14px;">
+    <div style="flex:0 0 34%; text-align:left;">
+      <p>SBC averages over \(x \sim p(x)\). A bias whose <em>sign</em> changes across data space partially cancels.</p>
+      <div class="box" style="text-align:center; margin:6px 0; font-size:0.95em;">
+        \[ q_\phi(\theta\mid x) = \mathcal{N}\bigl(\theta;\, x + b\,\mathrm{sgn}(x),\, \sigma^2\bigr) \]
+      </div>
+      <p style="font-size:0.92em;">Global rank histogram (dashed black) looks <strong>nearly flat</strong>. Stratify by sign of \(x\) and the opposite biases appear at once.</p>
+      <p style="font-size:0.88em; color:#7f8c8d;">Lesson: stratify whenever miscalibration could depend on \(x\). The cost is statistical power per stratum.</p>
+    </div>
+    <div style="flex:1 1 0; min-width:0; overflow:hidden;">
+      <div id="demoC-plot" style="width:100%; max-width:100%; height:360px;"></div>
+      <div class="ctrl-row" style="justify-content:center; margin-top:6px;">
+        <label><input type="range" id="demoC-b" min="0" max="0.08" step="0.002" value="0.025" style="width:220px;">
+          &nbsp;bias amplitude \(b\) = <span id="demoC-b-val" style="display:inline-block; min-width:3em;">0.025</span></label>
+        <button id="demoC-resample">&#x21bb; Resample</button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<!-- 12. DEMO D: TYPE B BLIND                                     -->
+<!-- ============================================================ -->
+<section>
+  <h2>Failure 2: SBC is blind to information loss</h2>
+  <div style="display:flex; gap:14px;">
+    <div style="flex:0 0 36%; text-align:left;">
+      <p>Two observations \(x_1, x_2 \sim \mathcal{N}(\theta, \sigma^2)\). The Bayes-optimal posterior uses both:</p>
+      <div class="box" style="text-align:center; font-size:0.95em;">
+        \[ p(\theta\mid x_1, x_2) = \mathcal{N}\!\Bigl(\tfrac{x_1+x_2}{2},\, \tfrac{\sigma^2}{2}\Bigr) \]
+      </div>
+      <p>Compare two flawed posteriors, <strong>both wider than optimal</strong>:</p>
+      <ul style="font-size:0.93em;">
+        <li><span style="color:#c0392b;"><strong>Overdispersed</strong></span> &mdash; correct mean, scale \(s>1\)</li>
+        <li><span style="color:#27ae60;"><strong>Lossy summary</strong></span> &mdash; uses only \(x_1\): \(q = \mathcal{N}(x_1, \sigma^2)\)</li>
+      </ul>
+      <div class="box box-orange" style="font-size:0.9em;">
+        SBC catches the overdispersed case. The lossy case looks <strong>calibrated</strong>: it is a valid posterior, just based on less information (Type B).
+      </div>
+    </div>
+    <div style="flex:1 1 0; min-width:0; overflow:hidden;">
+      <div id="demoD-plot" style="width:100%; max-width:100%; height:340px;"></div>
+      <div class="ctrl-row" style="justify-content:center; margin-top:6px;">
+        <label><input type="range" id="demoD-scale" min="1.0" max="2.0" step="0.02" value="1.4" style="width:200px;">
+          &nbsp;overdisp. scale \(s\) = <span id="demoD-scale-val" style="display:inline-block; min-width:2.5em;">1.40</span></label>
+        <button id="demoD-resample">&#x21bb; Resample</button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<!-- 13. MODEL-BASED RANKS RECOVER TYPE B                         -->
+<!-- ============================================================ -->
+<section>
+  <h2>Model-based ranks: recovering Type B sensitivity</h2>
+  <p>If we can evaluate the simulator's likelihood \(p(x\mid\theta)\) or score \(\nabla_\theta \log p(x\mid\theta)\), use those as ordering functions instead.</p>
+  <div style="display:flex; gap:12px; margin-top:6px;">
+    <div class="box box-blue" style="flex:1;">
+      <strong>Likelihood ranks</strong>
+      \[ F_x(\theta^*) = \tfrac{1}{L}\sum_i \mathbb{1}\bigl(p(x\mid\theta_i) \ge p(x\mid\theta^*)\bigr) \]
+      Sensitive to <strong>Type B</strong>: the ranking depends on the full \(x\), not on the learned summary.
+    </div>
+    <div class="box box-orange" style="flex:1;">
+      <strong>True HPDR coverage</strong>
+      \[ F_x(\theta^*) = \tfrac{1}{L}\sum_i \mathbb{1}\bigl(\pi(\theta_i\mid x) \ge \pi(\theta^*\mid x)\bigr) \]
+      with \(\pi \propto p(x\mid\theta)p(\theta)\). Probes the <strong>true</strong> HPDRs, not the learned ones.
+    </div>
+  </div>
+  <p class="fragment" style="margin-top:10px; font-size:0.95em;">
+    Same rank machinery, ordering function changed. In the lossy-summary case above, the likelihood-rank histogram would <strong>no longer be flat</strong>.
+  </p>
+  <p class="fragment" style="font-size:0.9em; color:#7f8c8d; text-align:center; margin-top:10px;">
+    Requires a tractable model. When you have one, use it &mdash; it is the only rank test that sees information loss.
+  </p>
+</section>
+
+<!-- ============================================================ -->
+<!-- 14. HPDR SHAPE DISTORTIONS                                   -->
+<!-- ============================================================ -->
+<section>
+  <h2>Failure 3: HPDR coverage is blind to shape</h2>
+  <div style="display:flex; gap:14px;">
+    <div style="flex:0 0 36%; text-align:left;">
+      <p>HPDR tests check only the <em>mass</em> inside super-level sets. Distorted shapes that preserve mass-vs-level remain undetected.</p>
+      <p>Construct \(q(\theta) = g(|\theta - \theta_0|)\) such that every symmetric interval has the same mass as the true posterior. The pp-plot is <strong>perfectly diagonal</strong>, even when the shape is bimodal or shifted.</p>
+      <div class="box box-purple" style="font-size:0.9em;">
+        Mitigation: combine multiple ordering functions (HPDR, central interval, lower/upper limits, SBC). Each closes a different blind direction.
+      </div>
+    </div>
+    <div style="flex:1 1 0; min-width:0; overflow:hidden;">
+      <div style="display:flex; gap:8px;">
+        <div id="demoE-q" style="flex:1; height:280px;"></div>
+        <div id="demoE-pp" style="flex:1; height:280px;"></div>
+      </div>
+      <div class="ctrl-row" style="justify-content:center; margin-top:6px;">
+        <label><input type="range" id="demoE-shift" min="0" max="2.5" step="0.05" value="1.2" style="width:240px;">
+          &nbsp;shift magnitude = <span id="demoE-shift-val" style="display:inline-block; min-width:2.5em;">1.20</span></label>
+      </div>
+    </div>
+  </div>
+  <p style="font-size:0.85em; color:#7f8c8d; text-align:center; margin-top:4px;">
+    Left: true posterior (dashed) vs distorted \(q\). Right: pp-plot of HPDR coverage &mdash; on the diagonal regardless of distortion.
+  </p>
+</section>
+
+<!-- ============================================================ -->
+<!-- 15. BEYOND MARGINALS                                         -->
+<!-- ============================================================ -->
+<section>
+  <h2>Beyond marginals: probing the joint</h2>
+  <p>SBC applied separately to each component \(\theta_i\) tests only the marginals. It can pass while the <strong>joint</strong> posterior is wrong (correlations distorted).</p>
+  <div class="box" style="text-align:center; margin:8px auto; max-width:620px;">
+    <strong>Cram&eacute;r&ndash;Wold theorem.</strong> A distribution is determined by all its one-dimensional projections.
+    \[ q_\phi(\mathbf{w}^\top\boldsymbol\theta \mid x) = p(\mathbf{w}^\top\boldsymbol\theta \mid x) \quad \text{for all } \mathbf{w} \in \mathbb{R}^N \;\;\Rightarrow\;\; q_\phi = p \]
+  </div>
+  <ul style="font-size:0.95em;">
+    <li class="fragment">Practical recipe: SBC on a <strong>random ensemble</strong> of projections \(\mathbf{w}^\top\boldsymbol\theta\).</li>
+    <li class="fragment">Cheap (rank-test samples reused), and much more revealing than per-coordinate SBC.</li>
+    <li class="fragment">This is the bridge from SBC to the generalized rank framework: arbitrary ordering functions \(f(\boldsymbol\theta, x)\).</li>
+  </ul>
+</section>
+
+<!-- ============================================================ -->
+<!-- 16. GENERALIZED RANK DIAGNOSTICS                             -->
+<!-- ============================================================ -->
+<section>
+  <h2>Generalized rank diagnostics: one framework</h2>
+  <p>All forward&ndash;backward tests share a structure: choose an <strong>ordering function</strong> \(f(\boldsymbol\theta, x)\) and rank \(\theta^*\) among the \(\theta_{1:L}\) under that ordering.</p>
+  <table class="tax-table">
+    <thead><tr><th>Method</th><th>Ranks by</th><th>Type B</th><th>Ordering \(f(\boldsymbol\theta, x)\)</th></tr></thead>
+    <tbody>
+      <tr><td class="type">SBC</td><td>parameter (\(d\) tests)</td><td>No</td><td>\(\theta_i\) for \(i=1,\ldots,d\)</td></tr>
+      <tr><td class="type">HPDR coverage</td><td>learned posterior</td><td>No</td><td>\(q_\phi(\boldsymbol\theta\mid x)\)</td></tr>
+      <tr><td class="type">TARP</td><td>distance to reference</td><td>Maybe</td><td>\(\|\boldsymbol\theta - \boldsymbol\theta'\|^2\), \(\boldsymbol\theta' \sim p(\boldsymbol\theta)\)</td></tr>
+      <tr><td class="type">True HPDR</td><td>true posterior</td><td>Yes</td><td>\(\pi(\boldsymbol\theta\mid x) \propto p(x\mid\boldsymbol\theta)p(\boldsymbol\theta)\)</td></tr>
+      <tr><td class="type">Likelihood ranks</td><td>likelihood</td><td>Yes</td><td>\(p(x\mid\boldsymbol\theta)\)</td></tr>
+      <tr><td class="type">Score ranks</td><td>score (\(d\) tests)</td><td>Yes</td><td>\(\nabla_{\theta_i} \log p(x\mid\boldsymbol\theta)\)</td></tr>
+    </tbody>
+  </table>
+  <div class="box box-blue fragment" style="margin-top:10px;">
+    <strong>Completeness.</strong> If the rank statistic is uniform for <em>every</em> ordering \(f(\boldsymbol\theta, x)\), then \(q_\phi = p\) almost everywhere (Lemos et al. 2023). Any finite set of orderings is necessary but not sufficient.
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<!-- 17. A DIAGNOSTIC RECIPE                                      -->
+<!-- ============================================================ -->
+<section>
+  <h2>A diagnostic recipe</h2>
+  <p style="font-style:italic; color:#7f8c8d;">"When a fail-safe system fails, it fails by failing to fail-safe." &mdash; John Gall</p>
+  <div style="display:flex; gap:12px; margin-top:8px;">
+    <div class="box box-blue" style="flex:1;">
+      <strong>1. Start minimal.</strong>
+      <ul style="font-size:0.9em;">
+        <li>Toy data, simple model, few parameters.</li>
+        <li>Run SBC + HPDR. Diagnose what you can in the easy case.</li>
+      </ul>
+    </div>
+    <div class="box box-orange" style="flex:1;">
+      <strong>2. Add one component at a time.</strong>
+      <ul style="font-size:0.9em;">
+        <li>Learned summary, realistic noise, or more parameters &mdash; not all at once.</li>
+        <li>Re-validate after each step.</li>
+      </ul>
+    </div>
+    <div class="box box-green" style="flex:1;">
+      <strong>3. Stack orderings.</strong>
+      <ul style="font-size:0.9em;">
+        <li>SBC + HPDR + random projections.</li>
+        <li>Likelihood / score ranks when the model allows.</li>
+        <li>Stratify by \(x\) when bias may vary.</li>
+      </ul>
+    </div>
+  </div>
+  <p class="fragment" style="margin-top:10px; text-align:center; font-size:0.95em;">
+    Each failure should point to a clear next step. If a passing diagnostic surprises you, ask which blind spot you may have walked into.
+  </p>
+</section>
+
+<!-- ============================================================ -->
+<!-- 18. KEY TAKEAWAYS                                            -->
+<!-- ============================================================ -->
+<section>
+  <h2>Key Takeaways</h2>
+  <ul style="font-size:0.92em; line-height:1.65;">
+    <li class="fragment"><strong>Rank Diagnostics:</strong> the uniformity of ranks under \(q_\phi = p\) turns the forward&ndash;backward principle into a sharp, distribution-free test. SBC histograms and HPDR pp-plots are two readings of the same machinery.</li>
+    <li class="fragment"><strong>Failure Modes:</strong> SBC averages over \(x\) and can hide spatially varying bias; SBC and HPDR are blind to information loss; HPDR is blind to shape distortions that preserve mass-vs-level.</li>
+    <li class="fragment"><strong>Generalization:</strong> all of these are special cases of generalized rank diagnostics with different ordering functions. Model-based ranks (likelihood, score, true HPDR) recover Type B sensitivity when the model is tractable.</li>
+    <li class="fragment"><strong>The conceptual jump:</strong> no single diagnostic is sufficient. Comprehensive validation means stacking orderings, projections, and stratifications, each closing a different blind spot.</li>
+  </ul>
+</section>
+
+<!-- ============================================================ -->
+<!-- 19. SUMMARY & WHAT'S NEXT                                    -->
+<!-- ============================================================ -->
+<section>
+  <h2>Summary &amp; What's Next</h2>
+  <div style="display:flex; gap:15px; font-size:0.9em;">
+    <div class="box" style="flex:1;">
+      <h3 style="margin-top:0; color:#2980b9;">Rank Diagnostics</h3>
+      <ul style="font-size:0.9em; line-height:1.5;">
+        <li>FW&ndash;BW consistency principle</li>
+        <li>SBC rank statistic, flat under \(q_\phi = p\)</li>
+        <li>HPDR coverage as a rank test on \(q_\phi(\theta\mid x)\)</li>
+      </ul>
+    </div>
+    <div class="box" style="flex:1;">
+      <h3 style="margin-top:0; color:#e67e22;">Failure Modes &amp; Generalization</h3>
+      <ul style="font-size:0.9em; line-height:1.5;">
+        <li>Spatial-bias cancellation; stratify</li>
+        <li>Type B blindness; recovered by likelihood / score ranks</li>
+        <li>HPDR shape-distortion blind spot</li>
+        <li>Cram&eacute;r&ndash;Wold completeness over all orderings</li>
+      </ul>
+    </div>
+  </div>
+  <div class="box" style="text-align:center; margin-top:12px; padding:8px; font-size:0.85em;">
+    <strong>Key equations:</strong> &nbsp;
+    \(F(\theta^*) \sim \mathrm{Uniform}\)
+    &nbsp;|&nbsp;
+    \(\mathcal{C}_{1-\alpha} = \{q_\phi \ge \gamma\}\)
+    &nbsp;|&nbsp;
+    \(f(\boldsymbol\theta, x) = p(x\mid\boldsymbol\theta)\)
+  </div>
+  <p style="text-align:center; margin-top:10px; font-size:0.85em; color:#7f8c8d;">
+    Next lecture: robust inference under model misspecification &mdash; what to do when Type A bites back.
+  </p>
+</section>
+
+</div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/plotly.js@2.35.0/dist/plotly.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reveal.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/plugin/math/math.js"></script>
+<script src="lib/lecture-helpers.js"></script>
+<script src="lib/lecture-boot.js"></script>
+<script>
+
+// ============================================================
+// Shared layout
+// ============================================================
+function baseLayout(opts={}) {
+  return Object.assign({
+    margin:{t:24,r:16,b:38,l:46},
+    paper_bgcolor:'rgba(0,0,0,0)', plot_bgcolor:'rgba(0,0,0,0)',
+    font:{size:12}, legend:{x:0.02, y:0.98, bgcolor:'rgba(255,255,255,0.6)'}
+  }, opts);
+}
+
+// Standard normal density
+function normPdf(x, mu, sig) {
+  const z = (x - mu) / sig;
+  return Math.exp(-0.5*z*z) / (sig * Math.sqrt(2*Math.PI));
+}
+
+// Build a histogram of ranks in (L+1) bins from 0..L, returned as normalized density
+function rankHistogram(ranks, L) {
+  const counts = new Array(L+1).fill(0);
+  for (const r of ranks) counts[r] += 1;
+  const total = ranks.length;
+  // Normalize so that flat = 1.0 (multiply by (L+1)/total)
+  const dens = counts.map(c => c * (L+1) / total);
+  // Histogram x-axis: bin centers in [0, 1]
+  const x = counts.map((_, i) => i / L);
+  return { x, dens };
+}
+
+// Plotly trace for a step-style rank histogram
+function rankTrace(hist, color, name) {
+  return {
+    x: hist.x, y: hist.dens, type:'bar', name: name,
+    marker:{color: color, line:{color:'#fff', width:1}},
+    opacity: 0.85
+  };
+}
+
+// PP-plot data from a set of (nominal credibilities) per trial
+function ppCurve(scores) {
+  // scores[i] = F_x(theta*) in [0,1]; realized coverage at nominal alpha is mean(scores <= 1-alpha)
+  const sorted = scores.slice().sort((a,b)=>a-b);
+  const N = sorted.length;
+  // Build curve over nominal 1-alpha grid
+  const xs = [], ys = [];
+  for (let k = 0; k <= 50; k++) {
+    const nom = k/50;
+    // realized = fraction of scores <= nom
+    let cnt = 0;
+    for (const s of sorted) if (s <= nom) cnt++; else break;
+    xs.push(nom);
+    ys.push(cnt / N);
+  }
+  return { x: xs, y: ys };
+}
+
+// ============================================================
+// Slide 6 — Cartoon: one trial + one bin landing
+// ============================================================
+(function() {
+  function draw(e) {
+    if (e && (!e.currentSlide || !e.currentSlide.querySelector('#sbc-cartoon-plot'))) return;
+    const rng = createRNG(42);
+    const sigma = 0.1;
+    const theta_star = -0.35;
+    const x = theta_star + sigma * gaussN(rng);
+    const L = 20;
+    const draws = [];
+    for (let i = 0; i < L; i++) draws.push(x + sigma * gaussN(rng));
+    let rank = 0;
+    for (const t of draws) if (t <= theta_star) rank++;
+
+    // True posterior pdf for display
+    const grid = [];
+    for (let t = -1; t <= 1; t += 0.005) grid.push(t);
+    const pdf = grid.map(t => normPdf(t, x, sigma));
+
+    // Build a small mock SBC histogram (flat-ish) to show "this trial contributes to bin k"
+    const N = 600;
+    const counts = new Array(L+1).fill(0);
+    const rng2 = createRNG(7);
+    for (let n = 0; n < N; n++) {
+      const ts = -1 + 2*rng2();
+      const xn = ts + sigma*gaussN(rng2);
+      let cnt = 0;
+      for (let i = 0; i < L; i++) {
+        const ti = xn + sigma*gaussN(rng2);
+        if (ti <= ts) cnt++;
+      }
+      counts[cnt] += 1;
+    }
+    counts[rank] += 8; // highlight bin
+    const dens = counts.map(c => c * (L+1) / (N+8));
+    const xax = counts.map((_, i) => i / L);
+
+    Plotly.react('sbc-cartoon-plot', [
+      // Top panel: posterior density and samples
+      { x: grid, y: pdf, mode:'lines', xaxis:'x', yaxis:'y2',
+        line:{color:'#c0392b', width:2}, name:'q(θ|x)',
+        fill:'tozeroy', fillcolor:'rgba(192,57,43,0.08)', showlegend:false },
+      { x: draws, y: draws.map(()=>0.3), mode:'markers', xaxis:'x', yaxis:'y2',
+        marker:{size:7, color:'#e67e22'}, name:'θ₁..₂₀', showlegend:false },
+      { x: [theta_star], y: [0.3], mode:'markers', xaxis:'x', yaxis:'y2',
+        marker:{size:18, color:'#c0392b', symbol:'x-thin', line:{color:'#c0392b', width:4}},
+        name:'θ*', showlegend:false },
+      // Bottom panel: rank histogram
+      { x: xax, y: dens, type:'bar', xaxis:'x2', yaxis:'y',
+        marker:{color:'#2980b9', line:{color:'#fff', width:1}}, opacity:0.85,
+        name:'rank hist', showlegend:false }
+    ], {
+      grid:{rows:2, columns:1, pattern:'independent', roworder:'top to bottom'},
+      xaxis:{title:'θ', range:[-1, 1], domain:[0,1]},
+      yaxis2:{title:'density', anchor:'x', domain:[0.55, 1.0], range:[0, 6]},
+      xaxis2:{title:'rank / L', range:[-0.05, 1.05], domain:[0,1], anchor:'y'},
+      yaxis:{title:'density', range:[0, 2.2], domain:[0, 0.42]},
+      margin:{t:18, r:16, b:38, l:50},
+      paper_bgcolor:'rgba(0,0,0,0)', plot_bgcolor:'rgba(0,0,0,0)',
+      font:{size:12}, showlegend:false, autosize:true
+    }, {displayModeBar:false, responsive:true});
+    Plotly.Plots.resize('sbc-cartoon-plot');
+  }
+  function init(e) {
+    if (e.currentSlide && e.currentSlide.querySelector('#sbc-cartoon-plot')) draw(e);
+  }
+  Reveal.on('slidechanged', init); Reveal.on('ready', init);
+})();
+
+// ============================================================
+// Shared SBC + HPDR Monte Carlo engine
+// q(θ|x) = N(θ; x + b, (s σ)²); true posterior ≈ N(x, σ²) for σ small vs prior width
+// ============================================================
+function runSBC_HPDR(N, L, b, s, sigma, seed) {
+  const rng = createRNG(seed);
+  const sq = s * sigma;
+  const ranks = new Array(N);
+  const pp = new Array(N);
+  for (let n = 0; n < N; n++) {
+    const ts = -1 + 2*rng();           // θ* ~ U(-1, 1)
+    const x  = ts + sigma * gaussN(rng); // x ~ N(θ*, σ²)
+    const mu_q = x + b;
+    let cnt = 0;
+    // For HPDR ordering by q(θ|x), since q is Gaussian, higher q ↔ closer to mu_q
+    // F_x = fraction of θ_i with |θ_i - mu_q| <= |θ* - mu_q|
+    const d_star = Math.abs(ts - mu_q);
+    let cnt_pp = 0;
+    for (let i = 0; i < L; i++) {
+      const ti = mu_q + sq * gaussN(rng);
+      if (ti <= ts) cnt++;
+      if (Math.abs(ti - mu_q) <= d_star) cnt_pp++;
+    }
+    ranks[n] = cnt;
+    pp[n] = cnt_pp / L;
+  }
+  return { ranks, pp };
+}
+
+// ============================================================
+// Slide 7 — Demo A: SBC histogram
+// ============================================================
+(function() {
+  let seed = 11;
+  const N = 1500, sigma = 0.1;
+  function draw(e) {
+    if (e && (!e.currentSlide || !e.currentSlide.querySelector('#demoA-plot'))) return;
+    const b = parseFloat(document.getElementById('demoA-bias').value);
+    const s = parseFloat(document.getElementById('demoA-scale').value);
+    const L = parseInt(document.getElementById('demoA-L').value, 10);
+    document.getElementById('demoA-bias-val').textContent = b.toFixed(3);
+    document.getElementById('demoA-scale-val').textContent = s.toFixed(2);
+    document.getElementById('demoA-L-val').textContent = L;
+    const out = runSBC_HPDR(N, L, b, s, sigma, seed);
+    const hist = rankHistogram(out.ranks, L);
+    Plotly.react('demoA-plot', [
+      // Uniform reference
+      { x:[0, 1], y:[1, 1], mode:'lines',
+        line:{color:'#7f8c8d', dash:'dash', width:2},
+        name:'uniform', showlegend:true },
+      rankTrace(hist, '#2980b9', 'SBC rank histogram')
+    ], baseLayout({
+      autosize:true,
+      xaxis:{title:'rank / L', range:[-0.04, 1.04]},
+      yaxis:{title:'normalised density', range:[0, 2.6]}
+    }), {displayModeBar:false, responsive:true});
+    Plotly.Plots.resize('demoA-plot');
+  }
+  function bind() {
+    ['demoA-bias', 'demoA-scale', 'demoA-L'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el && !el._bound) { el.addEventListener('input', () => draw()); el._bound = true; }
+    });
+    const btn = document.getElementById('demoA-resample');
+    if (btn && !btn._bound) { btn.onclick = () => { seed = (seed*1664525 + 1013904223) | 0; draw(); }; btn._bound = true; }
+  }
+  function init(e) {
+    bind();
+    if (e.currentSlide && e.currentSlide.querySelector('#demoA-plot')) draw(e);
+  }
+  Reveal.on('slidechanged', init); Reveal.on('ready', init);
+})();
+
+// ============================================================
+// Slide 9 — Demo B: SBC vs HPDR side-by-side
+// ============================================================
+(function() {
+  let seed = 23;
+  const N = 1500, sigma = 0.1, L = 20;
+  function draw(e) {
+    if (e && (!e.currentSlide || !e.currentSlide.querySelector('#demoB-sbc'))) return;
+    const b = parseFloat(document.getElementById('demoB-bias').value);
+    const s = parseFloat(document.getElementById('demoB-scale').value);
+    document.getElementById('demoB-bias-val').textContent = b.toFixed(3);
+    document.getElementById('demoB-scale-val').textContent = s.toFixed(2);
+    const out = runSBC_HPDR(N, L, b, s, sigma, seed);
+    const hist = rankHistogram(out.ranks, L);
+    Plotly.react('demoB-sbc', [
+      { x:[0, 1], y:[1, 1], mode:'lines',
+        line:{color:'#7f8c8d', dash:'dash', width:2},
+        name:'uniform', showlegend:false },
+      rankTrace(hist, '#2980b9', 'SBC')
+    ], baseLayout({
+      autosize:true, title:{text:'SBC rank histogram', font:{size:13}},
+      xaxis:{title:'rank / L', range:[-0.04, 1.04]},
+      yaxis:{title:'density', range:[0, 2.6]}
+    }), {displayModeBar:false, responsive:true});
+    Plotly.Plots.resize('demoB-sbc');
+
+    const pp = ppCurve(out.pp);
+    Plotly.react('demoB-pp', [
+      { x:[0,1], y:[0,1], mode:'lines',
+        line:{color:'#7f8c8d', dash:'dash', width:2}, showlegend:false },
+      { x: pp.x, y: pp.y, mode:'lines',
+        line:{color:'#e67e22', width:3}, name:'HPDR' }
+    ], baseLayout({
+      autosize:true, title:{text:'HPDR pp-plot', font:{size:13}},
+      xaxis:{title:'nominal 1−α', range:[0, 1]},
+      yaxis:{title:'realised', range:[0, 1]}
+    }), {displayModeBar:false, responsive:true});
+    Plotly.Plots.resize('demoB-pp');
+  }
+  function bind() {
+    ['demoB-bias', 'demoB-scale'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el && !el._bound) { el.addEventListener('input', () => draw()); el._bound = true; }
+    });
+    const btn = document.getElementById('demoB-resample');
+    if (btn && !btn._bound) { btn.onclick = () => { seed = (seed*1664525 + 1013904223) | 0; draw(); }; btn._bound = true; }
+  }
+  function init(e) {
+    bind();
+    if (e.currentSlide && e.currentSlide.querySelector('#demoB-sbc')) draw(e);
+  }
+  Reveal.on('slidechanged', init); Reveal.on('ready', init);
+})();
+
+// ============================================================
+// Slide 11 — Demo C: spatially varying bias
+// ============================================================
+(function() {
+  let seed = 7;
+  const N = 2000, sigma = 0.1, L = 20;
+  function runSpatial(b0) {
+    const rng = createRNG(seed);
+    const r_all = [], r_pos = [], r_neg = [];
+    for (let n = 0; n < N; n++) {
+      const ts = -1 + 2*rng();
+      const x  = ts + sigma*gaussN(rng);
+      const b = (x >= 0 ? +b0 : -b0);
+      let cnt = 0;
+      for (let i = 0; i < L; i++) {
+        const ti = (x + b) + sigma*gaussN(rng);
+        if (ti <= ts) cnt++;
+      }
+      r_all.push(cnt);
+      if (x >= 0) r_pos.push(cnt); else r_neg.push(cnt);
+    }
+    return { r_all, r_pos, r_neg };
+  }
+  function draw(e) {
+    if (e && (!e.currentSlide || !e.currentSlide.querySelector('#demoC-plot'))) return;
+    const b0 = parseFloat(document.getElementById('demoC-b').value);
+    document.getElementById('demoC-b-val').textContent = b0.toFixed(3);
+    const out = runSpatial(b0);
+    const hAll = rankHistogram(out.r_all, L);
+    const hPos = rankHistogram(out.r_pos, L);
+    const hNeg = rankHistogram(out.r_neg, L);
+    Plotly.react('demoC-plot', [
+      // Stratified bars first (under), then global as dashed line
+      { x: hPos.x, y: hPos.dens, type:'bar', name:'x ≥ 0',
+        marker:{color:'rgba(192,57,43,0.55)'}, opacity:0.8 },
+      { x: hNeg.x, y: hNeg.dens, type:'bar', name:'x < 0',
+        marker:{color:'rgba(41,128,185,0.55)'}, opacity:0.8 },
+      { x: hAll.x, y: hAll.dens, mode:'lines+markers', name:'global (all x)',
+        line:{color:'#2c3e50', dash:'dash', width:2}, marker:{size:6, color:'#2c3e50'} },
+      { x:[0, 1], y:[1, 1], mode:'lines', name:'uniform',
+        line:{color:'#7f8c8d', dash:'dot', width:2} }
+    ], baseLayout({
+      autosize:true, barmode:'overlay',
+      xaxis:{title:'rank / L', range:[-0.04, 1.04]},
+      yaxis:{title:'normalised density', range:[0, 2.2]}
+    }), {displayModeBar:false, responsive:true});
+    Plotly.Plots.resize('demoC-plot');
+  }
+  function bind() {
+    const el = document.getElementById('demoC-b');
+    if (el && !el._bound) { el.addEventListener('input', () => draw()); el._bound = true; }
+    const btn = document.getElementById('demoC-resample');
+    if (btn && !btn._bound) { btn.onclick = () => { seed = (seed*1664525 + 1013904223) | 0; draw(); }; btn._bound = true; }
+  }
+  function init(e) {
+    bind();
+    if (e.currentSlide && e.currentSlide.querySelector('#demoC-plot')) draw(e);
+  }
+  Reveal.on('slidechanged', init); Reveal.on('ready', init);
+})();
+
+// ============================================================
+// Slide 12 — Demo D: overdispersed vs lossy summary
+// ============================================================
+(function() {
+  let seed = 17;
+  const N = 2000, sigma = 0.1, L = 20;
+  function run(scale) {
+    const rng = createRNG(seed);
+    const r_over = [], r_lossy = [];
+    for (let n = 0; n < N; n++) {
+      const ts = -1 + 2*rng();
+      const x1 = ts + sigma*gaussN(rng);
+      const x2 = ts + sigma*gaussN(rng);
+      // True posterior given (x1, x2): N((x1+x2)/2, σ²/2)
+      const mu_true = (x1 + x2) / 2;
+      const sig_true = sigma / Math.sqrt(2);
+      // Overdispersed: same mean, scale * sig_true
+      let cnt_o = 0;
+      for (let i = 0; i < L; i++) {
+        const ti = mu_true + scale * sig_true * gaussN(rng);
+        if (ti <= ts) cnt_o++;
+      }
+      r_over.push(cnt_o);
+      // Lossy: use only x1, learned posterior is N(x1, σ²) — calibrated given x1
+      let cnt_l = 0;
+      for (let i = 0; i < L; i++) {
+        const ti = x1 + sigma * gaussN(rng);
+        if (ti <= ts) cnt_l++;
+      }
+      r_lossy.push(cnt_l);
+    }
+    return { r_over, r_lossy };
+  }
+  function draw(e) {
+    if (e && (!e.currentSlide || !e.currentSlide.querySelector('#demoD-plot'))) return;
+    const scale = parseFloat(document.getElementById('demoD-scale').value);
+    document.getElementById('demoD-scale-val').textContent = scale.toFixed(2);
+    const out = run(scale);
+    const hO = rankHistogram(out.r_over, L);
+    const hL = rankHistogram(out.r_lossy, L);
+    Plotly.react('demoD-plot', [
+      { x:[0, 1], y:[1, 1], mode:'lines', name:'uniform',
+        line:{color:'#7f8c8d', dash:'dash', width:2} },
+      { x: hO.x, y: hO.dens, type:'bar', name:'overdispersed (s = ' + scale.toFixed(2) + ')',
+        marker:{color:'rgba(192,57,43,0.65)'}, opacity:0.85 },
+      { x: hL.x, y: hL.dens, type:'bar', name:'lossy (uses x₁ only)',
+        marker:{color:'rgba(39,174,96,0.65)'}, opacity:0.85 }
+    ], baseLayout({
+      autosize:true, barmode:'overlay',
+      xaxis:{title:'rank / L', range:[-0.04, 1.04]},
+      yaxis:{title:'normalised density', range:[0, 2.2]}
+    }), {displayModeBar:false, responsive:true});
+    Plotly.Plots.resize('demoD-plot');
+  }
+  function bind() {
+    const el = document.getElementById('demoD-scale');
+    if (el && !el._bound) { el.addEventListener('input', () => draw()); el._bound = true; }
+    const btn = document.getElementById('demoD-resample');
+    if (btn && !btn._bound) { btn.onclick = () => { seed = (seed*1664525 + 1013904223) | 0; draw(); }; btn._bound = true; }
+  }
+  function init(e) {
+    bind();
+    if (e.currentSlide && e.currentSlide.querySelector('#demoD-plot')) draw(e);
+  }
+  Reveal.on('slidechanged', init); Reveal.on('ready', init);
+})();
+
+// ============================================================
+// Slide 14 — Demo E: HPDR shape-distortion blind spot
+// True posterior: N(0, 1).
+// Distorted q: q(θ) = g(|θ - θ0|) constructed so every symmetric HPDR interval
+// matches the true posterior mass.  Specifically, let M(w) = ∫_{|θ-θ0|<=w} p(θ)dθ
+// and set the cumulative ordering-statistic distribution under q equal to M(w).
+// Concretely: q has density proportional to M'(w) where w = |θ - θ0|.
+// We approximate by sampling many (θ, density-rank) pairs.
+// ============================================================
+(function() {
+  function gauss(x) { return Math.exp(-0.5*x*x) / Math.sqrt(2*Math.PI); }
+  function gaussCdf(x) {
+    // Abramowitz approximation
+    const t = 1/(1 + 0.2316419*Math.abs(x));
+    const d = gauss(x);
+    const p = d*t*(0.319381530 + t*(-0.356563782 + t*(1.781477937 + t*(-1.821255978 + t*1.330274429))));
+    return x >= 0 ? 1 - p : p;
+  }
+  function massSym(theta0, w) {
+    // P(|θ - θ0| <= w) under true posterior N(0,1)
+    return gaussCdf(theta0 + w) - gaussCdf(theta0 - w);
+  }
+  function draw(e) {
+    if (e && (!e.currentSlide || !e.currentSlide.querySelector('#demoE-q'))) return;
+    const theta0 = parseFloat(document.getElementById('demoE-shift').value);
+    document.getElementById('demoE-shift-val').textContent = theta0.toFixed(2);
+
+    // True posterior pdf for plot
+    const grid = [];
+    for (let t = -4; t <= 4; t += 0.04) grid.push(t);
+    const truePdf = grid.map(t => gauss(t));
+    // Distorted q: q(θ) ∝ ∂M/∂w at w = |θ - θ0|; ∂M/∂w = φ(θ0+w) + φ(θ0-w)
+    const qRaw = grid.map(t => {
+      const w = Math.abs(t - theta0);
+      return gauss(theta0 + w) + gauss(theta0 - w);
+    });
+    // Normalize numerically
+    let qInt = 0;
+    for (let i = 0; i < grid.length - 1; i++) qInt += 0.5*(qRaw[i]+qRaw[i+1])*(grid[i+1]-grid[i]);
+    const qPdf = qRaw.map(v => v / qInt);
+
+    Plotly.react('demoE-q', [
+      { x: grid, y: truePdf, mode:'lines', name:'true posterior',
+        line:{color:'#2c3e50', dash:'dash', width:2} },
+      { x: grid, y: qPdf, mode:'lines', name:'distorted q',
+        line:{color:'#8e44ad', width:3},
+        fill:'tozeroy', fillcolor:'rgba(142,68,173,0.12)' }
+    ], baseLayout({
+      autosize:true, title:{text:'Posterior shapes', font:{size:13}},
+      xaxis:{title:'θ', range:[-4, 4.5]},
+      yaxis:{title:'density', range:[0, 0.55]}
+    }), {displayModeBar:false, responsive:true});
+    Plotly.Plots.resize('demoE-q');
+
+    // PP-plot: by construction realized = nominal exactly. Compute Monte Carlo to show.
+    // Realised coverage(1-α) = P_true(|θ - θ0| <= w(α)) where w(α) chosen so HPDR(q) mass = 1-α.
+    // q-HPDR is again symmetric around θ0 by construction, with mass = M(w). So realised = M(w) = 1-α.
+    const xs = [], ys = [];
+    for (let k = 0; k <= 50; k++) {
+      const nom = k/50;
+      // Find w such that M(theta0, w) = nom by bisection
+      let lo = 0, hi = 6;
+      for (let it = 0; it < 30; it++) {
+        const mid = 0.5*(lo+hi);
+        if (massSym(theta0, mid) < nom) lo = mid; else hi = mid;
+      }
+      xs.push(nom);
+      ys.push(massSym(theta0, 0.5*(lo+hi)));
+    }
+    Plotly.react('demoE-pp', [
+      { x:[0,1], y:[0,1], mode:'lines',
+        line:{color:'#7f8c8d', dash:'dash', width:2}, showlegend:false },
+      { x: xs, y: ys, mode:'lines', name:'HPDR coverage',
+        line:{color:'#8e44ad', width:3} }
+    ], baseLayout({
+      autosize:true, title:{text:'pp-plot &mdash; still diagonal', font:{size:13}},
+      xaxis:{title:'nominal 1−α', range:[0,1]},
+      yaxis:{title:'realised', range:[0,1]}
+    }), {displayModeBar:false, responsive:true});
+    Plotly.Plots.resize('demoE-pp');
+  }
+  function bind() {
+    const el = document.getElementById('demoE-shift');
+    if (el && !el._bound) { el.addEventListener('input', () => draw()); el._bound = true; }
+  }
+  function init(e) {
+    bind();
+    if (e.currentSlide && e.currentSlide.querySelector('#demoE-q')) draw(e);
+  }
+  Reveal.on('slidechanged', init); Reveal.on('ready', init);
+})();
+
+</script>
+</body>
+</html>
