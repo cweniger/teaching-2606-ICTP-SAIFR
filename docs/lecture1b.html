@@ -94,9 +94,94 @@
     </div>
   </div>
   <div class="box fragment" style="margin-top:25px; text-align:center; font-size:1.0em;">
-    <strong>The thread:</strong> one running example (a cannon ball).  We will build intuition for ABC and discuss its limitations. 
+    <strong>The thread:</strong> one running example (a cannon ball).  We will build intuition for ABC and discuss its limitations.
     Tackling those limitations with deep learning will lead to modern SBI.
   </div>
+</section>
+
+<!-- ============================================================ -->
+<!-- SLIDE: Simulation vs. inference — two directions             -->
+<!-- (lifted from old/lecture6.html)                              -->
+<!-- ============================================================ -->
+<section>
+  <h2>Simulation vs. inference &mdash; two directions</h2>
+
+  <div style="display:flex; align-items:center; justify-content:center; gap:0; margin:40px 0 30px; position:relative;">
+
+    <!-- Left: parameters -->
+    <div style="flex:0 0 200px; text-align:center;">
+      <div style="padding:20px 10px; background:#eaf2f8; border:2px solid #2980b9; border-radius:12px;">
+        <div style="font-size:1.6em; color:#2c3e50;">\(\boldsymbol\theta\)</div>
+        <div style="margin-top:6px; font-size:0.9em; color:#7f8c8d;">parameters<br><em>what we care about</em></div>
+        <div style="margin-top:8px; font-size:0.85em; color:#2980b9;">e.g. \(H_0,\; \Omega_m,\)<br>BH masses, lens profile</div>
+      </div>
+    </div>
+
+    <!-- Middle: simulator + arrows -->
+    <div style="flex:1; position:relative; padding:0 14px;">
+      <!-- Forward arrow (top) -->
+      <div style="display:flex; align-items:center; justify-content:center; gap:10px;">
+        <span style="flex:1; height:2px; background:#27ae60;"></span>
+        <div style="padding:8px 14px; background:#eafaf1; border:2px solid #27ae60; border-radius:8px; font-size:0.9em; white-space:nowrap;">
+          <strong style="color:#27ae60;">Simulator</strong> \(p(\mathbf{x}\mid\boldsymbol\theta)\)
+        </div>
+        <span style="flex:1; height:2px; background:#27ae60; position:relative;">
+          <span style="position:absolute; right:-2px; top:-6px; border-left:10px solid #27ae60; border-top:7px solid transparent; border-bottom:7px solid transparent;"></span>
+        </span>
+      </div>
+      <p style="text-align:center; margin:6px 0 0 0; color:#27ae60; font-size:0.9em;"><em>forward &mdash; physics, easy</em></p>
+
+      <!-- Spacer -->
+      <div style="height:36px;"></div>
+
+      <!-- Inverse arrow (bottom) -->
+      <div class="fragment" style="display:flex; align-items:center; justify-content:center; gap:10px;">
+        <span style="flex:1; height:2px; background:#e67e22; position:relative;">
+          <span style="position:absolute; left:-2px; top:-6px; border-right:10px solid #e67e22; border-top:7px solid transparent; border-bottom:7px solid transparent;"></span>
+        </span>
+        <div style="padding:8px 14px; background:#fdf6ec; border:2px solid #e67e22; border-radius:8px; font-size:0.9em; white-space:nowrap;">
+          <strong style="color:#e67e22;">Inference</strong> \(p(\boldsymbol\theta\mid\mathbf{x})\)
+        </div>
+        <span style="flex:1; height:2px; background:#e67e22;"></span>
+      </div>
+      <p class="fragment" style="text-align:center; margin:6px 0 0 0; color:#e67e22; font-size:0.9em;"><em>inverse &mdash; what we want, hard</em></p>
+    </div>
+
+    <!-- Right: data -->
+    <div style="flex:0 0 200px; text-align:center;">
+      <div style="padding:20px 10px; background:#fdedec; border:2px solid #e74c3c; border-radius:12px;">
+        <div style="font-size:1.6em; color:#2c3e50;">\(\mathbf{x}\)</div>
+        <div style="margin-top:6px; font-size:0.9em; color:#7f8c8d;">data<br><em>what we observe</em></div>
+        <div style="margin-top:8px; font-size:0.85em; color:#e74c3c;">images, time-series,<br>power spectra, &hellip;</div>
+      </div>
+    </div>
+  </div>
+
+  <p class="fragment" style="margin-top:30px; padding:12px 16px; background:#f8f9fa; border-left:4px solid #8e44ad; border-radius:4px;">
+    <strong>Simulation-based inference.</strong> We have only the forward direction (a simulator).
+    SBI builds the inverse by drawing \((\boldsymbol\theta, \mathbf{x})\) pairs from the simulator and training a neural network to output the posterior directly &mdash; just like the CNN classifier did for images.
+  </p>
+</section>
+
+<!-- ============================================================ -->
+<!-- SLIDE: The inference problem — formally                      -->
+<!-- (lifted from old/lecture6.html)                              -->
+<!-- ============================================================ -->
+<section>
+  <h2>The inference problem &mdash; formally</h2>
+  <p style="margin-top:10px; color:#555;">Same story, written with physics notation. Parameters \(\boldsymbol\theta\) take the role of the class or parameters of interest.</p>
+  <div class="box box-blue" style="text-align:center; font-size:1.1em;">
+    \[ p(\boldsymbol\theta \mid \mathbf{x}) \;=\; \frac{p(\mathbf{x}\mid\boldsymbol\theta)\, p(\boldsymbol\theta)}{p(\mathbf{x})} \]
+  </div>
+  <ul style="font-size:1.0em;">
+    <li><strong>Prior</strong> \(p(\boldsymbol\theta)\): what we believed before seeing data.</li>
+    <li><strong>Likelihood</strong> \(p(\mathbf{x}\mid\boldsymbol\theta)\): what the physics model predicts.</li>
+    <li><strong>Posterior</strong> \(p(\boldsymbol\theta\mid\mathbf{x})\): what we want.</li>
+    <li><strong>Evidence / Marginal likelihood</strong> \(p(\mathbf{x}) = \int p(\mathbf{x}\mid\boldsymbol\theta)\, p(\boldsymbol\theta)\, d\boldsymbol\theta\).</li>
+  </ul>
+  <p style="margin-top:22px; padding-top:10px; border-top:1px solid #ecf0f1; color:#7f8c8d; font-size:0.82em;">
+    <em>Note.</em> SBI only requires <strong>samples</strong> from \(p(\mathbf{x}\mid\boldsymbol\theta)\) &mdash; i.e. a running simulator. Likelihood-based methods (MCMC, HMC, VI) need <em>pointwise evaluations</em> of \(p(\mathbf{x}\mid\boldsymbol\theta)\), which are often unavailable when detector effects or systematics must be marginalised (= integrated) out.
+  </p>
 </section>
 
 <!-- ============================================================ -->
