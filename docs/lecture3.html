@@ -8,6 +8,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reveal.css">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/theme/white.css">
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.20.0/dist/tf.min.js"></script>
 <style>
   .reveal .slides section {
     background: #ffffff;
@@ -56,6 +57,8 @@
   .reveal table { font-size: 0.95em; border-collapse: collapse; margin: 0 auto; }
   .reveal th, .reveal td { padding: 6px 10px; border-bottom: 1px solid #ecf0f1; text-align: left; vertical-align: top; }
   .reveal th { background: #f8f9fa; font-weight: 600; color: #2c3e50; }
+  .reveal img.fig { max-width: 100%; max-height: 420px; border-radius: 4px; }
+  .credit { font-size: 0.7em; color: #95a5a6; text-align: center; margin-top: 6px; }
 </style>
 </head>
 <body>
@@ -79,21 +82,26 @@
   <div style="display:flex; gap:8px; margin-top:20px;">
     <div class="box box-blue" style="flex:1; text-align:center;">
       <strong style="color:#2980b9;">1</strong><br>
-      &lt;Section 1 title&gt;<br><span style="font-size:0.85em;">&lt;one-line scope&gt;</span>
+      Why NPE works<br><span style="font-size:0.85em;">minimising NLL recovers the posterior</span>
     </div>
     <div style="align-self:center; font-size:1.4em; color:#bdc3c7;">&rarr;</div>
     <div class="box box-orange" style="flex:1; text-align:center;">
       <strong style="color:#e67e22;">2</strong><br>
-      &lt;Section 2 title&gt;<br><span style="font-size:0.85em;">&lt;scope&gt;</span>
+      The Gaussian head<br><span style="font-size:0.85em;">simplest head, and where it breaks</span>
     </div>
     <div style="align-self:center; font-size:1.4em; color:#bdc3c7;">&rarr;</div>
     <div class="box box-green" style="flex:1; text-align:center;">
       <strong style="color:#27ae60;">3</strong><br>
-      &lt;Section 3 title&gt;<br><span style="font-size:0.85em;">&lt;scope&gt;</span>
+      Normalising flows<br><span style="font-size:0.85em;">change of variables, coupling layers</span>
+    </div>
+    <div style="align-self:center; font-size:1.4em; color:#bdc3c7;">&rarr;</div>
+    <div class="box box-purple" style="flex:1; text-align:center;">
+      <strong style="color:#8e44ad;">4</strong><br>
+      Continuous-time heads<br><span style="font-size:0.85em;">flow matching, diffusion</span>
     </div>
   </div>
   <div class="box fragment" style="margin-top:25px; text-align:center; font-size:1.0em;">
-    <strong>The thread:</strong> &lt;one-sentence narrative arc through the sections&gt;.
+    <strong>The thread:</strong> start from the SBI pipeline anatomy (simulator, inference loss, embedding); then walk the inference-loss slot from the simplest Gaussian head up through flows, flow matching, and diffusion.
   </div>
 </section>
 
@@ -108,12 +116,139 @@
   <div style="display:flex; align-items:center; justify-content:center; height:100%;">
     <div style="text-align:center;">
       <div style="width:200px; height:4px; background:linear-gradient(90deg,#2980b9,#e74c3c); margin:0 auto 25px;"></div>
+      <h1 style="font-size:2em; margin:0;">The SBI pipeline</h1>
+      <p style="font-size:1.1em; color:#7f8c8d; margin-top:15px;">Three building blocks: simulator, inference loss, embedding network.</p>
+      <div style="width:200px; height:4px; background:linear-gradient(90deg,#2980b9,#e74c3c); margin:25px auto 0;"></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<!-- SBI pipeline — Simulator highlight                            -->
+<!-- ============================================================ -->
+<section>
+  <h2>The SBI pipeline &mdash; the simulator</h2>
+  <div style="display:flex; gap:30px; align-items:center; margin-top:6px;">
+    <div style="flex:1.3; text-align:center;">
+      <img src="figures/lecture6/fig_sbi_pipeline2.png" style="max-height:520px; max-width:100%;">
+    </div>
+    <div style="flex:1;">
+      <div class="box box-green" style="font-size:0.9em;">
+        <strong style="color:#27ae60;">Simulator</strong> &mdash; encodes the physics.<br>
+        Maps parameters \(\boldsymbol\theta\) to data realisations \(\mathbf{x} \sim p(\mathbf{x}\mid\boldsymbol\theta)\).
+        <p style="margin:8px 0 4px 0; font-size:0.92em;"><strong>Examples:</strong></p>
+        <ul style="font-size:0.88em; margin:0 0 6px 14px;">
+          <li>Strong-lensing image generators (source + lens model + PSF + noise).</li>
+          <li>Gravitational-wave waveform models (LALSuite, IMRPhenom).</li>
+          <li>Cosmological N-body / hydro (Quijote, CAMELS).</li>
+          <li>Particle-physics event generators (Pythia, MadGraph).</li>
+        </ul>
+        <p style="margin:8px 0 0 0; padding-top:8px; border-top:1px dashed #95a5a6; font-size:0.88em; color:#c0392b;">
+          <strong>&#9888; Failure mode:</strong> wrong model &rarr; wrong inference. Misspecification of the simulator propagates into the posterior, often invisibly.
+        </p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<!-- SBI pipeline — Inference loss highlight                       -->
+<!-- ============================================================ -->
+<section>
+  <h2>The SBI pipeline &mdash; the inference loss</h2>
+  <div style="display:flex; gap:30px; align-items:center; margin-top:6px;">
+    <div style="flex:1.3; text-align:center;">
+      <img src="figures/lecture6/fig_sbi_pipeline2.png" style="max-height:520px; max-width:100%;">
+    </div>
+    <div style="flex:1;">
+      <div class="box box-blue" style="font-size:0.9em;">
+        <strong style="color:#2980b9;">Inference loss \(\mathcal{L}\)</strong> &mdash; defines the statistical question.<br>
+        The choice of loss is what turns the network into a particular kind of estimator.
+        <p style="margin:8px 0 4px 0; font-size:0.92em;"><strong>The loss decides what we're solving:</strong></p>
+        <ul style="font-size:0.88em; margin:0 0 0 14px;">
+          <li><strong>NPE</strong> &rarr; NLL of \(\boldsymbol\theta^\star\) under \(q_\phi(\boldsymbol\theta\mid\mathbf{x})\).</li>
+          <li><strong>NRE</strong> &rarr; binary cross-entropy on a joint-vs-marginal classifier.</li>
+          <li><strong>NLE</strong> &rarr; NLL of \(\mathbf{x}^\star\) under \(q_\phi(\mathbf{x}\mid\boldsymbol\theta)\).</li>
+          <li><strong>Flow matching</strong> &rarr; velocity-regression on a probability path.</li>
+          <li><strong>Diffusion</strong> &rarr; denoising score matching.</li>
+        </ul>
+        <p style="margin:8px 0 0 0; padding-top:8px; border-top:1px dashed #95a5a6; font-size:0.88em; color:#7f8c8d;">
+          Same simulator, same network, different loss &rArr; different statistical task.
+        </p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<!-- SBI pipeline — Embedding network highlight                    -->
+<!-- ============================================================ -->
+<section>
+  <h2>The SBI pipeline &mdash; the embedding network</h2>
+  <div style="display:flex; gap:30px; align-items:center; margin-top:6px;">
+    <div style="flex:1.3; text-align:center;">
+      <img src="figures/lecture6/fig_sbi_pipeline2.png" style="max-height:520px; max-width:100%;">
+    </div>
+    <div style="flex:1;">
+      <div class="box box-orange" style="font-size:0.83em;">
+        <strong style="color:#e67e22;">Embedding network \(T_\phi(\mathbf{x})\)</strong> &mdash; data compression.<br>
+        Maps high-dimensional observations to a low-dimensional summary that the inference head can chew on.
+        <p style="margin:8px 0 4px 0; font-size:0.92em;"><strong>Why we need it:</strong></p>
+        <ul style="font-size:0.88em; margin:0 0 6px 14px;">
+          <li>Strong lensing: \(\mathbf{x}\) is a \(256\times 256\) image, \(\sim\!65{,}000\) pixels.</li>
+          <li>Gravitational waves: \(\sim\!16{,}000\) time-series samples per detector.</li>
+          <li>Cosmology: density fields of \(\sim\!10^9\) voxels.</li>
+        </ul>
+        <p style="margin:8px 0 0 0; padding-top:8px; border-top:1px dashed #95a5a6; font-size:0.88em; color:#7f8c8d;">
+          A raw MLP would have too many parameters and no inductive bias. A CNN (for images), Transformer (for sequences), or GNN (for catalogues) does the compression. Trained jointly with the inference head, so \(T_\phi\) learns features informative <em>for the posterior</em>, not for any predefined label. Architecture choices are the topic of Lec 4.
+        </p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<!-- SECTION DIVIDER                                              -->
+<!-- ============================================================ -->
+<section>
+  <div style="display:flex; align-items:center; justify-content:center; height:100%;">
+    <div style="text-align:center;">
+      <div style="width:200px; height:4px; background:linear-gradient(90deg,#2980b9,#e74c3c); margin:0 auto 25px;"></div>
       <h1 style="font-size:2em; margin:0;">Why NPE works</h1>
       <p style="font-size:1.1em; color:#7f8c8d; margin-top:15px;">Minimising NLL on simulator pairs recovers the Bayesian posterior, in two idealisations and two proofs.</p>
       <div style="width:200px; height:4px; background:linear-gradient(90deg,#2980b9,#e74c3c); margin:25px auto 0;"></div>
     </div>
   </div>
 </section>
+
+<!-- ============================================================ -->
+<!-- NPE / NRE / NLE comparison table                              -->
+<!-- ============================================================ -->
+<section>
+  <h2>NPE, NRE, NLE, one table to rule them all</h2>
+  <table style="margin-top:8px;">
+    <thead>
+      <tr>
+        <th></th>
+        <th><span style="color:#2980b9; font-weight:600;">NPE</span></th>
+        <th><span style="color:#e67e22; font-weight:600;">NRE</span></th>
+        <th><span style="color:#27ae60; font-weight:600;">NLE</span></th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr><td><strong>Models</strong></td>            <td>\(q_\phi(\boldsymbol\theta\mid\mathbf{x})\)</td>          <td>\(\log r_\phi(\boldsymbol\theta, \mathbf{x})\)</td>          <td>\(q_\phi(\mathbf{x}\mid\boldsymbol\theta)\)</td></tr>
+      <tr><td><strong>Loss</strong></td>              <td>NLL</td>                                <td>cross-entropy</td>                       <td>NLL</td></tr>
+      <tr><td><strong>Sampling</strong></td>          <td>direct, single forward pass</td>        <td>MCMC on \(p(\boldsymbol\theta)\,e^{f_\phi}\)</td>   <td>MCMC on \(q_\phi\,p(\boldsymbol\theta)\)</td></tr>
+      <tr><td><strong>Amortised</strong></td>         <td>yes</td>                                <td>yes (re-MCMC per obs)</td>               <td>partial (re-MCMC per obs)</td></tr>
+      <tr><td><strong>High-D \(\boldsymbol\theta\)</strong></td> <td>flow head needed</td>        <td>scales via marginal targeting (TMNRE)</td><td>hard, \(\mathbf{x}\) usually higher-D</td></tr>
+      <tr><td><strong>Production examples</strong></td><td>DINGO (GW PE)</td>                     <td><em>saqqara</em> (LISA SGWB)</td>        <td>field models / cosmology</td></tr>
+    </tbody>
+  </table>
+  <div class="box" style="text-align:center; margin-top:14px;">
+    NPE stays the <strong>spine</strong> of this lecture. NRE and NLE are background colour, you should be able to name them and explain when to reach for each.
+  </div>
+</section>
+
 
 <!-- What does an NPE network actually learn? -->
 <section data-auto-animate>
@@ -247,131 +382,6 @@
   </p>
 </section>
 
-<!-- ============================================================ -->
-<!-- SECTION DIVIDER                                              -->
-<!-- ============================================================ -->
-<section>
-  <div style="display:flex; align-items:center; justify-content:center; height:100%;">
-    <div style="text-align:center;">
-      <div style="width:200px; height:4px; background:linear-gradient(90deg,#2980b9,#e74c3c); margin:0 auto 25px;"></div>
-      <h1 style="font-size:2em; margin:0;">The SBI pipeline, slot by slot</h1>
-      <p style="font-size:1.1em; color:#7f8c8d; margin-top:15px;">Three building blocks, simulator, inference loss, embedding network. Today's flows, flow matching, and diffusion all populate the middle slot.</p>
-      <div style="width:200px; height:4px; background:linear-gradient(90deg,#2980b9,#e74c3c); margin:25px auto 0;"></div>
-    </div>
-  </div>
-</section>
-
-<!-- ============================================================ -->
-<!-- SBI pipeline — Simulator highlight                            -->
-<!-- ============================================================ -->
-<section>
-  <h2>The SBI pipeline &mdash; the simulator</h2>
-  <div style="display:flex; gap:30px; align-items:center; margin-top:6px;">
-    <div style="flex:1.3; text-align:center;">
-      <img src="figures/lecture6/fig_sbi_pipeline2.png" style="max-height:520px; max-width:100%;">
-    </div>
-    <div style="flex:1;">
-      <div class="box box-green" style="font-size:0.9em;">
-        <strong style="color:#27ae60;">Simulator</strong> &mdash; encodes the physics.<br>
-        Maps parameters \(\boldsymbol\theta\) to data realisations \(\mathbf{x} \sim p(\mathbf{x}\mid\boldsymbol\theta)\).
-        <p style="margin:8px 0 4px 0; font-size:0.92em;"><strong>Examples:</strong></p>
-        <ul style="font-size:0.88em; margin:0 0 6px 14px;">
-          <li>Strong-lensing image generators (source + lens model + PSF + noise).</li>
-          <li>Gravitational-wave waveform models (LALSuite, IMRPhenom).</li>
-          <li>Cosmological N-body / hydro (Quijote, CAMELS).</li>
-          <li>Particle-physics event generators (Pythia, MadGraph).</li>
-        </ul>
-        <p style="margin:8px 0 0 0; padding-top:8px; border-top:1px dashed #95a5a6; font-size:0.88em; color:#c0392b;">
-          <strong>&#9888; Failure mode:</strong> wrong model &rarr; wrong inference. Misspecification of the simulator propagates into the posterior, often invisibly.
-        </p>
-      </div>
-    </div>
-  </div>
-</section>
-
-<!-- ============================================================ -->
-<!-- SBI pipeline — Inference loss highlight                       -->
-<!-- ============================================================ -->
-<section>
-  <h2>The SBI pipeline &mdash; the inference loss</h2>
-  <div style="display:flex; gap:30px; align-items:center; margin-top:6px;">
-    <div style="flex:1.3; text-align:center;">
-      <img src="figures/lecture6/fig_sbi_pipeline2.png" style="max-height:520px; max-width:100%;">
-    </div>
-    <div style="flex:1;">
-      <div class="box box-blue" style="font-size:0.9em;">
-        <strong style="color:#2980b9;">Inference loss \(\mathcal{L}\)</strong> &mdash; defines the statistical question.<br>
-        The choice of loss is what turns the network into a particular kind of estimator.
-        <p style="margin:8px 0 4px 0; font-size:0.92em;"><strong>The loss decides what we're solving:</strong></p>
-        <ul style="font-size:0.88em; margin:0 0 0 14px;">
-          <li><strong>NPE</strong> &rarr; NLL of \(\boldsymbol\theta^\star\) under \(q_\phi(\boldsymbol\theta\mid\mathbf{x})\).</li>
-          <li><strong>NRE</strong> &rarr; binary cross-entropy on a joint-vs-marginal classifier.</li>
-          <li><strong>NLE</strong> &rarr; NLL of \(\mathbf{x}^\star\) under \(q_\phi(\mathbf{x}\mid\boldsymbol\theta)\).</li>
-          <li><strong>Flow matching</strong> &rarr; velocity-regression on a probability path.</li>
-          <li><strong>Diffusion</strong> &rarr; denoising score matching.</li>
-        </ul>
-        <p style="margin:8px 0 0 0; padding-top:8px; border-top:1px dashed #95a5a6; font-size:0.88em; color:#7f8c8d;">
-          Same simulator, same network, different loss &rArr; different statistical task.
-        </p>
-      </div>
-    </div>
-  </div>
-</section>
-
-<!-- ============================================================ -->
-<!-- NPE / NRE / NLE comparison table                              -->
-<!-- ============================================================ -->
-<section>
-  <h2>NPE, NRE, NLE, one table to rule them all</h2>
-  <table style="margin-top:8px;">
-    <thead>
-      <tr>
-        <th></th>
-        <th><span style="color:#2980b9; font-weight:600;">NPE</span></th>
-        <th><span style="color:#e67e22; font-weight:600;">NRE</span></th>
-        <th><span style="color:#27ae60; font-weight:600;">NLE</span></th>
-      </tr>
-    </thead>
-    <tbody>
-      <tr><td><strong>Models</strong></td>            <td>\(q_\phi(\boldsymbol\theta\mid\mathbf{x})\)</td>          <td>\(\log r_\phi(\boldsymbol\theta, \mathbf{x})\)</td>          <td>\(q_\phi(\mathbf{x}\mid\boldsymbol\theta)\)</td></tr>
-      <tr><td><strong>Loss</strong></td>              <td>NLL</td>                                <td>cross-entropy</td>                       <td>NLL</td></tr>
-      <tr><td><strong>Sampling</strong></td>          <td>direct, single forward pass</td>        <td>MCMC on \(p(\boldsymbol\theta)\,e^{f_\phi}\)</td>   <td>MCMC on \(q_\phi\,p(\boldsymbol\theta)\)</td></tr>
-      <tr><td><strong>Amortised</strong></td>         <td>yes</td>                                <td>yes (re-MCMC per obs)</td>               <td>partial (re-MCMC per obs)</td></tr>
-      <tr><td><strong>High-D \(\boldsymbol\theta\)</strong></td> <td>flow head needed</td>        <td>scales via marginal targeting (TMNRE)</td><td>hard, \(\mathbf{x}\) usually higher-D</td></tr>
-      <tr><td><strong>Production examples</strong></td><td>DINGO (GW PE)</td>                     <td><em>saqqara</em> (LISA SGWB)</td>        <td>field models / cosmology</td></tr>
-    </tbody>
-  </table>
-  <div class="box" style="text-align:center; margin-top:14px;">
-    NPE stays the <strong>spine</strong> of this lecture. NRE and NLE are background colour, you should be able to name them and explain when to reach for each.
-  </div>
-</section>
-
-<!-- ============================================================ -->
-<!-- SBI pipeline — Embedding network highlight                    -->
-<!-- ============================================================ -->
-<section>
-  <h2>The SBI pipeline &mdash; the embedding network</h2>
-  <div style="display:flex; gap:30px; align-items:center; margin-top:6px;">
-    <div style="flex:1.3; text-align:center;">
-      <img src="figures/lecture6/fig_sbi_pipeline2.png" style="max-height:520px; max-width:100%;">
-    </div>
-    <div style="flex:1;">
-      <div class="box box-orange" style="font-size:0.83em;">
-        <strong style="color:#e67e22;">Embedding network \(T_\phi(\mathbf{x})\)</strong> &mdash; data compression.<br>
-        Maps high-dimensional observations to a low-dimensional summary that the inference head can chew on.
-        <p style="margin:8px 0 4px 0; font-size:0.92em;"><strong>Why we need it:</strong></p>
-        <ul style="font-size:0.88em; margin:0 0 6px 14px;">
-          <li>Strong lensing: \(\mathbf{x}\) is a \(256\times 256\) image, \(\sim\!65{,}000\) pixels.</li>
-          <li>Gravitational waves: \(\sim\!16{,}000\) time-series samples per detector.</li>
-          <li>Cosmology: density fields of \(\sim\!10^9\) voxels.</li>
-        </ul>
-        <p style="margin:8px 0 0 0; padding-top:8px; border-top:1px dashed #95a5a6; font-size:0.88em; color:#7f8c8d;">
-          A raw MLP would have too many parameters and no inductive bias. A CNN (for images), Transformer (for sequences), or GNN (for catalogues) does the compression. Trained jointly with the inference head, so \(T_\phi\) learns features informative <em>for the posterior</em>, not for any predefined label. Architecture choices are the topic of Lec 4.
-        </p>
-      </div>
-    </div>
-  </div>
-</section>
 
 <!-- ============================================================ -->
 <!-- IMPORTED FROM lecture2.html — Gaussian head as simplest head -->
@@ -382,13 +392,9 @@
   <div style="display:flex; align-items:center; justify-content:center; height:100%;">
     <div style="text-align:center; max-width:880px;">
       <div style="width:200px; height:4px; background:linear-gradient(90deg,#2980b9,#e74c3c); margin:0 auto 25px;"></div>
-      <h1 style="font-size:1.8em; margin:0;">Going beyond univariate parameters<br>and homoscedastic noise</h1>
-      <p style="font-size:1.1em; color:#7f8c8d; margin-top:15px;">Multivariate parameters and input-dependent uncertainty \(\sigma(x)\).</p>
+      <h1 style="font-size:2em; margin:0;">The Gaussian head</h1>
+      <p style="font-size:1.1em; color:#7f8c8d; margin-top:15px;">The simplest concrete inference head, multivariate \(\boldsymbol\mu_\phi(x)\) with input-dependent \(\sigma_\phi(x)\), and where it breaks.</p>
       <div style="width:200px; height:4px; background:linear-gradient(90deg,#2980b9,#e74c3c); margin:25px auto 0;"></div>
-      <p style="font-size:0.8em; color:#95a5a6; margin-top:28px; line-height:1.55;">
-        <strong>univariate</strong>, only one parameter (scalar \(\theta\)); the multivariate case has a vector \(\boldsymbol\theta = (\theta_1, \ldots, \theta_D)\). &nbsp;
-        <strong>homoscedastic</strong>, the noise width \(\sigma\) is the same at every \(x\); the heteroscedastic case lets \(\sigma\) depend on \(x\), i.e. \(\sigma(x)\).
-      </p>
     </div>
   </div>
 </section>
@@ -458,6 +464,360 @@ for step = 1, 2, ... :
   <p style="text-align:center; font-size:0.78em; color:#7f8c8d; margin-top:0;">
     Left: a single observation \(\mathbf{x}\). Right: the learned posterior \(q_\phi(a,b\mid\mathbf{x})\) (orange ellipse) vs the true \((a^\star,b^\star)\) (green star). The same trained network handles any new \(\mathbf{x}\), amortised inference.
   </p>
+</section>
+
+<!-- ============================================================ -->
+<!-- IMPORTED FROM old/lecture6.html — Normalising flows block    -->
+<!-- ============================================================ -->
+
+<!-- Section divider -->
+<section>
+  <div style="display:flex; align-items:center; justify-content:center; height:100%;">
+    <div style="text-align:center;">
+      <div style="width:200px; height:4px; background:linear-gradient(90deg,#2980b9,#e74c3c); margin:0 auto 25px;"></div>
+      <h1 style="font-size:2em; margin:0;">Normalising flows</h1>
+      <p style="font-size:1.1em; color:#7f8c8d; margin-top:15px;">A flexible density from invertible maps, via the change-of-variables formula.</p>
+      <div style="width:200px; height:4px; background:linear-gradient(90deg,#2980b9,#e74c3c); margin:25px auto 0;"></div>
+    </div>
+  </div>
+</section>
+
+<!-- Why flows + wishlist -->
+<section>
+  <h2>Why we need flows</h2>
+  <div class="box box-orange" style="text-align:center;">
+    Real posteriors in physics are often <strong>multimodal</strong>, <strong>curved</strong>, or <strong>heavy-tailed</strong>. Gaussians can't represent them.
+  </div>
+  <div style="display:flex; gap:14px; margin-top:14px;">
+    <div class="box box-blue" style="flex:1; text-align:center;">
+      <strong>&#9312; Evaluate \(\log q_\phi(\boldsymbol\theta\mid\mathbf{x})\)</strong><br><br>
+      Needed for the NPE loss.
+    </div>
+    <div class="box box-orange" style="flex:1; text-align:center;">
+      <strong>&#9313; Sample \(\boldsymbol\theta \sim q_\phi\)</strong><br><br>
+      Needed for corner plots, downstream analyses.
+    </div>
+    <div class="box box-green" style="flex:1; text-align:center;">
+      <strong>&#9314; Arbitrary shape</strong><br><br>
+      Multimodal, curved, heavy-tailed.
+    </div>
+  </div>
+  <div class="box" style="margin-top:16px; text-align:center;">
+    MLPs on raw outputs fail &#9312;: nothing forces normalisation.<br>
+    <strong>Normalising flows</strong> satisfy all three by construction, via the change-of-variables formula.
+  </div>
+</section>
+
+<!-- Change of variables -->
+<section>
+  <h2>Change of variables</h2>
+  <div class="box box-blue" style="text-align:center;">
+    <strong>1D.</strong> If \(z \sim p_Z(z)\) and \(\theta = f(z)\) with \(f\) invertible and differentiable,
+    \[ p_\Theta(\theta) \;=\; p_Z(z)\,\left|\frac{dz}{d\theta}\right| \;=\; p_Z(f^{-1}(\theta))\,\left|\frac{df}{dz}\right|^{-1} \]
+  </div>
+  <div class="box box-purple" style="text-align:center;">
+    <strong>Multivariate.</strong> For \(\mathbf{z} \in \mathbb{R}^d\), \(\boldsymbol\theta = f(\mathbf{z})\),
+    \[ p_\Theta(\boldsymbol\theta) \;=\; p_Z(f^{-1}(\boldsymbol\theta))\;\left|\det \frac{\partial f}{\partial \mathbf{z}}\right|^{-1} \]
+    The Jacobian determinant is the <em>volume rescaling</em>. General \(|\det J|\) costs \(\mathcal{O}(d^3)\).
+  </div>
+  <p style="text-align:center; font-size:0.95em; color:#555;">
+    Flow design: pick architectures where \(J\) is triangular, so \(|\det J| = \prod_i J_{ii}\) costs \(\mathcal{O}(d)\).
+  </p>
+</section>
+
+<!-- 1D worked example: warping a Gaussian -->
+<section>
+  <h2>Worked example: warping a Gaussian</h2>
+  <div style="display:flex; gap:10px; justify-content:center; align-items:flex-start; margin-top:6px;">
+    <div style="text-align:center;">
+      <canvas id="cv-map" width="280" height="240" style="border:1px solid #bdc3c7; border-radius:4px; background:#fafafa;"></canvas>
+      <div style="font-size:0.95em; color:#2c3e50;">map &nbsp;\(\theta = z + A\sin z\)</div>
+    </div>
+    <div style="text-align:center;">
+      <canvas id="cv-base" width="280" height="240" style="border:1px solid #bdc3c7; border-radius:4px; background:#fafafa;"></canvas>
+      <div style="font-size:0.95em; color:#2c3e50;">base &nbsp;\(\mathcal{N}(0, 1.5^2)\)</div>
+    </div>
+    <div style="text-align:center;">
+      <canvas id="cv-warp" width="280" height="240" style="border:1px solid #bdc3c7; border-radius:4px; background:#fafafa;"></canvas>
+      <div style="font-size:0.95em; color:#2c3e50;">warped &nbsp;\(p_\Theta(\theta) = p_Z(z)/|1+A\cos z|\)</div>
+    </div>
+  </div>
+  <div style="display:flex; gap:14px; align-items:center; justify-content:center; margin-top:14px;">
+    <label style="font-size:0.95em;">parameter &nbsp;\(A\) =
+      <span id="cv-aval" style="font-family:monospace; color:#e67e22; font-weight:600;">0.80</span>
+    </label>
+    <input id="cv-slider" type="range" min="0" max="0.99" step="0.01" value="0.80" style="width:320px; accent-color:#e67e22;">
+    <span id="cv-mono" style="font-size:0.95em; color:#27ae60; font-weight:600;">monotonic &#10003;</span>
+  </div>
+  <p style="text-align:center; margin-top:10px; font-size:0.95em; color:#2c3e50;">
+    Base \(\mathcal{N}(0,1.5^2)\) pushed through \(\theta = z + A\sin z\). For \(A < 1\) the map is strictly monotonic, still invertible, but as \(A\to 1\) the derivative near \(z=\pm\pi\) collapses, so density mass piles up there: the warped target becomes <strong>bimodal</strong>.
+  </p>
+</section>
+
+<!-- Stack of invertible maps -->
+<section>
+  <h2>Normalising flow = stack of invertible maps</h2>
+  <div class="box box-purple" style="text-align:center; font-size:1.05em;">
+    \[ \boldsymbol\theta \;=\; f_L \circ f_{L-1} \circ \cdots \circ f_1(\mathbf{z}), \qquad \mathbf{z} \sim \mathcal{N}(0, I_d) \]
+    Each \(f_\ell\) is invertible and differentiable, with parameters \(\phi_\ell\) (possibly conditioned on \(\mathbf{x}\)).
+  </div>
+  <ul style="font-size:0.95em;">
+    <li><strong>Sampling</strong> \(\boldsymbol\theta \sim q_\phi\): draw \(\mathbf{z}\), push forward through the stack.</li>
+    <li><strong>Density evaluation</strong> at a given \(\boldsymbol\theta\): invert the stack, evaluate \(p_Z\), correct with Jacobians.</li>
+    <li>Composition of invertible maps is invertible, deep flows stay a valid density.</li>
+  </ul>
+  <div class="box box-blue" style="text-align:center;">
+    Flexibility grows with depth \(L\), just like MLPs, but every layer preserves the probability axioms.
+  </div>
+</section>
+
+<!-- Log-density by chain of Jacobians -->
+<section>
+  <h2>Log-density by chain of Jacobians</h2>
+  <div class="box box-blue" style="text-align:center;">
+    Let \(\mathbf{z}_\ell = f_\ell(\mathbf{z}_{\ell-1})\), \(\mathbf{z}_0 = \mathbf{z}\), \(\mathbf{z}_L = \boldsymbol\theta\). Change-of-variables composes:
+    \[ \log q_\phi(\boldsymbol\theta\mid\mathbf{x}) \;=\; \log p_Z(\mathbf{z}_0) \;-\; \sum_{\ell=1}^{L} \log \left| \det \frac{\partial f_\ell}{\partial \mathbf{z}_{\ell-1}} \right| \]
+  </div>
+  <div class="box box-green" style="text-align:center;">
+    <strong>Training is just minibatch SGD:</strong>
+    \[ \mathcal{L}_{\mathrm{NPE}}(\phi) = -\frac{1}{|\mathcal{B}|}\sum_{(\boldsymbol\theta, \mathbf{x})\in\mathcal{B}} \log q_\phi(\boldsymbol\theta\mid\mathbf{x}) \]
+    The whole stack, including any conditioning network, trains end-to-end with backprop.
+  </div>
+  <p style="text-align:center; font-size:0.95em; color:#555;">
+    <strong>Key design constraint:</strong> each \(|\det \partial f_\ell / \partial \mathbf{z}_{\ell-1}|\) must be cheap.
+  </p>
+</section>
+
+<!-- Coupling layers -->
+<section>
+  <h2>Affine coupling layers</h2>
+  <div class="box box-purple">
+    Split \(\mathbf{z} = (\mathbf{z}_A, \mathbf{z}_B)\). Define
+    \[ \mathbf{z}'_A = \mathbf{z}_A, \qquad
+       \mathbf{z}'_B = \mathbf{z}_B \odot \exp\!\big(s_\phi(\mathbf{z}_A)\big) \;+\; t_\phi(\mathbf{z}_A) \]
+    where \(s_\phi, t_\phi\) are arbitrary neural networks (MLPs).
+  </div>
+  <div style="display:flex; gap:14px; margin-top:10px;">
+    <div class="box box-blue" style="flex:1;">
+      <strong>Invertibility</strong><br>
+      \(\mathbf{z}_A\) passes through untouched; \(\mathbf{z}_B\) is scaled-and-shifted given \(\mathbf{z}_A\).
+      Trivially invertible in closed form.
+    </div>
+    <div class="box box-green" style="flex:1;">
+      <strong>Cheap Jacobian</strong><br>
+      \(J\) is triangular &rArr; \(\log|\det J| = \sum_i s_\phi(\mathbf{z}_A)_i\).
+      \(\mathcal{O}(d)\), not \(\mathcal{O}(d^3)\).
+    </div>
+  </div>
+  <p style="text-align:center; font-size:0.95em; color:#555; margin-top:10px;">
+    Alternate which half is "active" across layers (<em>RealNVP</em>). Stack \(L\) of these &rarr; expressive flow.
+  </p>
+</section>
+
+<!-- Conditional flows -->
+<section>
+  <h2>Conditional flows, plugging in the data</h2>
+  <div class="box box-orange" style="text-align:center;">
+    For SBI we want \(q_\phi(\boldsymbol\theta \mid \mathbf{x})\), not just \(q_\phi(\boldsymbol\theta)\).<br>
+    Let the scale and shift networks depend on the data (or its embedding):
+    \[ s_\phi(\mathbf{z}_A, T_\phi(\mathbf{x})), \qquad t_\phi(\mathbf{z}_A, T_\phi(\mathbf{x})) \]
+  </div>
+  <div class="box box-blue" style="margin-top:10px;">
+    <strong>End-to-end picture.</strong>
+    <ol style="font-size:0.95em;">
+      <li><strong>Embedding</strong> \(T_\phi(\mathbf{x})\) compresses the data (CNN / Transformer / GNN, see Lec 4).</li>
+      <li><strong>Conditional flow</strong> turns \(\mathbf{z}\sim\mathcal{N}(0,I)\) into \(\boldsymbol\theta\), with all coupling-layer parameters depending on \(T_\phi(\mathbf{x})\).</li>
+      <li>Loss: \(-\log q_\phi(\boldsymbol\theta^\star\mid\mathbf{x})\) averaged over simulator pairs.</li>
+    </ol>
+  </div>
+  <div class="box box-green" style="text-align:center;">
+    Every component, embedding and coupling networks \(s, t\), is trained together by backprop.
+  </div>
+</section>
+
+<!-- 2D worked example (figure) -->
+<section>
+  <h2>Flow pushforward, 2D worked example</h2>
+  <div style="text-align:center;">
+    <img src="figures/lecture6/fig_flow_pushforward.png" class="fig">
+  </div>
+  <p class="credit">
+    Base samples \(\mathbf{z}\sim\mathcal{N}(0, I)\) are warped layer-by-layer into the target shape (here: two-moons). Each layer's Jacobian contributes to the log-density, keeping normalisation exact.
+  </p>
+  <div class="box" style="margin-top:6px; text-align:center;">
+    In the conditional version, the target shape <em>depends on \(\mathbf{x}\)</em>, each observation gets its own warped posterior.
+  </div>
+</section>
+
+<!-- Live 2D normalising-flow demo -->
+<section>
+  <h2>Flow pushforward, live 2D demo</h2>
+  <div style="display:flex; gap:14px; align-items:flex-start;">
+    <div style="flex:1; text-align:center;">
+      <div style="font-weight:600; color:#2980b9; margin-bottom:2px;">Base space &nbsp;\(z \sim \mathcal{N}(0, I)\)</div>
+      <canvas id="nf-zcanvas" width="300" height="300" style="border:1px solid #bdc3c7; border-radius:4px; background:#fafafa;"></canvas>
+    </div>
+    <div style="flex:1; text-align:center;">
+      <div style="font-weight:600; color:#e67e22; margin-bottom:2px;">Data space &nbsp;\(x = f_\theta(z)\)</div>
+      <canvas id="nf-xcanvas" width="300" height="300" style="border:1px solid #bdc3c7; border-radius:4px; background:#fafafa;"></canvas>
+    </div>
+    <div style="flex:0.8; text-align:left; font-size:0.85em;">
+      <div class="box box-blue" style="padding:8px 10px; margin:2px 0;">
+        <strong>Flow:</strong> 4 affine coupling layers, MLP(32).<br>
+        <strong>Target:</strong> banana (grey).<br>
+        <strong>Loss:</strong> \(-\mathbb{E}[\log q_\theta(x)]\)
+      </div>
+      <div style="margin-top:6px;">
+        <button id="nf-toggle" style="padding:5px 10px; cursor:pointer; font-weight:600;">&#9654; Train</button>
+        <button id="nf-reset"  style="padding:5px 10px; cursor:pointer;">Reset</button>
+      </div>
+      <div style="margin-top:8px; font-family:monospace; font-size:0.95em;">
+        step: <span id="nf-step">0</span><br>
+        loss: <span id="nf-loss">&mdash;</span>
+      </div>
+      <div style="margin-top:6px; font-size:0.8em; color:#7f8c8d;">
+        Colours tag fixed \(z\)-points by angle, watch them get warped into the banana.
+      </div>
+    </div>
+  </div>
+  <p class="credit" style="margin-top:4px;">Trained live in your browser with TF.js. Each layer: \(x_b = z_b \cdot e^{s(z_a)} + t(z_a)\), swapping \(a\leftrightarrow b\). Exact log-density via \(\log|\det J| = \sum_\ell s_\ell\).</p>
+</section>
+
+<!-- Full pipeline revisited -->
+<section>
+  <h2>The full pipeline, revisited</h2>
+  <div style="display:flex; gap:14px; align-items:center;">
+    <div style="flex:1.2; text-align:center;">
+      <img src="figures/lecture6/fig_sbi_pipeline.png" class="fig" style="max-height:420px;">
+    </div>
+    <div style="flex:1;">
+      <div class="box box-green"><strong>Simulator</strong>: physics model, possibly slow.</div>
+      <div class="box box-orange"><strong>Embedding \(T_\phi\)</strong>: CNN / Transformer / GNN, matches the data modality.</div>
+      <div class="box box-purple"><strong>Conditional flow</strong>: coupling layers conditioned on \(T_\phi(\mathbf{x})\).</div>
+      <div class="box box-blue"><strong>Inference loss</strong>: \(-\log q_\phi(\boldsymbol\theta^\star\mid\mathbf{x})\).</div>
+    </div>
+  </div>
+  <div class="box" style="margin-top:8px; text-align:center;">
+    <strong>Amortised:</strong> train once, then inference on any new \(\mathbf{x}_{\text{obs}}\) is a single forward pass + sampling.
+  </div>
+</section>
+
+<!-- LISA SGWB application -->
+<section>
+  <h2>Application, stochastic GW background with LISA</h2>
+  <div style="display:flex; gap:4px; align-items:flex-start;">
+    <div style="flex:1.35; text-align:center;">
+      <img src="figures/lecture6/fig_saqqara_corner.png" class="fig" style="max-height:470px;">
+      <div style="font-size:0.65em; color:#7f8c8d; margin-top:2px;">
+        Posteriors for stochastic-background amplitude \(\alpha\), tilt \(\gamma\), and two noise parameters \(A\), \(P\). Inset: injected PSD, noise + SGWB + unresolved transients.
+      </div>
+    </div>
+    <div style="flex:1; font-size:0.60em;">
+      <div class="box box-blue" style="padding:8px 10px;">
+        <strong>Problem.</strong> LISA data = instrument noise + a stochastic GW background + <em>hundreds</em> of unresolved transient sources (SMBH mergers). Goal: infer the background parameters.
+      </div>
+      <div class="box box-orange" style="padding:8px 10px;">
+        <strong>Why SBI?</strong> The likelihood over the transient population is intractable. Traditional MCMC either ignores transients (biased, <span style="color:#e67e22;">orange dashed</span>) or has to sample their full parameter space (prohibitively expensive).
+      </div>
+      <div class="box box-green" style="padding:8px 10px;">
+        <strong>Result.</strong> The SBI posterior (<span style="font-weight:600;">orange solid</span>, TMNRE via <em>saqqara</em>) <em>automatically marginalises</em> over the transients and recovers the true injection, matching MCMC (<span style="font-weight:600;">black</span>) on the clean case C1.
+      </div>
+      <div class="box box-purple" style="padding:8px 10px;">
+        <strong>Take-away.</strong> SBI turns a nuisance (the transient population) into something implicit in the simulator, no likelihood engineering needed.
+      </div>
+    </div>
+  </div>
+  <p class="credit" style="margin-top:2px;">Alvey, Bhardwaj, Domcke, Pieroni &amp; Weniger, <a href="https://arxiv.org/abs/2309.07954" style="color:#2980b9;">arXiv:2309.07954</a>, code: <em>saqqara</em>.</p>
+</section>
+
+<!-- ============================================================ -->
+<!-- IMPORTED FROM lecture3.draft.html — Flow matching & diffusion -->
+<!-- ============================================================ -->
+
+<!-- Section divider -->
+<section>
+  <div style="display:flex; align-items:center; justify-content:center; height:100%;">
+    <div style="text-align:center;">
+      <div style="width:200px; height:4px; background:linear-gradient(90deg,#2980b9,#e74c3c); margin:0 auto 25px;"></div>
+      <h1 style="font-size:2em; margin:0;">Continuous-time heads</h1>
+      <p style="font-size:1.1em; color:#7f8c8d; margin-top:15px;">Flow matching and diffusion, two continuous-time pictures sharing one visual anchor, ODE vs SDE.</p>
+      <div style="width:200px; height:4px; background:linear-gradient(90deg,#2980b9,#e74c3c); margin:25px auto 0;"></div>
+    </div>
+  </div>
+</section>
+
+<!-- Continuous-time unified picture -->
+<section>
+  <h2>Continuous-time generative models, one picture</h2>
+  <p>Coupling flows compose <strong>discrete</strong> invertible maps. The next two families take the same idea to continuous time: pull samples through a vector field over \(t\in[0, 1]\).</p>
+  <div style="display:flex; gap:14px; margin-top:6px;">
+    <div style="flex:1; text-align:center;">
+      <div style="font-weight:600; color:#2c3e50;">Flow matching, ODE</div>
+      <div id="fm-traj-plot" style="width:100%; height:300px;"></div>
+      <p style="font-size:0.8em; color:#7f8c8d; margin-top:0;">\(d\theta/dt = v_\phi(\theta, t)\), smooth, deterministic trajectories.</p>
+    </div>
+    <div style="flex:1; text-align:center;">
+      <div style="font-weight:600; color:#2c3e50;">Diffusion, SDE</div>
+      <div id="diff-traj-plot" style="width:100%; height:300px;"></div>
+      <p style="font-size:0.8em; color:#7f8c8d; margin-top:0;">\(d\theta = b_\phi(\theta, t)\,dt + g(t)\,dW_t\), noisy, stochastic paths.</p>
+    </div>
+  </div>
+  <p style="text-align:center; margin-top:6px;">
+    <strong>Both</strong> transport a base \(p_0\) (Gaussian noise) into the target \(p_1\) (posterior) over \(t\in[0,1]\). One uses an ODE, the other an SDE.
+  </p>
+  <button id="ct-replay" style="padding:4px 14px; cursor:pointer; font-weight:600; display:block; margin:6px auto 0;">&#9654; Replay</button>
+</section>
+
+<!-- Flow matching -->
+<section>
+  <h2>Flow matching</h2>
+  <p>Learn a velocity field \(v_\phi(\theta, t)\) such that the ODE
+    \(\;d\theta_t/dt = v_\phi(\theta_t, t)\), \(\theta_0 \sim p_0\), \(\theta_1 \sim p(\theta\mid x)\)
+    transports the base noise to the posterior.</p>
+  <div class="box">
+    <strong>Training, conditional FM objective.</strong>
+    Pick a "probability path" \(p_t(\theta\mid\theta_1)\) (e.g. straight-line \(\theta_t = (1-t)\theta_0 + t\theta_1\)); target velocity \(u_t(\theta\mid\theta_1)\). Regress:
+    \[ \mathcal{L}_{\rm FM}(\phi) = \mathbb{E}_{t,\theta_0,\theta_1}\bigl\| v_\phi(\theta_t, t, x) - u_t(\theta\mid\theta_1)\bigr\|^2 \]
+  </div>
+  <p style="margin-top:8px;"><strong>Sampling.</strong> Draw \(\theta_0\sim p_0\); integrate the learned ODE with any black-box solver (Euler, RK4, adaptive). Typically 10&ndash;50 steps.</p>
+  <p><strong>Density.</strong> Available via instantaneous change-of-variables (Hutchinson trace), rarely cheap. FM is mostly used as a <em>sampler</em>.</p>
+  <p style="margin-top:6px; font-size:0.85em; color:#7f8c8d; text-align:center;">Lipman et al. 2023 (ICLR). SBI: Dax et al. 2023 (DINGO-FM), Wildberger et al. 2023.</p>
+</section>
+
+<!-- Diffusion -->
+<section>
+  <h2>Diffusion / score-based generative models</h2>
+  <p>Define a <strong>forward</strong> SDE that turns data into noise:</p>
+  <p style="text-align:center;">
+    \( d\theta_t = -\tfrac{1}{2}\beta(t)\theta_t\,dt + \sqrt{\beta(t)}\,dW_t, \quad t\in[0, 1] \)
+  </p>
+  <p>Learn the <strong>score</strong> \(s_\phi(\theta, t, x) \approx \nabla_\theta\log p_t(\theta\mid x)\) by denoising:</p>
+  <div class="box" style="text-align:center;">
+    \[ \mathcal{L}_{\rm DSM}(\phi) = \mathbb{E}_{t, \theta_0, x}\bigl\| s_\phi(\theta_t, t, x) - \nabla_\theta\log p_t(\theta_t\mid\theta_0)\bigr\|^2 \]
+  </div>
+  <p style="margin-top:12px;"><strong>Sampling</strong> = integrate the <em>reverse</em> SDE (or its probability-flow ODE) from \(t=1\) (noise) back to \(t=0\) (sample). 50&ndash;500 steps typical.</p>
+  <p><strong>SBI flavour.</strong> Condition the score on \(x\) (or \(T_\phi(x)\)). One trained score net amortises over all observations.</p>
+  <p style="margin-top:6px; color:#7f8c8d; text-align:center;">Sohl-Dickstein et al. 2015; Song &amp; Ermon 2019; Ho et al. (DDPM) 2020; Song et al. (score SDE) 2021. SBI: Geffner et al. 2023, Sharrock et al. 2024.</p>
+</section>
+
+<!-- When to reach for which -->
+<section>
+  <h2>When to reach for which inference head</h2>
+  <table style="margin-top:8px;">
+    <thead>
+      <tr><th></th><th>Coupling flow</th><th>Flow matching</th><th>Diffusion</th></tr>
+    </thead>
+    <tbody>
+      <tr><td><strong>Exact log-density</strong></td><td>yes, cheap</td><td>yes, expensive (trace)</td><td>yes, expensive</td></tr>
+      <tr><td><strong>Sampling cost</strong></td><td>one forward pass</td><td>10&ndash;50 ODE steps</td><td>50&ndash;500 SDE steps</td></tr>
+      <tr><td><strong>Training stability</strong></td><td>good, architecture-constrained</td><td>very good, regression loss</td><td>excellent</td></tr>
+      <tr><td><strong>Scales to very high-D \(\theta\)</strong></td><td>moderate</td><td>good</td><td>excellent</td></tr>
+      <tr><td><strong>Shines when</strong></td><td>medium-D, need fast amortised \(\log q\)</td><td>medium-D, fast amortised sampler</td><td>very high-D (images, fields)</td></tr>
+    </tbody>
+  </table>
+  <div class="box" style="margin-top:14px; text-align:center;">
+    Rule of thumb in 2026: <strong>coupling flow</strong> for typical SBI (parameters \(\lesssim 50\)D). <strong>FM/diffusion</strong> when \(\theta\) itself is image-shaped (e.g. dark-matter maps, lensing source planes) or when you want sample-speed and do not need exact \(\log q\).
+  </div>
 </section>
 
 </div>
@@ -763,6 +1123,510 @@ function baseLayout(opts) {
     draw();
   }
   Reveal.on('slidechanged', initSlide); Reveal.on('ready', initSlide);
+})();
+
+// ============================================================
+// Interactive change-of-variables (1D worked example, canvas)
+// ============================================================
+(function(){
+  var SIGMA = 1.5;
+  var ZMIN = -6, ZMAX = 6;
+  var TMIN = -7, TMAX = 7;
+  var PMAX = 0.32;
+
+  function pZ(z){
+    return (1/(SIGMA*Math.sqrt(2*Math.PI))) * Math.exp(-z*z/(2*SIGMA*SIGMA));
+  }
+  var MARGIN = { left: 38, right: 10, top: 10, bottom: 34 };
+  function rect(cv){
+    return { x: MARGIN.left, y: MARGIN.top,
+             w: cv.width  - MARGIN.left - MARGIN.right,
+             h: cv.height - MARGIN.top  - MARGIN.bottom };
+  }
+  function mapXY(r, xmin, xmax, ymin, ymax){
+    return function(x, y){
+      return [ r.x + (x - xmin) / (xmax - xmin) * r.w,
+               r.y + r.h - (y - ymin) / (ymax - ymin) * r.h ];
+    };
+  }
+  function drawAxes(ctx, r, xmin, xmax, ymin, ymax, xticks, yticks, xlab, ylab){
+    var M = mapXY(r, xmin, xmax, ymin, ymax);
+    ctx.strokeStyle = '#7f8c8d'; ctx.lineWidth = 1;
+    ctx.strokeRect(r.x, r.y, r.w, r.h);
+    ctx.strokeStyle = '#e1e4e7';
+    if(xmin < 0 && xmax > 0){
+      var p = M(0, ymin); var q = M(0, ymax);
+      ctx.beginPath(); ctx.moveTo(p[0],p[1]); ctx.lineTo(q[0],q[1]); ctx.stroke();
+    }
+    if(ymin < 0 && ymax > 0){
+      var p = M(xmin, 0); var q = M(xmax, 0);
+      ctx.beginPath(); ctx.moveTo(p[0],p[1]); ctx.lineTo(q[0],q[1]); ctx.stroke();
+    }
+    ctx.fillStyle = '#2c3e50';
+    ctx.font = '10px Inter, sans-serif';
+    ctx.strokeStyle = '#7f8c8d';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+    for(var i=0;i<xticks.length;i++){
+      var xv = xticks[i];
+      var p = M(xv, ymin);
+      ctx.beginPath(); ctx.moveTo(p[0], r.y + r.h); ctx.lineTo(p[0], r.y + r.h + 4); ctx.stroke();
+      ctx.fillText(String(xv), p[0], r.y + r.h + 6);
+    }
+    ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
+    for(var i=0;i<yticks.length;i++){
+      var yv = yticks[i];
+      var p = M(xmin, yv);
+      ctx.beginPath(); ctx.moveTo(r.x, p[1]); ctx.lineTo(r.x - 4, p[1]); ctx.stroke();
+      ctx.fillText(String(yv), r.x - 6, p[1]);
+    }
+    ctx.fillStyle = '#2c3e50';
+    ctx.font = 'italic 12px Inter, sans-serif';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
+    ctx.fillText(xlab, r.x + r.w / 2, r.y + r.h + MARGIN.bottom - 2);
+    ctx.save();
+    ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+    ctx.translate(4, r.y + r.h / 2);
+    ctx.rotate(-Math.PI / 2);
+    ctx.fillText(ylab, 0, 0);
+    ctx.restore();
+  }
+  function plotCurve(ctx, r, xmin, xmax, ymin, ymax, xs, ys, color, lw, fillRgba){
+    var M = mapXY(r, xmin, xmax, ymin, ymax);
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(r.x, r.y, r.w, r.h); ctx.clip();
+    if(fillRgba){
+      ctx.beginPath();
+      var y0p = M(xmin, Math.max(0, ymin));
+      ctx.moveTo(y0p[0], y0p[1]);
+      for(var i=0;i<xs.length;i++){
+        var p = M(xs[i], ys[i]); ctx.lineTo(p[0], p[1]);
+      }
+      var y1p = M(xmax, Math.max(0, ymin));
+      ctx.lineTo(y1p[0], y1p[1]); ctx.closePath();
+      ctx.fillStyle = fillRgba; ctx.fill();
+    }
+    ctx.beginPath();
+    for(var i=0;i<xs.length;i++){
+      var p = M(xs[i], ys[i]);
+      if(i===0) ctx.moveTo(p[0],p[1]); else ctx.lineTo(p[0],p[1]);
+    }
+    ctx.lineWidth = lw || 2; ctx.strokeStyle = color; ctx.stroke();
+    ctx.restore();
+  }
+  function vLine(ctx, r, xmin, xmax, ymin, ymax, xv, color){
+    var M = mapXY(r, xmin, xmax, ymin, ymax);
+    var p = M(xv, ymin), q = M(xv, ymax);
+    ctx.save();
+    ctx.beginPath(); ctx.rect(r.x, r.y, r.w, r.h); ctx.clip();
+    ctx.setLineDash([4,3]); ctx.strokeStyle = color; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(p[0],p[1]); ctx.lineTo(q[0],q[1]); ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.restore();
+  }
+  function hLine(ctx, r, xmin, xmax, ymin, ymax, yv, color){
+    var M = mapXY(r, xmin, xmax, ymin, ymax);
+    var p = M(xmin, yv), q = M(xmax, yv);
+    ctx.save();
+    ctx.beginPath(); ctx.rect(r.x, r.y, r.w, r.h); ctx.clip();
+    ctx.setLineDash([4,3]); ctx.strokeStyle = color; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(p[0],p[1]); ctx.lineTo(q[0],q[1]); ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.restore();
+  }
+  function render(A){
+    var N = 800;
+    var zs = new Float64Array(N), pz = new Float64Array(N),
+        th = new Float64Array(N), pt = new Float64Array(N);
+    for(var i=0;i<N;i++){
+      var z = ZMIN + (ZMAX-ZMIN)*i/(N-1);
+      zs[i] = z;
+      pz[i] = pZ(z);
+      th[i] = z + A*Math.sin(z);
+      var deriv = 1 + A*Math.cos(z);
+      pt[i] = pz[i] / Math.max(Math.abs(deriv), 1e-6);
+    }
+    var xticksZ = [-6,-3,0,3,6], xticksT = [-6,-3,0,3,6];
+    var yticksT = [-6,-3,0,3,6], yticksP = [0, 0.1, 0.2, 0.3];
+
+    var cm = document.getElementById('cv-map');
+    if(cm){
+      var ctx = cm.getContext('2d'); ctx.clearRect(0,0,cm.width,cm.height);
+      var r = rect(cm);
+      drawAxes(ctx, r, ZMIN, ZMAX, TMIN, TMAX, xticksZ, yticksT, 'z', 'θ');
+      [-Math.PI, Math.PI].forEach(function(zc){
+        vLine(ctx, r, ZMIN, ZMAX, TMIN, TMAX, zc, '#e67e22');
+        hLine(ctx, r, ZMIN, ZMAX, TMIN, TMAX, zc + A*Math.sin(zc), '#e67e22');
+      });
+      plotCurve(ctx, r, ZMIN, ZMAX, TMIN, TMAX, zs, th, '#8e44ad', 2);
+    }
+    var cb = document.getElementById('cv-base');
+    if(cb){
+      var ctx = cb.getContext('2d'); ctx.clearRect(0,0,cb.width,cb.height);
+      var r = rect(cb);
+      drawAxes(ctx, r, ZMIN, ZMAX, 0, PMAX, xticksZ, yticksP, 'z', 'p_Z(z)');
+      plotCurve(ctx, r, ZMIN, ZMAX, 0, PMAX, zs, pz, '#2980b9', 2, 'rgba(41,128,185,0.25)');
+    }
+    var cw = document.getElementById('cv-warp');
+    if(cw){
+      var ctx = cw.getContext('2d'); ctx.clearRect(0,0,cw.width,cw.height);
+      var r = rect(cw);
+      drawAxes(ctx, r, TMIN, TMAX, 0, PMAX, xticksT, yticksP, 'θ', 'p_Θ(θ)');
+      [-Math.PI, Math.PI].forEach(function(tc){
+        vLine(ctx, r, TMIN, TMAX, 0, PMAX, tc, '#95a5a6');
+      });
+      plotCurve(ctx, r, TMIN, TMAX, 0, PMAX, th, pt, '#e67e22', 2, 'rgba(230,126,34,0.30)');
+    }
+  }
+  function update(){
+    var sl = document.getElementById('cv-slider'); if(!sl) return;
+    var A = parseFloat(sl.value);
+    var lbl = document.getElementById('cv-aval');
+    if(lbl) lbl.textContent = A.toFixed(2);
+    var mono = document.getElementById('cv-mono');
+    if(mono){
+      if(A < 1){ mono.textContent = 'monotonic ✓'; mono.style.color = '#27ae60'; }
+      else     { mono.textContent = 'not invertible ✗'; mono.style.color = '#c0392b'; }
+    }
+    render(A);
+  }
+  function init(){
+    var sl = document.getElementById('cv-slider'); if(!sl) return;
+    sl.addEventListener('input', update);
+    update();
+  }
+  document.addEventListener('DOMContentLoaded', init);
+  Reveal.on('slidechanged', function(e){
+    if(e.currentSlide && e.currentSlide.querySelector('#cv-slider')) update();
+  });
+})();
+
+// ============================================================
+// Live normalising-flow demo (TF.js, 4 affine-coupling layers)
+// ============================================================
+(function(){
+  var NF = { inited:false, running:false, step:0, layers:[], opt:null,
+             zFixed:null, zColors:null, targetPts:null, rafId:null };
+
+  function randn(){
+    var u=Math.random(), v=Math.random();
+    return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v);
+  }
+  function sampleBanana(n){
+    var pts = new Float32Array(n*2);
+    for(var i=0;i<n;i++){
+      var x = randn();
+      var y = 0.5 * x * x + 0.4 * randn() - 1.0;
+      pts[2*i] = x; pts[2*i+1] = y;
+    }
+    return pts;
+  }
+  function makeMlp(hidden){
+    return {
+      W1: tf.variable(tf.randomNormal([1, hidden], 0, 0.3)),
+      b1: tf.variable(tf.zeros([hidden])),
+      W2: tf.variable(tf.randomNormal([hidden, 2], 0, 0.01)),
+      b2: tf.variable(tf.zeros([2]))
+    };
+  }
+  function mlp(m, x){
+    return tf.tidy(function(){
+      var h = tf.relu(tf.add(tf.matMul(x, m.W1), m.b1));
+      return tf.add(tf.matMul(h, m.W2), m.b2);
+    });
+  }
+  function buildLayers(){
+    NF.layers = [];
+    for(var i=0;i<4;i++){
+      NF.layers.push({ mask: i%2, net: makeMlp(32) });
+    }
+  }
+  function fwd(z){
+    return tf.tidy(function(){
+      var cur = z;
+      var B = z.shape[0];
+      var logDet = tf.zeros([B]);
+      for(var i=0;i<NF.layers.length;i++){
+        var L = NF.layers[i];
+        var a, b;
+        if(L.mask === 0){
+          a = cur.slice([0,0],[-1,1]); b = cur.slice([0,1],[-1,1]);
+        } else {
+          a = cur.slice([0,1],[-1,1]); b = cur.slice([0,0],[-1,1]);
+        }
+        var st = mlp(L.net, a);
+        var s = tf.tanh(st.slice([0,0],[-1,1]));
+        var t = st.slice([0,1],[-1,1]);
+        var bNew = tf.add(tf.mul(b, tf.exp(s)), t);
+        logDet = tf.add(logDet, s.squeeze([1]));
+        cur = (L.mask === 0) ? tf.concat([a, bNew], 1) : tf.concat([bNew, a], 1);
+      }
+      return { x: cur, logDet: logDet };
+    });
+  }
+  function inv(x){
+    return tf.tidy(function(){
+      var cur = x;
+      var B = x.shape[0];
+      var logDetInv = tf.zeros([B]);
+      for(var i=NF.layers.length-1; i>=0; i--){
+        var L = NF.layers[i];
+        var a, b;
+        if(L.mask === 0){
+          a = cur.slice([0,0],[-1,1]); b = cur.slice([0,1],[-1,1]);
+        } else {
+          a = cur.slice([0,1],[-1,1]); b = cur.slice([0,0],[-1,1]);
+        }
+        var st = mlp(L.net, a);
+        var s = tf.tanh(st.slice([0,0],[-1,1]));
+        var t = st.slice([0,1],[-1,1]);
+        var bOrig = tf.mul(tf.sub(b, t), tf.exp(tf.neg(s)));
+        logDetInv = tf.sub(logDetInv, s.squeeze([1]));
+        cur = (L.mask === 0) ? tf.concat([a, bOrig], 1) : tf.concat([bOrig, a], 1);
+      }
+      return { z: cur, logDetInv: logDetInv };
+    });
+  }
+  function nll(xTensor){
+    return tf.tidy(function(){
+      var inverseOut = inv(xTensor);
+      var z = inverseOut.z;
+      var logDetInv = inverseOut.logDetInv;
+      var LOG2PI = Math.log(2 * Math.PI);
+      var logPz = tf.sub(tf.mul(-0.5, tf.sum(tf.square(z), 1)), LOG2PI);
+      var logPx = tf.add(logPz, logDetInv);
+      return tf.neg(tf.mean(logPx));
+    });
+  }
+  function makeMapper(xmin, xmax, ymin, ymax, W, H){
+    return function(x, y){
+      var px = (x - xmin) / (xmax - xmin) * W;
+      var py = H - (y - ymin) / (ymax - ymin) * H;
+      return [px, py];
+    };
+  }
+  var XR = [-2.6, 2.6], YR = [-2.2, 2.2];
+  function drawZCanvas(){
+    var c = document.getElementById('nf-zcanvas');
+    if(!c) return;
+    var ctx = c.getContext('2d');
+    ctx.clearRect(0,0,c.width,c.height);
+    var M = makeMapper(-3,3,-3,3,c.width,c.height);
+    ctx.strokeStyle = '#e1e4e7'; ctx.lineWidth = 1;
+    var o = M(0,0);
+    ctx.beginPath(); ctx.moveTo(o[0],0); ctx.lineTo(o[0],c.height); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(0,o[1]); ctx.lineTo(c.width,o[1]); ctx.stroke();
+    var z = NF.zFixed;
+    for(var i=0;i<z.length/2;i++){
+      var p = M(z[2*i], z[2*i+1]);
+      ctx.fillStyle = NF.zColors[i];
+      ctx.beginPath(); ctx.arc(p[0], p[1], 2, 0, 6.2832); ctx.fill();
+    }
+  }
+  function drawXCanvas(pushforward){
+    var c = document.getElementById('nf-xcanvas');
+    if(!c) return;
+    var ctx = c.getContext('2d');
+    ctx.clearRect(0,0,c.width,c.height);
+    var M = makeMapper(XR[0],XR[1],YR[0],YR[1],c.width,c.height);
+    ctx.strokeStyle = '#e1e4e7'; ctx.lineWidth = 1;
+    var o = M(0,0);
+    ctx.beginPath(); ctx.moveTo(o[0],0); ctx.lineTo(o[0],c.height); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(0,o[1]); ctx.lineTo(c.width,o[1]); ctx.stroke();
+    ctx.fillStyle = 'rgba(150,150,150,0.35)';
+    var tp = NF.targetPts;
+    for(var i=0;i<tp.length/2;i++){
+      var p = M(tp[2*i], tp[2*i+1]);
+      ctx.beginPath(); ctx.arc(p[0], p[1], 1.6, 0, 6.2832); ctx.fill();
+    }
+    if(pushforward){
+      for(var i=0;i<pushforward.length/2;i++){
+        var p = M(pushforward[2*i], pushforward[2*i+1]);
+        ctx.fillStyle = NF.zColors[i];
+        ctx.beginPath(); ctx.arc(p[0], p[1], 2, 0, 6.2832); ctx.fill();
+      }
+    }
+  }
+  function pushforwardFixed(){
+    return tf.tidy(function(){
+      var zT = tf.tensor2d(NF.zFixed, [NF.zFixed.length/2, 2]);
+      var out = fwd(zT);
+      return out.x.dataSync();
+    });
+  }
+  function initFixedViz(){
+    var N = 300;
+    NF.zFixed = new Float32Array(N*2);
+    NF.zColors = new Array(N);
+    for(var i=0;i<N;i++){
+      var z1 = randn(), z2 = randn();
+      NF.zFixed[2*i] = z1; NF.zFixed[2*i+1] = z2;
+      var ang = Math.atan2(z2, z1);
+      var hue = Math.floor(((ang + Math.PI) / (2*Math.PI)) * 360);
+      NF.zColors[i] = 'hsl(' + hue + ',70%,45%)';
+    }
+    NF.targetPts = sampleBanana(800);
+  }
+  function reset(){
+    if(NF.layers && NF.layers.length){
+      NF.layers.forEach(function(L){
+        ['W1','b1','W2','b2'].forEach(function(k){ if(L.net[k]) L.net[k].dispose(); });
+      });
+    }
+    buildLayers();
+    NF.opt = tf.train.adam(1e-3);
+    NF.step = 0;
+    var se = document.getElementById('nf-step'); if(se) se.textContent = '0';
+    var le = document.getElementById('nf-loss'); if(le) le.textContent = '—';
+    drawZCanvas();
+    var pf = pushforwardFixed();
+    drawXCanvas(pf);
+  }
+  function ensureInit(){
+    if(NF.inited) return;
+    if(typeof tf === 'undefined') return;
+    initFixedViz();
+    buildLayers();
+    NF.opt = tf.train.adam(1e-3);
+    NF.inited = true;
+    drawZCanvas();
+    var pf = pushforwardFixed();
+    drawXCanvas(pf);
+  }
+  function trainStep(){
+    var BATCH = 256;
+    var batch = sampleBanana(BATCH);
+    var xT = tf.tensor2d(batch, [BATCH, 2]);
+    var lossScalar = NF.opt.minimize(function(){ return nll(xT); }, true);
+    var lossVal = lossScalar.dataSync()[0];
+    lossScalar.dispose();
+    xT.dispose();
+    NF.step += 1;
+    return lossVal;
+  }
+  function loop(){
+    if(!NF.running) return;
+    var loss = 0;
+    for(var k=0;k<3;k++){ loss = trainStep(); }
+    var se = document.getElementById('nf-step'); if(se) se.textContent = NF.step;
+    var le = document.getElementById('nf-loss'); if(le) le.textContent = loss.toFixed(3);
+    var pf = pushforwardFixed();
+    drawXCanvas(pf);
+    NF.rafId = requestAnimationFrame(loop);
+  }
+  function toggleTrain(){
+    ensureInit();
+    NF.running = !NF.running;
+    var btn = document.getElementById('nf-toggle');
+    if(NF.running){
+      if(btn) btn.innerHTML = '❚❚ Pause';
+      loop();
+    } else {
+      if(btn) btn.innerHTML = '▶ Train';
+      if(NF.rafId){ cancelAnimationFrame(NF.rafId); NF.rafId = null; }
+    }
+  }
+  function onReset(){
+    NF.running = false;
+    if(NF.rafId){ cancelAnimationFrame(NF.rafId); NF.rafId = null; }
+    var btn = document.getElementById('nf-toggle'); if(btn) btn.innerHTML = '▶ Train';
+    ensureInit();
+    reset();
+  }
+  document.addEventListener('DOMContentLoaded', function(){
+    var t = document.getElementById('nf-toggle');
+    var r = document.getElementById('nf-reset');
+    if(t) t.addEventListener('click', toggleTrain);
+    if(r) r.addEventListener('click', onReset);
+  });
+  Reveal.on('slidechanged', function(e){
+    if(e.currentSlide && e.currentSlide.querySelector('#nf-xcanvas')) ensureInit();
+    else if(NF.running){ NF.running=false;
+      if(NF.rafId){ cancelAnimationFrame(NF.rafId); NF.rafId=null; }
+      var btn = document.getElementById('nf-toggle'); if(btn) btn.innerHTML = '▶ Train';
+    }
+  });
+})();
+
+// ============================================================
+// Continuous-time trajectories: FM (ODE) vs Diffusion (SDE)
+// ============================================================
+(function(){
+  function gaussRng(seed){ const r = createRNG(seed); return ()=>{ const u=r(); const v=r(); return Math.sqrt(-2*Math.log(u+1e-12))*Math.cos(2*Math.PI*v); }; }
+  const N_TRAJ = 12;
+  function makeTrajectories(){
+    const g = gaussRng(7);
+    const tArr = []; for (let k=0;k<=60;k++) tArr.push(k/60);
+    const fm = [], df = [];
+    for (let i=0;i<N_TRAJ;i++){
+      const z = g();
+      const tgt = (i%2===0?-1:1)*1.5 + 0.3*g();
+      const fmPath = tArr.map(t => (1-t)*z + t*tgt);
+      fm.push(fmPath);
+      let theta = z; const dfPath = [theta];
+      for (let k=1;k<tArr.length;k++){
+        const t = tArr[k-1];
+        const dt = 1/60;
+        const drift = (tgt - theta)*1.2*dt;
+        const sigma = 0.5*(1 - t);
+        theta = theta + drift + sigma*g()*Math.sqrt(dt);
+        dfPath.push(theta);
+      }
+      df.push(dfPath);
+    }
+    return {tArr, fm, df};
+  }
+  let cached = null;
+  function draw(progress){
+    if (!cached) cached = makeTrajectories();
+    const T = cached.tArr.length;
+    const cut = Math.max(1, Math.min(T, Math.floor(progress*T)));
+    const tSlice = cached.tArr.slice(0, cut);
+    const fmTraces = cached.fm.map((p) => ({
+      x: tSlice, y: p.slice(0, cut), mode:'lines',
+      line:{color:'rgba(26,84,144,0.6)', width:1.4}, showlegend:false, hoverinfo:'skip'
+    }));
+    const dfTraces = cached.df.map((p) => ({
+      x: tSlice, y: p.slice(0, cut), mode:'lines',
+      line:{color:'rgba(176,58,46,0.55)', width:1.4}, showlegend:false, hoverinfo:'skip'
+    }));
+    const lay = () => baseLayout({
+      xaxis:{title:'t', range:[0, 1]},
+      yaxis:{title:'θ', range:[-3.5, 3.5]},
+      shapes:[
+        { type:'line', x0:0, x1:0, y0:-3.5, y1:3.5, line:{color:'#bdc3c7', dash:'dot', width:1} },
+        { type:'line', x0:1, x1:1, y0:-3.5, y1:3.5, line:{color:'#bdc3c7', dash:'dot', width:1} }
+      ],
+      annotations:[
+        { x:0, y:3.2, xref:'x', yref:'y', text:'p_0', showarrow:false, font:{color:'#1a5490'} },
+        { x:1, y:3.2, xref:'x', yref:'y', text:'p_1', showarrow:false, font:{color:'#1a5490'} }
+      ]
+    });
+    if (document.getElementById('fm-traj-plot')) Plotly.react('fm-traj-plot', fmTraces, lay(), {displayModeBar:false});
+    if (document.getElementById('diff-traj-plot')) Plotly.react('diff-traj-plot', dfTraces, lay(), {displayModeBar:false});
+  }
+  let raf = null;
+  function animate(){
+    if (raf) cancelAnimationFrame(raf);
+    const t0 = performance.now();
+    const tick = (now) => {
+      const p = Math.min(1, (now - t0)/2500);
+      draw(p);
+      if (p < 1) raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+  }
+  const btn = document.getElementById('ct-replay');
+  if (btn) btn.addEventListener('click', ()=>{ cached = makeTrajectories(); animate(); });
+  function init(e){
+    if (e.currentSlide && e.currentSlide.querySelector('#fm-traj-plot')) {
+      if (!cached) cached = makeTrajectories();
+      animate();
+    } else if (raf) {
+      cancelAnimationFrame(raf); raf = null;
+    }
+  }
+  Reveal.on('slidechanged', init); Reveal.on('ready', init);
 })();
 </script>
 </body>
