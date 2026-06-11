@@ -1,7 +1,8 @@
 # ML4APP lecture deck — style sheet
 
-Conventions distilled from the lecture1b.html rework. Copy these into every
-lecture HTML so the whole course is visually consistent. Items marked
+Conventions distilled from the lecture1b.html rework. As of June 2026 the
+shared CSS and boot JS live in `docs/lib/`, so a new lecture only has to
+include three small references and a `data-lecture` attribute. Items marked
 **[required]** must match exactly; **[guideline]** items can flex if a slide
 genuinely needs to.
 
@@ -22,7 +23,14 @@ genuinely needs to.
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reveal.css">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/theme/white.css">
+<link rel="stylesheet" href="lib/lecture.css">
+<!-- Optional: per-lecture <style> block for additions on top of lecture.css -->
+</head>
+<body data-lecture="N">
 ```
+
+The `data-lecture` attribute sets the footer label (`Lecture N`). Lectures
+1b, 2, 3 use this pattern.
 
 ### Script tags at end of `<body>` [required]
 
@@ -30,55 +38,38 @@ genuinely needs to.
 <script src="https://cdn.jsdelivr.net/npm/plotly.js@2.35.0/dist/plotly.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reveal.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/plugin/math/math.js"></script>
+<script src="lib/lecture-helpers.js"></script>
+<script src="lib/lecture-boot.js"></script>
+<script>
+  /* per-lecture demo code here */
+</script>
 ```
 
-### Reveal.initialize [required]
+Load order matters: Plotly → Reveal → math plugin → helpers → boot →
+lecture code. `lecture-boot.js` calls `Reveal.initialize`, installs the
+MathJax retypeset hook, and attaches the footer.
 
-```js
-Reveal.initialize({
-  hash: true, center: false, transition: 'none', slideNumber: true,
-  width: 1214, height: 700, margin: 0.04, minScale: 0.2, maxScale: 2.0,
-  plugins: [ RevealMath.MathJax3 ]
-});
-```
+### What's in `lib/`
 
-Do NOT pass a custom `math:` config — leave MathJax 3 on its default CHTML
-output. SVG output and `mjx-container` CSS overrides BOTH made math glitch
-worse, not better, in our experiments.
+- **`lib/lecture.css`** — all shared `.reveal`/`.box`/`.slide-footer`/
+  `.ctrl-row` rules. Section 2 below reproduces the contents for reference.
+- **`lib/lecture-boot.js`** — `Reveal.initialize`, `slidechanged` MathJax
+  retypeset hook, footer injector (reads `<body data-lecture="...">`).
+- **`lib/lecture-helpers.js`** — `createRNG`, `gaussN`, `matVec`, `solve`,
+  `polyDesign`, `polyEval`, `fitPoly`. Per-lecture `baseLayout` and demo
+  constants stay in the lecture file.
 
-### MathJax re-typeset hook [required]
-
-MathJax 3 typesets at page load with whatever container dimensions exist
-then; slides that weren't visible cache wrong glyph positions and render
-clipped when later navigated to. Re-typeset on every nav:
-
-```js
-Reveal.on('slidechanged', function(e) {
-  if (window.MathJax && window.MathJax.typesetPromise) {
-    window.MathJax.typesetPromise([e.currentSlide]).catch(function(){});
-  }
-});
-```
-
-### Footer [required]
-
-Auto-attached to every section. Update the lecture label per file.
-
-```js
-document.querySelectorAll('.reveal .slides > section').forEach(function(slide) {
-  const footer = document.createElement('div');
-  footer.className = 'slide-footer';
-  footer.innerHTML = '<a href="index.html" style="color:#bdc3c7; text-decoration:none; pointer-events:auto;">&larr; Index</a><span>ML4APP 2026 &mdash; Lecture N</span><span>Christoph Weniger &mdash; GRAPPA / UvA</span>';
-  slide.appendChild(footer);
-});
-```
+Do NOT pass a custom `math:` config to `Reveal.initialize` — leave MathJax
+3 on its default CHTML output. SVG output and `mjx-container` CSS
+overrides BOTH made math glitch worse, not better, in our experiments.
 
 ---
 
-## 2. Stylesheet block [required, drop-in]
+## 2. Stylesheet block (reference)
 
-Place between `<style>` tags in `<head>`. The block below is the full
-canonical CSS — paste verbatim.
+This is the content of `lib/lecture.css`. New lectures should **not**
+inline it — link the file. The block is reproduced here so the conventions
+are visible without opening another file.
 
 ```css
 .reveal .slides section {

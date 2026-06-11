@@ -8,52 +8,10 @@
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reveal.css">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/theme/white.css">
+<link rel="stylesheet" href="lib/lecture.css">
 <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.20.0/dist/tf.min.js"></script>
 <style>
-  .reveal .slides section {
-    background: #ffffff;
-    box-shadow: 0 4px 15px rgba(0,0,0,0.2);
-    padding: 30px 40px;
-    box-sizing: border-box;
-    height: 700px !important;
-  }
-  .reveal .slides section.stack {
-    background: none;
-    box-shadow: none;
-    padding: 0;
-    height: auto !important;
-  }
-  .reveal { font-family: 'Inter', sans-serif; font-weight: 400; }
-  .reveal h1, .reveal h2, .reveal h3 { color: #2c3e50; font-family: 'Space Grotesk', sans-serif; font-weight: 700; }
-  .reveal h2 { font-size: 1.2em; margin-bottom: 0.3em; text-align: left; }
-  .reveal .subtitle { font-size: 0.6em; color: #7f8c8d; margin-top: 0.5em; }
-  .reveal section { font-size: 0.66em; }
-  .reveal section.stack { font-size: 1em; }
-  .reveal p { margin: 0.3em 0; }
-  .reveal ul { text-align: left; margin: 0.3em 0; }
-  .reveal li { margin: 0.15em 0; }
-  .reveal .highlight { color: #e74c3c; font-weight: bold; }
-  .reveal .MathJax { font-size: 0.95em; }
-  .reveal .box, .reveal .box-blue, .reveal .box-orange,
-  .reveal .box-green, .reveal .box-purple {
-    background: #ecf0f1; border-radius: 10px; padding: 12px 16px;
-    margin: 10px 0; text-align: left;
-  }
-  .reveal .box-blue   { border-left: 4px solid #2980b9; }
-  .reveal .box-orange { border-left: 4px solid #e67e22; }
-  .reveal .box-green  { border-left: 4px solid #27ae60; }
-  .reveal .box-purple { border-left: 4px solid #8e44ad; }
-  .slide-footer {
-    position: absolute; bottom: 8px; left: 40px; right: 40px;
-    font-size: 10px; color: #bdc3c7;
-    display: flex; justify-content: space-between; pointer-events: none;
-  }
-  pre code { font-family: 'Menlo','Monaco',monospace; }
-  .ctrl-row { display:flex; gap:14px; font-size:0.9em; align-items:center; margin-top:4px; flex-wrap:wrap; }
-  .ctrl-row label { white-space: nowrap; }
-  .ctrl-row input[type=range] { vertical-align: middle; }
-  .ctrl-row button { padding:3px 12px; cursor:pointer; }
-  .ctrl-row input[type=checkbox] { vertical-align: middle; transform: scale(1.2); margin-right:4px; }
+  /* Lecture 3 additions on top of shared lecture.css */
   .reveal table { font-size: 0.95em; border-collapse: collapse; margin: 0 auto; }
   .reveal th, .reveal td { padding: 6px 10px; border-bottom: 1px solid #ecf0f1; text-align: left; vertical-align: top; }
   .reveal th { background: #f8f9fa; font-weight: 600; color: #2c3e50; }
@@ -61,7 +19,7 @@
   .credit { font-size: 0.7em; color: #95a5a6; text-align: center; margin-top: 6px; }
 </style>
 </head>
-<body>
+<body data-lecture="3">
 <div class="reveal">
 <div class="slides">
 
@@ -826,62 +784,9 @@ for step = 1, 2, ... :
 <script src="https://cdn.jsdelivr.net/npm/plotly.js@2.35.0/dist/plotly.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reveal.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/plugin/math/math.js"></script>
+<script src="lib/lecture-helpers.js"></script>
+<script src="lib/lecture-boot.js"></script>
 <script>
-Reveal.initialize({
-  hash: true, center: false, transition: 'none', slideNumber: true,
-  width: 1214, height: 700, margin: 0.04, minScale: 0.2, maxScale: 2.0,
-  plugins: [ RevealMath.MathJax3 ]
-});
-
-Reveal.on('slidechanged', function(e) {
-  if (window.MathJax && window.MathJax.typesetPromise) {
-    window.MathJax.typesetPromise([e.currentSlide]).catch(function(){});
-  }
-});
-
-document.querySelectorAll('.reveal .slides > section').forEach(function(slide) {
-  const footer = document.createElement('div');
-  footer.className = 'slide-footer';
-  footer.innerHTML = '<a href="index.html" style="color:#bdc3c7; text-decoration:none; pointer-events:auto;">&larr; Index</a><span>ML4APP 2026 &mdash; Lecture 3</span><span>Christoph Weniger &mdash; GRAPPA / UvA</span>';
-  slide.appendChild(footer);
-});
-
-// ============================================================
-// Shared helpers (imported from lecture2.html for Gaussian-head demos)
-// ============================================================
-function createRNG(seed) {
-  return function() {
-    seed |= 0; seed = seed + 0x6D2B79F5 | 0;
-    var t = Math.imul(seed ^ seed >>> 15, 1 | seed);
-    t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
-    return ((t ^ t >>> 14) >>> 0) / 4294967296;
-  };
-}
-function gaussN(rng) { return Math.sqrt(-2*Math.log(rng()+1e-12))*Math.cos(2*Math.PI*rng()); }
-
-function matVec(A, v) { const m=A.length, n=v.length, r=new Array(m).fill(0); for(let i=0;i<m;i++){let s=0; for(let j=0;j<n;j++) s+=A[i][j]*v[j]; r[i]=s;} return r; }
-function solve(A, b) {
-  const n = b.length;
-  const M = A.map((row,i)=>row.slice().concat(b[i]));
-  for (let i=0;i<n;i++){
-    let p = i; for (let k=i+1;k<n;k++) if (Math.abs(M[k][i])>Math.abs(M[p][i])) p=k;
-    [M[i],M[p]]=[M[p],M[i]];
-    const piv = M[i][i] || 1e-12;
-    for (let k=i+1;k<n;k++){ const f=M[k][i]/piv; for(let j=i;j<=n;j++) M[k][j] -= f*M[i][j]; }
-  }
-  const x = new Array(n).fill(0);
-  for (let i=n-1;i>=0;i--){ let s=M[i][n]; for (let j=i+1;j<n;j++) s -= M[i][j]*x[j]; x[i] = s/(M[i][i]||1e-12); }
-  return x;
-}
-function polyDesign(xs, M) { return xs.map(x => { const r=new Array(M); let v=1; for(let j=0;j<M;j++){ r[j]=v; v*=x; } return r; }); }
-function polyEval(w, x) { let v=1, s=0; for(let j=0;j<w.length;j++){ s+=w[j]*v; v*=x; } return s; }
-function fitPoly(xs, ts, M) {
-  const Phi = polyDesign(xs, M);
-  const N = xs.length;
-  const A = []; for(let i=0;i<M;i++){ const row=new Array(M).fill(0); for(let j=0;j<M;j++){ let s=0; for(let n=0;n<N;n++) s+=Phi[n][i]*Phi[n][j]; row[j]=s; } A.push(row); }
-  const bv = new Array(M).fill(0); for(let i=0;i<M;i++){ let s=0; for(let n=0;n<N;n++) s+=Phi[n][i]*ts[n]; bv[i]=s; }
-  return solve(A, bv);
-}
 
 function baseLayout(opts) {
   return Object.assign({
