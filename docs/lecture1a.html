@@ -355,11 +355,24 @@
 <!-- ============================================================ -->
 <section>
   <h2>ML for the inference &mdash; beyond gravitational waves</h2>
-  <div class="todo">TODO: verify Wagner-Carena 2023 (arXiv:2203.00690) numbers + figure clarity, then pick the single best example for this slide. Candidates: strong lensing (HST), 21cm SBI (HERA-like), CMB NN inference (Planck/ACT).</div>
-  <ul>
-    <li>SBI is now on <strong>real instrument data</strong> in several non-GW domains: strong lensing, 21cm cosmology, CMB analysis, field-level galaxy clustering.</li>
-    <li>The bottleneck is no longer "does the method work?" but "is the simulator faithful enough?"</li>
-  </ul>
+  <p style="margin:6px 0 12px;">Neural SBI is now run on real survey data or stress-tested with full instrumental forward models across cosmology. Three examples covering distinct physics targets:</p>
+  <div style="display:flex; gap:14px; align-items:flex-start;">
+    <div style="flex:1; text-align:center;">
+      <img src="figures/lecture1a/wagner_carena.png" style="height:200px; margin-left: auto; margin-right: auto; display:block; border-radius:4px;">
+      <p style="margin:6px 0; font-size: 0.8em"><strong>Strong lensing &rarr; dark-matter substructure.</strong> Wagner-Carena et al. 2023: NPE on populations of HST-quality simulated lenses (full pipeline systematics); subhalo mass function recovered from 1000 lenses. <em>Validated on sims; not yet applied to real HST.</em></p>
+      <p class="ref">arXiv:<a href="https://arxiv.org/abs/2203.00690">2203.00690</a></p>
+    </div>
+    <div style="flex:1; text-align:center;">
+      <img src="figures/lecture1a/saxena_21cm.png" style="height:200px; margin-left: auto; margin-right: auto; display:block; border-radius:4px;">
+      <p style="margin:6px 0; font-size: 0.8em"><strong>21cm &rarr; reionization astrophysics.</strong> Saxena et al. 2023: marginal NRE on mock SKA 21cm <em>P</em>(<em>k</em>), constraining X-ray heating and EoR parameters. <em>Forecast, awaits SKA.</em></p>
+      <p class="ref">arXiv:<a href="https://arxiv.org/abs/2303.07339">2303.07339</a></p>
+    </div>
+    <div style="flex:1; text-align:center;">
+      <img src="figures/lecture1a/simbig.png" style="height:200px; margin-left: auto; margin-right: auto; display:block; border-radius:4px;">
+      <p style="margin:6px 0; font-size: 0.8em"><strong>Galaxy clustering &rarr; &Omega;<sub>m</sub>, &sigma;<sub>8</sub>.</strong> SimBIG (Hahn et al. 2023): normalising-flow SBI on <strong>109,636 real BOSS CMASS galaxies</strong> down to non-linear scales; &sigma;<sub>8</sub> 27% tighter than PT-likelihood baselines.</p>
+      <p class="ref">arXiv:<a href="https://arxiv.org/abs/2211.00723">2211.00723</a></p>
+    </div>
+  </div>
 </section>
 
 <!-- ============================================================ -->
