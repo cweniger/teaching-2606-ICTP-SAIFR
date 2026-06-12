@@ -13,6 +13,11 @@
   /* Per-lecture additions only. Shared styles live in lib/lecture.css. */
   .reveal section p { font-size: 24px; }
   .reveal section li { font-size: 22px; }
+  .reveal section .box,
+  .reveal section .box-blue,
+  .reveal section .box-orange,
+  .reveal section .box-green,
+  .reveal section .box-purple { font-size: 24px; }
   .reveal .fig-cap { font-size: 0.8em; color: #7f8c8d; margin-top: 4px; }
   .reveal .ref { font-size: 0.85em; color: #7f8c8d; margin-top: 6px; }
   .reveal .todo {
@@ -171,7 +176,7 @@
   <h2>ML for the simulator &mdash; gravitational-wave surrogates</h2>
   <div style="display:flex; gap:18px; align-items:flex-start;">
     <div style="flex:1; text-align:center;">
-      <img src="figures/lecture1a/dansur_fig10.png" style="max-width:100%; max-height:420px; border-radius:4px;">
+      <img src="figures/lecture1a/dansur_fig10.png" style="clip-path: inset(0% 0% 8% 0%); max-width:100%; max-height:420px; border-radius:4px;">
       <div class="fig-cap">DANSur generation time vs batch size &mdash; constant &sim;0.18 ms/waveform over 5 orders of magnitude in input size.</div>
     </div>
     <div style="flex:1;">
@@ -303,11 +308,11 @@
   <h2>ML for the inference &mdash; GW detection, then &amp; now</h2>
   <div style="display:flex; gap:14px; align-items:flex-start; justify-content:center; margin-top:6px;">
     <div style="flex:1; text-align:center;">
-      <img src="figures/lecture1a/gabbard_roc.png" style="max-width:100%; max-height:290px; border-radius:4px;">
+      <img src="figures/lecture1a/gabbard_roc.png" style="margin-bottom: -5px; margin-top: -5px; clip-path: inset(0% 0% 7% 0%); max-width:100%; max-height:270px; border-radius:0px;">
       <div class="fig-cap">2018 (simulated noise): CNN matches matched-filter ROC.</div>
     </div>
     <div style="flex:1; text-align:center;">
-      <img src="figures/lecture1a/aresgw_fig18.png" style="max-width:100%; max-height:290px; border-radius:4px;">
+      <img src="figures/lecture1a/aresgw_fig18.png" style="margin-bottom: -5px; margin-top: -5px; max-width:100%; max-height:270px; border-radius:0px;">
       <div class="fig-cap">2024 (real O3 noise): AresGW <em>p</em><sub>astro</sub> vs FAR &mdash; new candidates inside GWTC/OGC/IAS spread.</div>
     </div>
   </div>
@@ -326,7 +331,7 @@
   <h2>ML for the inference &mdash; DINGO for GW parameter estimation</h2>
   <div style="display:flex; gap:18px; align-items:flex-start;">
     <div style="flex:1.15; text-align:center;">
-      <img src="figures/lecture1a/dingo_fig3.png" style="max-width:100%; max-height:480px; border-radius:4px;">
+      <img src="figures/lecture1a/dingo_fig3.png" style="margin-top: -5px; margin-bottom: -5px; max-width:100%; max-height:480px; border-radius:4px;">
       <div class="fig-cap">Eight GWTC-1 events. Coloured contours: DINGO (neural posterior estimation). Grey: LALInference (gold-standard stochastic sampler).</div>
     </div>
     <div style="flex:1;">
