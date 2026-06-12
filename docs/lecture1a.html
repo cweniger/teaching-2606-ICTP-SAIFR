@@ -11,6 +11,8 @@
 <link rel="stylesheet" href="lib/lecture.css">
 <style>
   /* Per-lecture additions only. Shared styles live in lib/lecture.css. */
+  .reveal section p { font-size: 24px; }
+  .reveal section li { font-size: 22px; }
   .reveal .fig-cap { font-size: 0.8em; color: #7f8c8d; margin-top: 4px; }
   .reveal .ref { font-size: 0.85em; color: #7f8c8d; margin-top: 6px; }
   .reveal .todo {
@@ -125,15 +127,21 @@
 <!-- ============================================================ -->
 <section>
   <h2>ML for theory &mdash; can a network rediscover the equation?</h2>
-  <div style="text-align:center;"><img src="figures/lecture1a/cranmer_fig3.png" style="max-width:78%; max-height:340px; border-radius:4px;"></div>
-  <ul>
-    <li><strong>Cranmer, Sanchez-Gonzalez et al. 2020.</strong> Train a graph net on <em>N</em>-body sims, distil its edge messages with symbolic regression. Recovers Newton; <em>discovers</em> a new analytic formula for dark-matter overdensity &delta; (MAE 0.088).</li>
-    <li><strong>Lemos et al. 2022.</strong> Same trick on 30 years of real solar-system data: rediscovers Newton's law plus all planetary masses, unsupervised.</li>
-    <li><strong>Tools:</strong> PySR (Cranmer 2023), AI Feynman (Udrescu &amp; Tegmark 2020).</li>
-    <li><strong>Cosmology-adjacent:</strong> Bartlett, Desmond &amp; Ferreira 2022 &mdash; exhaustive SR on H(<em>z</em>); &sim;40 of 5.2M functions fit cosmic chronometers better than Friedmann.</li>
-    <li><em>Honest caveat:</em> still thin in APP/GW specifically. The arrow exists; the field is moving in.</li>
-  </ul>
-  <p class="ref">Cranmer et al. 2020 (<a href="https://arxiv.org/abs/2006.11287">arXiv:2006.11287</a>); Lemos et al. 2022 (<a href="https://arxiv.org/abs/2202.02306">arXiv:2202.02306</a>).</p>
+  <div style="display:flex; gap:18px; align-items:flex-start;">
+    <div style="flex:1.1; text-align:center;">
+      <img src="figures/lecture1a/cranmer_fig3.png" style="max-width:100%; max-height:460px; border-radius:4px;">
+    </div>
+    <div style="flex:1;">
+      <ul>
+        <li><strong>Cranmer, Sanchez-Gonzalez et al. 2020.</strong> Train a graph net on <em>N</em>-body sims, distil its edge messages with symbolic regression. Recovers Newton; <em>discovers</em> a new analytic formula for dark-matter overdensity &delta; (MAE 0.088).</li>
+        <li><strong>Lemos et al. 2022.</strong> Same trick on 30 years of real solar-system data: rediscovers Newton's law plus all planetary masses, unsupervised.</li>
+        <li><strong>Tools:</strong> PySR (Cranmer 2023), AI Feynman (Udrescu &amp; Tegmark 2020).</li>
+        <li><strong>Cosmology-adjacent:</strong> Bartlett, Desmond &amp; Ferreira 2022 &mdash; exhaustive SR on H(<em>z</em>); &sim;40 of 5.2M functions fit cosmic chronometers better than Friedmann.</li>
+        <li><em>Honest caveat:</em> still thin in APP/GW specifically. The arrow exists; the field is moving in.</li>
+      </ul>
+      <p class="ref">Cranmer et al. 2020 (<a href="https://arxiv.org/abs/2006.11287">arXiv:2006.11287</a>); Lemos et al. 2022 (<a href="https://arxiv.org/abs/2202.02306">arXiv:2202.02306</a>).</p>
+    </div>
+  </div>
 </section>
 
 <!-- ============================================================ -->
@@ -141,12 +149,19 @@
 <!-- ============================================================ -->
 <section>
   <h2>ML for the simulator &mdash; emulators replace expensive forward models</h2>
-  <div style="text-align:center;"><img src="figures/lecture1a/cosmopower_corner.png" style="max-width:62%; max-height:340px; border-radius:4px;"><div class="fig-cap">CosmoPower (blue) reproduces a full CLASS-based posterior (red) on KiDS-450 + GAMA, in 3 min vs 2.5 h on 16 cores.</div></div>
-  <ul>
-    <li><strong>CosmoPower</strong> (Spurio Mancini, Piras et al. 2021): NN emulators for cosmological power spectra; the de-facto inside modern MCMC pipelines.</li>
-    <li><strong>CAMELS</strong> (Villaescusa-Navarro et al. 2021): thousands of <em>N</em>-body+hydro sims as training set for emulators and SBI.</li>
-  </ul>
-  <p class="ref">CosmoPower (<a href="https://arxiv.org/abs/2106.03846">arXiv:2106.03846</a>); CAMELS (<a href="https://arxiv.org/abs/2010.00619">arXiv:2010.00619</a>).</p>
+  <div style="display:flex; gap:18px; align-items:flex-start;">
+    <div style="flex:1; text-align:center;">
+      <img src="figures/lecture1a/cosmopower_corner.png" style="max-width:100%; max-height:460px; border-radius:4px;">
+      <div class="fig-cap">CosmoPower (blue) reproduces a full CLASS-based posterior (red) on KiDS-450 + GAMA, in 3 min vs 2.5 h on 16 cores.</div>
+    </div>
+    <div style="flex:1;">
+      <ul>
+        <li><strong>CosmoPower</strong> (Spurio Mancini, Piras et al. 2021): NN emulators for cosmological power spectra; the de-facto inside modern MCMC pipelines.</li>
+        <li><strong>CAMELS</strong> (Villaescusa-Navarro et al. 2021): thousands of <em>N</em>-body+hydro sims as training set for emulators and SBI.</li>
+      </ul>
+      <p class="ref">CosmoPower (<a href="https://arxiv.org/abs/2106.03846">arXiv:2106.03846</a>); CAMELS (<a href="https://arxiv.org/abs/2010.00619">arXiv:2010.00619</a>).</p>
+    </div>
+  </div>
 </section>
 
 <!-- ============================================================ -->
@@ -154,13 +169,20 @@
 <!-- ============================================================ -->
 <section>
   <h2>ML for the simulator &mdash; gravitational-wave surrogates</h2>
-  <div style="text-align:center;"><img src="figures/lecture1a/dansur_fig10.png" style="max-width:55%; max-height:300px; border-radius:4px;"><div class="fig-cap">DANSur generation time vs batch size &mdash; constant &sim;0.18 ms/waveform over 5 orders of magnitude in input size.</div></div>
-  <ul>
-    <li><strong>NRSur7dq4</strong> (Varma et al. 2019): 1528 NR sims, <em>q</em> &le; 4, &chi; &le; 0.8, generic spins. <strong>&ge;1 order of magnitude more accurate</strong> than alternatives <em>within training range</em>. Used in GW190521.</li>
-    <li><strong>mlgw</strong> (Schmidt 2020) and <strong>mlgw-bns</strong> (Tissino 2022): PCA+regression on EOB waveforms; 10&ndash;50&times; speedup. BNS validated on GW170817.</li>
-    <li><strong>DANSur</strong> (Fernandes et al. 2024): dual-stage NN, pretrained on approximants then fine-tuned with NR. Millions of waveforms in &lt;20 ms on GPU; mean NR mismatch &sim;10<sup>&minus;4</sup>.</li>
-  </ul>
-  <p class="ref">Varma et al. 2019 (<a href="https://arxiv.org/abs/1905.09300">arXiv:1905.09300</a>); Fernandes et al. 2024 (<a href="https://arxiv.org/abs/2412.06946">arXiv:2412.06946</a>).</p>
+  <div style="display:flex; gap:18px; align-items:flex-start;">
+    <div style="flex:1; text-align:center;">
+      <img src="figures/lecture1a/dansur_fig10.png" style="max-width:100%; max-height:420px; border-radius:4px;">
+      <div class="fig-cap">DANSur generation time vs batch size &mdash; constant &sim;0.18 ms/waveform over 5 orders of magnitude in input size.</div>
+    </div>
+    <div style="flex:1;">
+      <ul>
+        <li><strong>NRSur7dq4</strong> (Varma et al. 2019): 1528 NR sims, <em>q</em> &le; 4, &chi; &le; 0.8, generic spins. <strong>&ge;1 order of magnitude more accurate</strong> than alternatives <em>within training range</em>. Used in GW190521.</li>
+        <li><strong>mlgw</strong> (Schmidt 2020) and <strong>mlgw-bns</strong> (Tissino 2022): PCA+regression on EOB waveforms; 10&ndash;50&times; speedup. BNS validated on GW170817.</li>
+        <li><strong>DANSur</strong> (Fernandes et al. 2024): dual-stage NN, pretrained on approximants then fine-tuned with NR. Millions of waveforms in &lt;20 ms on GPU; mean NR mismatch &sim;10<sup>&minus;4</sup>.</li>
+      </ul>
+      <p class="ref">Varma et al. 2019 (<a href="https://arxiv.org/abs/1905.09300">arXiv:1905.09300</a>); Fernandes et al. 2024 (<a href="https://arxiv.org/abs/2412.06946">arXiv:2412.06946</a>).</p>
+    </div>
+  </div>
 </section>
 
 <!-- ============================================================ -->
@@ -182,13 +204,20 @@
 <!-- ============================================================ -->
 <section>
   <h2>ML for the instrument &mdash; Deep Loop Shaping at LIGO Livingston</h2>
-  <div style="text-align:center;"><img src="figures/lecture1a/dls_fig1.png" style="max-width:60%; max-height:330px; border-radius:4px;"><div class="fig-cap">Top: cosmological reach gain. Bottom: strain noise &mdash; RL controller (blue) vs operational linear controller (red), Dec 2024 LIGO Livingston.</div></div>
-  <ul>
-    <li><strong>DeepMind + LIGO Instrument Team, <em>Science</em> 389, 6764 (2025).</strong> Reinforcement learning with a <strong>frequency-domain reward</strong> controls mirror suspensions in real time.</li>
-    <li><strong>&gt;30&times; control-noise reduction</strong> in the 10&ndash;30 Hz band, up to 100&times; in sub-bands. Surpasses the quantum-limit-motivated design goal.</li>
-    <li>Loud, recent, on a real detector. ML now <em>operates</em> a flagship physics instrument.</li>
-  </ul>
-  <p class="ref">Buchli, Tracey et al. 2025 (<a href="https://arxiv.org/abs/2509.14016">arXiv:2509.14016</a>; DOI 10.1126/science.adw1291).</p>
+  <div style="display:flex; gap:18px; align-items:flex-start;">
+    <div style="flex:1; text-align:center;">
+      <img src="figures/lecture1a/dls_fig1.png" style="max-width:100%; max-height:460px; border-radius:4px;">
+      <div class="fig-cap">Top: cosmological reach gain. Bottom: strain noise &mdash; RL controller (blue) vs operational linear controller (red), Dec 2024 LIGO Livingston.</div>
+    </div>
+    <div style="flex:1;">
+      <ul>
+        <li><strong>DeepMind + LIGO Instrument Team, <em>Science</em> 389, 6764 (2025).</strong> Reinforcement learning with a <strong>frequency-domain reward</strong> controls mirror suspensions in real time.</li>
+        <li><strong>&gt;30&times; control-noise reduction</strong> in the 10&ndash;30 Hz band, up to 100&times; in sub-bands. Surpasses the quantum-limit-motivated design goal.</li>
+        <li>Loud, recent, on a real detector. ML now <em>operates</em> a flagship physics instrument.</li>
+      </ul>
+      <p class="ref">Buchli, Tracey et al. 2025 (<a href="https://arxiv.org/abs/2509.14016">arXiv:2509.14016</a>; DOI 10.1126/science.adw1291).</p>
+    </div>
+  </div>
 </section>
 
 <!-- ============================================================ -->
@@ -223,13 +252,20 @@
 <!-- ============================================================ -->
 <section>
   <h2>ML for the data &mdash; probabilistic galaxy morphology</h2>
-  <div style="text-align:center;"><img src="figures/lecture1a/walmsley_fig4.png" style="max-width:50%; max-height:340px; border-radius:4px;"><div class="fig-cap">Posteriors on "smooth" vote fraction per galaxy: single posterior (left) and full model posterior (right). Red bars: actual Galaxy Zoo votes.</div></div>
-  <ul>
-    <li><strong>Walmsley et al. 2020</strong> (MNRAS): Bayesian CNN + generative model of volunteer responses on Galaxy Zoo.</li>
-    <li>Output is not a class label but a <strong>posterior over morphology</strong> &mdash; calibrated uncertainty on real survey data.</li>
-    <li>The clean "Bayesian deep learning on real images" example.</li>
-  </ul>
-  <p class="ref">Walmsley et al. 2020 (<a href="https://arxiv.org/abs/1905.07424">arXiv:1905.07424</a>).</p>
+  <div style="display:flex; gap:18px; align-items:flex-start;">
+    <div style="flex:0.85; text-align:center;">
+      <img src="figures/lecture1a/walmsley_fig4.png" style="max-width:100%; max-height:480px; border-radius:4px;">
+      <div class="fig-cap">Posteriors on "smooth" vote fraction per galaxy: single posterior (left) and full model posterior (right). Red bars: actual Galaxy Zoo votes.</div>
+    </div>
+    <div style="flex:1;">
+      <ul>
+        <li><strong>Walmsley et al. 2020</strong> (MNRAS): Bayesian CNN + generative model of volunteer responses on Galaxy Zoo.</li>
+        <li>Output is not a class label but a <strong>posterior over morphology</strong> &mdash; calibrated uncertainty on real survey data.</li>
+        <li>The clean "Bayesian deep learning on real images" example.</li>
+      </ul>
+      <p class="ref">Walmsley et al. 2020 (<a href="https://arxiv.org/abs/1905.07424">arXiv:1905.07424</a>).</p>
+    </div>
+  </div>
 </section>
 
 <!-- ============================================================ -->
