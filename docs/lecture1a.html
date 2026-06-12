@@ -128,8 +128,8 @@
 <section>
   <h2>ML for theory &mdash; can a network rediscover the equation?</h2>
   <div style="display:flex; gap:18px; align-items:flex-start;">
-    <div style="flex:1.1; text-align:center;">
-      <img src="figures/lecture1a/cranmer_fig3.png" style="max-width:100%; max-height:460px; border-radius:4px;">
+    <div style="flex:1.1;">
+      <img src="figures/lecture1a/cranmer_fig3.png" style="width:100%; display:block; border-radius:4px;">
     </div>
     <div style="flex:1;">
       <ul>
@@ -148,17 +148,17 @@
 <!-- SLIDE 4 — ML for the simulator: cosmology emulators          -->
 <!-- ============================================================ -->
 <section>
-  <h2>ML for the simulator &mdash; emulators replace expensive forward models</h2>
+  <h2>ML for the simulator &mdash; cosmology emulators</h2>
   <div style="display:flex; gap:18px; align-items:flex-start;">
-    <div style="flex:1; text-align:center;">
-      <img src="figures/lecture1a/cosmopower_corner.png" style="max-width:100%; max-height:460px; border-radius:4px;">
-      <div class="fig-cap">CosmoPower (blue) reproduces a full CLASS-based posterior (red) on KiDS-450 + GAMA, in 3 min vs 2.5 h on 16 cores.</div>
+    <div style="flex:1;">
+      <img src="figures/lecture1a/cosmopower_corner.png" style="width:100%; display:block; border-radius:4px;">
     </div>
     <div style="flex:1;">
       <ul>
         <li><strong>CosmoPower</strong> (Spurio Mancini, Piras et al. 2021): NN emulators for cosmological power spectra; the de-facto inside modern MCMC pipelines.</li>
         <li><strong>CAMELS</strong> (Villaescusa-Navarro et al. 2021): thousands of <em>N</em>-body+hydro sims as training set for emulators and SBI.</li>
       </ul>
+      <p class="fig-cap">CosmoPower (blue) reproduces a full CLASS-based posterior (red) on KiDS-450 + GAMA, in 3 min vs 2.5 h on 16 cores.</p>
       <p class="ref">CosmoPower (<a href="https://arxiv.org/abs/2106.03846">arXiv:2106.03846</a>); CAMELS (<a href="https://arxiv.org/abs/2010.00619">arXiv:2010.00619</a>).</p>
     </div>
   </div>
@@ -253,9 +253,8 @@
 <section>
   <h2>ML for the data &mdash; probabilistic galaxy morphology</h2>
   <div style="display:flex; gap:18px; align-items:flex-start;">
-    <div style="flex:0.85; text-align:center;">
-      <img src="figures/lecture1a/walmsley_fig4.png" style="max-width:100%; max-height:480px; border-radius:4px;">
-      <div class="fig-cap">Posteriors on "smooth" vote fraction per galaxy: single posterior (left) and full model posterior (right). Red bars: actual Galaxy Zoo votes.</div>
+    <div style="flex:1;">
+      <img src="figures/lecture1a/walmsley_fig4.png" style="width:100%; display:block; border-radius:4px;">
     </div>
     <div style="flex:1;">
       <ul>
@@ -263,6 +262,7 @@
         <li>Output is not a class label but a <strong>posterior over morphology</strong> &mdash; calibrated uncertainty on real survey data.</li>
         <li>The clean "Bayesian deep learning on real images" example.</li>
       </ul>
+      <p class="fig-cap">Posteriors on "smooth" vote fraction per galaxy: single posterior (left) and full model posterior (right). Red bars: actual Galaxy Zoo votes.</p>
       <p class="ref">Walmsley et al. 2020 (<a href="https://arxiv.org/abs/1905.07424">arXiv:1905.07424</a>).</p>
     </div>
   </div>
