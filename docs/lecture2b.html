@@ -419,8 +419,8 @@
     </label>
     <label>Width = <span id="surf-width-val">8</span>
       <input type="range" id="surf-width-slider" min="0" max="7" step="1" value="3" style="width:80px;"></label>
-    <label>&eta; = <span id="surf-lr-val">0.100</span>
-      <input type="range" id="surf-lr-slider" min="-3" max="0" step="0.1" value="-1" style="width:80px;"></label>
+    <label>&eta; = <span id="surf-lr-val">0.010</span>
+      <input type="range" id="surf-lr-slider" min="-4" max="-1" step="0.1" value="-2" style="width:80px;"></label>
     <button id="surf-train-btn" style="font-weight:600;">&#9654; Train</button>
     <button id="surf-reset-btn">&#8634; Reset</button>
     <span id="surf-epoch-label" style="color:#7f8c8d; font-size:0.9em;"></span>
@@ -432,42 +432,6 @@
   <ul class="fragment" style="font-size:0.82em; margin-top:2px;">
     <li><strong>Colour = inferred value</strong> \(\mu(x_1,x_2)\); scattered points are the noisy training targets on the <strong>same</strong> scale.</li>
     <li>One hidden layer fits the smooth <strong>Blob</strong> easily, but struggles with the high-frequency <strong>Spiral</strong> &mdash; motivation for going deep.</li>
-  </ul>
-</section>
-
-<!-- MLP in Action: Classification -->
-<section>
-  <h2>MLP in Action: Classification</h2>
-  <p>The <strong>same architecture</strong>, now with a sigmoid head and cross-entropy loss on 2D data:</p>
-  <div class="ctrl-row">
-    <label>Dataset:
-      <select id="mlp-dataset" style="padding:2px 6px; font-size:1em;">
-        <option value="circles" selected>Circles</option>
-        <option value="moons">Moons</option>
-        <option value="spirals">Spirals</option>
-      </select>
-    </label>
-    <label>Activation:
-      <select id="mlp-act" style="padding:2px 6px; font-size:1em;">
-        <option value="relu" selected>ReLU</option>
-        <option value="sigmoid">Sigmoid</option>
-      </select>
-    </label>
-    <label>Width = <span id="mlp-width-val">8</span>
-      <input type="range" id="mlp-width-slider" min="0" max="7" step="1" value="3" style="width:80px;"></label>
-    <label>&eta; = <span id="mlp-lr-val">0.100</span>
-      <input type="range" id="mlp-lr-slider" min="-3" max="0" step="0.1" value="-1" style="width:80px;"></label>
-    <button id="mlp-train-btn" style="font-weight:600;">&#9654; Train</button>
-    <button id="mlp-reset-btn">&#8634; Reset</button>
-    <span id="mlp-epoch-label" style="color:#7f8c8d; font-size:0.9em;"></span>
-  </div>
-  <div style="display:flex; gap:10px;">
-    <div id="mlp-boundary-plot" style="flex:1; height:340px;"></div>
-    <div id="mlp-loss-plot" style="flex:0 0 320px; height:340px;"></div>
-  </div>
-  <ul class="fragment" style="font-size:0.82em; margin-top:2px;">
-    <li><strong>Same network, different head:</strong> swap output activation and loss to switch between regression and classification.</li>
-    <li>Complex structured features like the spiral remain challenging to learn with single hidden layer networks.</li>
   </ul>
 </section>
 
@@ -583,61 +547,56 @@
   </div>
 </section>
 
-<!-- Deep MLP in Action -->
+<!-- MLP in Action: Stacking Hidden Layers (NEW) -->
 <section>
-  <h2>Deep MLP in Action</h2>
-  <p>Now with <strong>multiple hidden layers</strong> &mdash; compare depth and activation function:</p>
+  <h2>MLP in Action: Stacking Hidden Layers</h2>
+  <p>The <strong>same demo</strong>, now with a slider for the <strong>number of hidden layers</strong> &mdash; each of the chosen width:</p>
   <div class="ctrl-row">
-    <label>Dataset:
-      <select id="dmlp-dataset" style="padding:2px 6px; font-size:1em;">
-        <option value="circles">Circles</option>
+    <label>Target:
+      <select id="dsurf-target" style="padding:2px 6px; font-size:1em;">
+        <option value="blob">Blob</option>
         <option value="moons">Moons</option>
-        <option value="spirals" selected>Spirals</option>
+        <option value="spiral" selected>Spiral</option>
       </select>
     </label>
     <label>Activation:
-      <select id="dmlp-act" style="padding:2px 6px; font-size:1em;">
+      <select id="dsurf-act" style="padding:2px 6px; font-size:1em;">
         <option value="relu" selected>ReLU</option>
         <option value="sigmoid">Sigmoid</option>
       </select>
     </label>
-    <label>Layers:
-      <select id="dmlp-layers" style="padding:2px 6px; font-size:1em;">
-        <option value="1">1</option>
-        <option value="2" selected>2</option>
-        <option value="3">3</option>
-        <option value="4">4</option>
-      </select>
-    </label>
-    <label>Width = <span id="dmlp-width-val">16</span>
-      <input type="range" id="dmlp-width-slider" min="0" max="7" step="1" value="4" style="width:80px;"></label>
-    <label>&eta; = <span id="dmlp-lr-val">0.050</span>
-      <input type="range" id="dmlp-lr-slider" min="-3" max="0" step="0.1" value="-1.3" style="width:80px;"></label>
-    <button id="dmlp-train-btn" style="font-weight:600;">&#9654; Train</button>
-    <button id="dmlp-reset-btn">&#8634; Reset</button>
-    <span id="dmlp-epoch-label" style="color:#7f8c8d; font-size:0.9em;"></span>
+    <label>Layers = <span id="dsurf-depth-val">1</span>
+      <input type="range" id="dsurf-depth-slider" min="1" max="5" step="1" value="1" style="width:80px;"></label>
+    <label>Width = <span id="dsurf-width-val">8</span>
+      <input type="range" id="dsurf-width-slider" min="0" max="7" step="1" value="3" style="width:80px;"></label>
+    <label>&eta; = <span id="dsurf-lr-val">0.010</span>
+      <input type="range" id="dsurf-lr-slider" min="-4" max="-1" step="0.1" value="-2" style="width:80px;"></label>
+    <button id="dsurf-train-btn" style="font-weight:600;">&#9654; Train</button>
+    <button id="dsurf-reset-btn">&#8634; Reset</button>
+    <span id="dsurf-epoch-label" style="color:#7f8c8d; font-size:0.9em;"></span>
   </div>
   <div style="display:flex; gap:10px;">
-    <div id="dmlp-boundary-plot" style="flex:1; height:340px;"></div>
-    <div id="dmlp-loss-plot" style="flex:0 0 320px; height:340px;"></div>
+    <div id="dsurf-plot" style="flex:1; height:340px;"></div>
+    <div id="dsurf-loss-plot" style="flex:0 0 320px; height:340px;"></div>
   </div>
   <ul class="fragment" style="font-size:0.82em; margin-top:2px;">
-    <li><strong>Depth creates hierarchy:</strong> early layers learn simple features, later layers compose them.</li>
-    <li>Computing gradients through many layers is <strong>backpropagation</strong>.</li>
+    <li>On the <strong>Spiral</strong>, one hidden layer underfits the high-frequency centre; adding layers lets the network compose features and resolve it.</li>
+    <li><strong>Depth earns its keep</strong> precisely when the target is sharp or structured &mdash; the smooth Blob barely needs it.</li>
   </ul>
 </section>
-
 
 <!-- ============================================================ -->
 <!-- CLOSING — KEY TAKEAWAYS                                      -->
 <!-- ============================================================ -->
 <section>
   <h2>Key Takeaways</h2>
-  <ul style="font-size:0.92em; line-height:1.6;">
-    <li class="fragment"><strong>Learnable bases:</strong> a neuron \(g(\mathbf{v}_j^T x + b_j)\) is a basis function with trainable parameters. Stack \(H\) of them and one hidden layer can approximate any continuous function (universal approximation).</li>
-    <li class="fragment"><strong>Training:</strong> a learnable basis makes the loss non-convex, so there is no closed form. Descend it instead &mdash; gradient descent, then mini-batch SGD over all parameters \(\boldsymbol\phi\). Backprop is just the chain rule.</li>
-    <li class="fragment"><strong>Depth:</strong> stacking layers composes the effective basis functions, making them richer for the same total width. Deeper networks solve problems a single wide layer struggles with.</li>
-    <li class="fragment"><strong>The conceptual jump:</strong> the basis is no longer hand-picked &mdash; the network learns it from data. This is what lets a conditional density \(q_\phi(\theta\mid x)\) scale beyond the toy 1D problems of 2a.</li>
+  <ul style="font-size:0.92em; line-height:1.7;">
+    <li class="fragment"><strong>Learnable basis functions:</strong> each neuron is a simple bump or ramp whose shape the network tunes itself, so you never hand-pick features again.</li>
+    <li class="fragment"><strong>Universal approximation:</strong> one hidden layer, made wide enough, can approximate any continuous function to any accuracy you want.</li>
+    <li class="fragment"><strong>No closed form:</strong> a learned basis makes the loss non-convex, so we descend it with gradient descent rather than solving it directly.</li>
+    <li class="fragment"><strong>Depth buys richness:</strong> stacking layers composes simple features into complex ones, so deep nets crack problems a single wide layer struggles with, like the spiral.</li>
+    <li class="fragment"><strong>One network, many tasks:</strong> changing only the input dimension or the output head turns the same MLP from 1D curve-fitting into 2D surface inference.</li>
+    <li class="fragment"><strong>The bridge ahead:</strong> swap the hand-built target for a simulator's parameter and data pairs, and this becomes neural posterior estimation in Lecture 3.</li>
   </ul>
 </section>
 
@@ -848,63 +807,6 @@ var boxMuller = gaussN;  // alias so imported demos work unchanged
   Reveal.on('slidechanged', init);})();
 
 // Shared MLP implementation
-function MLPNet(layerSizes, actFn) {
-  this.actFn = actFn || 'relu';
-  this.W = []; this.b = [];
-  var rng = createRNG(12345);
-  for (var l = 0; l < layerSizes.length - 1; l++) {
-    var rows = layerSizes[l+1], cols = layerSizes[l];
-    var scale = Math.sqrt(2.0/cols);
-    var wl = [];
-    for (var i = 0; i < rows; i++) { var row = []; for (var j = 0; j < cols; j++) row.push(scale*boxMuller(rng)); wl.push(row); }
-    this.W.push(wl);
-    var bl = []; for (var i = 0; i < rows; i++) bl.push(0);
-    this.b.push(bl);
-  }
-}
-MLPNet.prototype.forward = function(x) {
-  this.acts = [x.slice()]; this.pres = [];
-  var h = x.slice();
-  var isRelu = this.actFn === 'relu';
-  for (var l = 0; l < this.W.length; l++) {
-    var z = [];
-    for (var i = 0; i < this.W[l].length; i++) {
-      var s = this.b[l][i];
-      for (var j = 0; j < h.length; j++) s += this.W[l][i][j]*h[j];
-      z.push(s);
-    }
-    this.pres.push(z);
-    if (l < this.W.length - 1) {
-      h = isRelu ? z.map(function(v){return Math.max(0,v);}) : z.map(function(v){return 1/(1+Math.exp(-v));});
-    } else {
-      h = [1/(1+Math.exp(-z[0]))];
-    }
-    this.acts.push(h.slice());
-  }
-  return h[0];
-};
-MLPNet.prototype.backward = function(target, lr) {
-  var L = this.W.length;
-  var dz = this.acts[L][0] - target;
-  var isRelu = this.actFn === 'relu';
-  var dzNext;
-  for (var l = L-1; l >= 0; l--) {
-    var a_prev = this.acts[l];
-    var dzArr;
-    if (l === L-1) { dzArr = [dz]; }
-    else { dzArr = this.pres[l].map(function(v,i){ return isRelu ? (v>0?dzNext[i]:0) : (function(){var s=1/(1+Math.exp(-v));return dzNext[i]*s*(1-s);})(); }); }
-    if (l > 0) {
-      var dzN = [];
-      for (var j = 0; j < this.W[l][0].length; j++) { var s = 0; for (var i = 0; i < dzArr.length; i++) s += this.W[l][i][j]*dzArr[i]; dzN.push(s); }
-    }
-    for (var i = 0; i < this.W[l].length; i++) {
-      for (var j = 0; j < this.W[l][i].length; j++) this.W[l][i][j] -= lr*dzArr[i]*a_prev[j];
-      this.b[l][i] -= lr*dzArr[i];
-    }
-    if (l > 0) dzNext = dzN;
-  }
-};
-
 function MLPReg(layerSizes, actFn) {
   this.actFn = actFn || 'relu';
   this.W = []; this.b = [];
@@ -951,91 +853,6 @@ MLPReg.prototype.backward = function(target, lr) {
     if (l > 0) dzNext = dzN;
   }
 };
-
-function genClassData(type, n) {
-  var rng = createRNG(42), X = [], Y = [];
-  for (var i = 0; i < n; i++) {
-    var x1, x2, label;
-    if (type === 'circles') {
-      var r = rng() < 0.5 ? 0.3+0.15*rng() : 0.7+0.15*rng();
-      var a = 2*Math.PI*rng(); x1 = r*Math.cos(a); x2 = r*Math.sin(a); label = r<0.5?0:1;
-    } else if (type === 'spirals') {
-      label = i<n/2?0:1; var t = 1.5*Math.PI*(1+2*rng());
-      if (label===0) { x1=t*Math.cos(t)/10+0.1*boxMuller(rng); x2=t*Math.sin(t)/10+0.1*boxMuller(rng); }
-      else { x1=-t*Math.cos(t)/10+0.1*boxMuller(rng); x2=-t*Math.sin(t)/10+0.1*boxMuller(rng); }
-    } else {
-      label = i<n/2?0:1; var a = Math.PI*rng();
-      if (label===0) { x1=Math.cos(a)+0.1*boxMuller(rng); x2=Math.sin(a)+0.1*boxMuller(rng); }
-      else { x1=1-Math.cos(a)+0.1*boxMuller(rng); x2=0.5-Math.sin(a)+0.1*boxMuller(rng); }
-    }
-    X.push([x1,x2]); Y.push(label);
-  }
-  return {X:X, Y:Y};
-}
-
-// DEMO: MLP classification trainer (1 hidden layer)
-(function() {
-  var net=null, data=null, lossHist=[], batchLossHist=[], epoch=0, animId=null;
-  function buildNet() {
-    var w = Math.pow(2, parseInt(document.getElementById('mlp-width-slider').value));
-    var act = document.getElementById('mlp-act').value;
-    return new MLPNet([2,w,1], act);
-  }
-  function reset() {
-    if (animId) { clearTimeout(animId); animId=null; }
-    data = genClassData(document.getElementById('mlp-dataset').value, 200);
-    net = buildNet(); lossHist=[]; batchLossHist=[]; epoch=0;
-    document.getElementById('mlp-epoch-label').textContent='';
-    renderBoundary();
-  }
-  function renderBoundary() {
-    var res=40, type=document.getElementById('mlp-dataset').value;
-    var xMin=-2,xMax=2,yMin=-2,yMax=2;
-    if(type==='moons'){xMin=-1;xMax=2.5;yMin=-1;yMax=1.5;}
-    var xg=[],yg=[],zg=[];
-    for(var i=0;i<res;i++){var row=[];var yi=yMin+(yMax-yMin)*i/(res-1);yg.push(yi);for(var j=0;j<res;j++){var xi=xMin+(xMax-xMin)*j/(res-1);if(i===0)xg.push(xi);row.push(net.forward([xi,yi]));}zg.push(row);}
-    var x0=[],y0=[],x1=[],y1=[];
-    for(var i=0;i<data.X.length;i++){if(data.Y[i]===0){x0.push(data.X[i][0]);y0.push(data.X[i][1]);}else{x1.push(data.X[i][0]);y1.push(data.X[i][1]);}}
-    Plotly.react('mlp-boundary-plot',[
-      {x:xg,y:yg,z:zg,type:'contour',colorscale:[[0,'#2166ac'],[0.5,'#f7f7f7'],[1,'#e66101']],showscale:false,contours:{start:0.1,end:0.9,size:0.1},line:{width:1,color:'rgba(0,0,0,0.3)'},hoverinfo:'z',opacity:0.7},
-      {x:x0,y:y0,mode:'markers',name:'Class 0',marker:{size:5,color:'#2166ac',opacity:0.8},hoverinfo:'skip'},
-      {x:x1,y:y1,mode:'markers',name:'Class 1',marker:{size:5,color:'#e66101',opacity:0.8},hoverinfo:'skip'}
-    ],{xaxis:{title:'x₁',range:[xg[0],xg[xg.length-1]]},yaxis:{title:'x₂',range:[yg[0],yg[yg.length-1]],scaleanchor:'x'},margin:{t:5,r:10,b:35,l:45},paper_bgcolor:'rgba(0,0,0,0)',plot_bgcolor:'rgba(0,0,0,0)',font:{size:12},legend:{x:0.02,y:0.98}},{displayModeBar:false});
-  }
-  function trainStep() {
-    var lr=Math.pow(10, parseFloat(document.getElementById('mlp-lr-slider').value));
-    var B=128, N=data.X.length;
-    var rng=createRNG(epoch);
-    var bl=0;
-    for(var b=0;b<B;b++){var i=Math.floor(rng()*N);var p=net.forward(data.X[i]);var y=data.Y[i];p=Math.max(1e-7,Math.min(1-1e-7,p));bl+=-(y*Math.log(p)+(1-y)*Math.log(1-p));net.backward(y,lr);}
-    batchLossHist.push(bl/B);
-    var tl=0;
-    for(var i=0;i<N;i++){var p=net.forward(data.X[i]);var y=data.Y[i];p=Math.max(1e-7,Math.min(1-1e-7,p));tl+=-(y*Math.log(p)+(1-y)*Math.log(1-p));}
-    lossHist.push(tl/N); epoch++;
-    document.getElementById('mlp-epoch-label').textContent='Step '+epoch;
-  }
-  function trainLoop(){
-    trainStep();
-    if(epoch%3===0) renderBoundary();
-    var ep=[]; for(var i=0;i<lossHist.length;i++) ep.push(i);
-    Plotly.react('mlp-loss-plot',[
-      {x:ep,y:batchLossHist,mode:'lines',line:{width:1,color:'#bdc3c7'},name:'Mini-batch'},
-      {x:ep,y:lossHist,mode:'lines',line:{width:2,color:'#e74c3c'},name:'Full dataset'}
-    ],{xaxis:{title:'Step',range:[0,Math.max(epoch,10)]},yaxis:{title:'CE loss'},margin:{t:5,r:10,b:35,l:50},paper_bgcolor:'rgba(0,0,0,0)',plot_bgcolor:'rgba(0,0,0,0)',font:{size:12},legend:{x:0.5,y:0.99,bgcolor:'rgba(255,255,255,0.8)',font:{size:9}}},{displayModeBar:false});
-    if(epoch<5000)animId=setTimeout(trainLoop,100);
-  }
-  document.getElementById('mlp-train-btn').addEventListener('click',function(){if(animId){clearTimeout(animId);animId=null;return;}trainLoop();});
-  document.getElementById('mlp-reset-btn').addEventListener('click',reset);
-  document.getElementById('mlp-width-slider').addEventListener('input',function(){document.getElementById('mlp-width-val').textContent=Math.pow(2,parseInt(this.value));});
-  document.getElementById('mlp-lr-slider').addEventListener('input',function(){document.getElementById('mlp-lr-val').textContent=Math.pow(10,parseFloat(this.value)).toFixed(3);});
-  document.getElementById('mlp-dataset').addEventListener('change',reset);
-  document.getElementById('mlp-act').addEventListener('change',reset);
-  function init(e){
-    if(e.currentSlide&&e.currentSlide.querySelector('#mlp-boundary-plot')) reset();
-    else if(animId){ clearTimeout(animId); animId=null; }
-  }
-  Reveal.on('slidechanged',init);
-})();
 
 // DEMO: MLP regression trainer (1 hidden layer) - IDs renamed to mlpreg2-*
 //   NLL with learnable σ: φ = (W, b, log σ). Gradient descent updates all of them.
@@ -1147,15 +964,15 @@ function targetField(type, x1, x2) {
   }
   if (type === 'moons') {
     // Two interleaved Gaussian ridges (the smooth analog of make_moons), centred on the origin.
-    var sig = 0.10;  // width² control via 2*sig
-    // upper arc: circle centre (0,0) r=1, upper half
+    var sig = 0.025;  // ridge width² (thinner by ×2 vs 0.10 → σ_r halved)
     var u1 = x1 + 0.5, u2 = x2 + 0.25;
-    var rU = Math.sqrt(u1*u1 + u2*u2);
-    var ridgeU = Math.exp(-(rU-1)*(rU-1)/(2*sig)) / (1 + Math.exp(-(u2+0.15)/0.1));
-    // lower arc: circle centre (1,0.5) r=1, lower half
-    var vu1 = u1 - 1.0, vu2 = u2 - 0.5;
+    // upper (left) arc: circle centre (0,0) r=1, upper half — shifted UP by 0.25 (¼ radius)
+    var rU = Math.sqrt(u1*u1 + (u2-0.25)*(u2-0.25));
+    var ridgeU = Math.exp(-(rU-1)*(rU-1)/(2*sig)) / (1 + Math.exp(-(u2-0.10)/0.1));
+    // lower (right) arc: circle centre (1,0.5) r=1, lower half — shifted DOWN by 0.25 (¼ radius)
+    var vu1 = u1 - 1.0, vu2 = u2 - 0.25;
     var rL = Math.sqrt(vu1*vu1 + vu2*vu2);
-    var ridgeL = Math.exp(-(rL-1)*(rL-1)/(2*sig)) / (1 + Math.exp((u2-0.65)/0.1));
+    var ridgeL = Math.exp(-(rL-1)*(rL-1)/(2*sig)) / (1 + Math.exp((u2-0.40)/0.1));
     return Math.max(ridgeU, ridgeL);
   }
   // blob: single Gaussian bump at the origin
@@ -1213,12 +1030,10 @@ function targetField(type, x1, x2) {
     ],{xaxis:{title:'x₁',range:[-2,2]},yaxis:{title:'x₂',range:[-2,2],scaleanchor:'x'},margin:{t:5,r:10,b:35,l:45},paper_bgcolor:'rgba(0,0,0,0)',plot_bgcolor:'rgba(0,0,0,0)',font:{size:12},showlegend:false},{displayModeBar:false});
   }
   function trainStep(){
+    // Full-batch gradient descent: average the gradient over ALL training points.
     var lr=Math.pow(10,parseFloat(document.getElementById('surf-lr-slider').value));
-    var B=64, N=data.X.length, rng=createRNG(epoch), bl=0;
-    for(var b=0;b<B;b++){var i=Math.floor(rng()*N);var p=net.forward(data.X[i]);var t=data.T[i];var r=p-t;bl+=0.5*r*r;net.backward(t,lr);}
-    batchLossHist.push(bl/B);
-    var tl=0;
-    for(var i=0;i<N;i++){var p=net.forward(data.X[i]);var r=p-data.T[i];tl+=0.5*r*r;}
+    var N=data.X.length, perLr=lr/N, tl=0;
+    for(var i=0;i<N;i++){var p=net.forward(data.X[i]);var r=p-data.T[i];tl+=0.5*r*r;net.backward(data.T[i],perLr);}
     lossHist.push(tl/N); epoch++;
     document.getElementById('surf-epoch-label').textContent='Step '+epoch;
   }
@@ -1227,9 +1042,8 @@ function targetField(type, x1, x2) {
     if(epoch%3===0) renderSurf();
     var ep=[]; for(var i=0;i<lossHist.length;i++) ep.push(i);
     Plotly.react('surf-loss-plot',[
-      {x:ep,y:batchLossHist,mode:'lines',line:{width:1,color:'#bdc3c7'},name:'Mini-batch'},
-      {x:ep,y:lossHist,mode:'lines',line:{width:2,color:'#e74c3c'},name:'Full dataset'}
-    ],{xaxis:{title:'Step',range:[0,Math.max(epoch,10)]},yaxis:{title:'MSE'},margin:{t:5,r:10,b:35,l:50},paper_bgcolor:'rgba(0,0,0,0)',plot_bgcolor:'rgba(0,0,0,0)',font:{size:12},legend:{x:0.5,y:0.99,bgcolor:'rgba(255,255,255,0.8)',font:{size:9}}},{displayModeBar:false});
+      {x:ep,y:lossHist,mode:'lines',line:{width:2,color:'#e74c3c'},name:'MSE'}
+    ],{xaxis:{title:'Step',range:[0,Math.max(epoch,10)]},yaxis:{title:'MSE (mean over all data)'},margin:{t:5,r:10,b:35,l:50},paper_bgcolor:'rgba(0,0,0,0)',plot_bgcolor:'rgba(0,0,0,0)',font:{size:12},showlegend:false},{displayModeBar:false});
     if(epoch<5000)animId=setTimeout(trainLoop,100);
   }
   document.getElementById('surf-train-btn').addEventListener('click',function(){if(animId){clearTimeout(animId);animId=null;return;}trainLoop();});
@@ -1244,72 +1058,67 @@ function targetField(type, x1, x2) {
   });
 })();
 
-// DEMO: Deep MLP trainer (multi-layer)
+// DEMO: MLP 2D regression trainer with depth slider (1-3 hidden layers, MSE). IDs: dsurf-*
 (function() {
-  var net=null,data=null,lossHist=[],batchLossHist=[],epoch=0,animId=null;
+  var net=null, data=null, lossHist=[], batchLossHist=[], epoch=0, animId=null;
   function buildNet(){
-    var nL=parseInt(document.getElementById('dmlp-layers').value);
-    var w=Math.pow(2,parseInt(document.getElementById('dmlp-width-slider').value));
-    var act=document.getElementById('dmlp-act').value;
-    var sizes=[2]; for(var i=0;i<nL;i++) sizes.push(w); sizes.push(1);
-    return new MLPNet(sizes, act);
+    var w=Math.pow(2,parseInt(document.getElementById('dsurf-width-slider').value));
+    var d=parseInt(document.getElementById('dsurf-depth-slider').value);
+    var act=document.getElementById('dsurf-act').value;
+    var sizes=[2]; for(var l=0;l<d;l++) sizes.push(w); sizes.push(1);
+    return new MLPReg(sizes,act);
+  }
+  function genData(type){
+    var rng=createRNG(303), X=[], T=[];
+    for(var i=0;i<1000;i++){var x1=-2+4*rng(), x2=-2+4*rng(); X.push([x1,x2]); T.push(targetField(type,x1,x2)+0.04*boxMuller(rng));}
+    return {X:X, T:T};
   }
   function reset(){
     if(animId){clearTimeout(animId);animId=null;}
-    data=genClassData(document.getElementById('dmlp-dataset').value,200);
-    net=buildNet();lossHist=[];batchLossHist=[];epoch=0;
-    document.getElementById('dmlp-epoch-label').textContent='';
-    renderB();
+    data=genData(document.getElementById('dsurf-target').value);
+    net=buildNet(); lossHist=[]; batchLossHist=[]; epoch=0;
+    document.getElementById('dsurf-epoch-label').textContent='';
+    renderSurf();
   }
-  function renderB(){
-    var res=40,type=document.getElementById('dmlp-dataset').value;
-    var xMin=-2,xMax=2,yMin=-2,yMax=2;
-    if(type==='moons'){xMin=-1;xMax=2.5;yMin=-1;yMax=1.5;}
-    var xg=[],yg=[],zg=[];
-    for(var i=0;i<res;i++){var row=[];var yi=yMin+(yMax-yMin)*i/(res-1);yg.push(yi);for(var j=0;j<res;j++){var xi=xMin+(xMax-xMin)*j/(res-1);if(i===0)xg.push(xi);row.push(net.forward([xi,yi]));}zg.push(row);}
-    var x0=[],y0=[],x1=[],y1=[];
-    for(var i=0;i<data.X.length;i++){if(data.Y[i]===0){x0.push(data.X[i][0]);y0.push(data.X[i][1]);}else{x1.push(data.X[i][0]);y1.push(data.X[i][1]);}}
-    Plotly.react('dmlp-boundary-plot',[
-      {x:xg,y:yg,z:zg,type:'contour',colorscale:[[0,'#2166ac'],[0.5,'#f7f7f7'],[1,'#e66101']],showscale:false,contours:{start:0.1,end:0.9,size:0.1},line:{width:1,color:'rgba(0,0,0,0.3)'},hoverinfo:'z',opacity:0.7},
-      {x:x0,y:y0,mode:'markers',name:'Class 0',marker:{size:5,color:'#2166ac',opacity:0.8},hoverinfo:'skip'},
-      {x:x1,y:y1,mode:'markers',name:'Class 1',marker:{size:5,color:'#e66101',opacity:0.8},hoverinfo:'skip'}
-    ],{xaxis:{title:'x₁',range:[xg[0],xg[xg.length-1]]},yaxis:{title:'x₂',range:[yg[0],yg[yg.length-1]],scaleanchor:'x'},margin:{t:5,r:10,b:35,l:45},paper_bgcolor:'rgba(0,0,0,0)',plot_bgcolor:'rgba(0,0,0,0)',font:{size:12},legend:{x:0.02,y:0.98}},{displayModeBar:false});
+  function renderSurf(){
+    var res=50, xg=[], yg=[], zg=[];
+    for(var i=0;i<res;i++){var row=[], yi=-2+4*i/(res-1); yg.push(yi); for(var j=0;j<res;j++){var xi=-2+4*j/(res-1); if(i===0)xg.push(xi); row.push(net.forward([xi,yi]));}zg.push(row);}
+    var px=[], py=[], pc=[];
+    for(var k=0;k<data.X.length;k++){px.push(data.X[k][0]); py.push(data.X[k][1]); pc.push(data.T[k]);}
+    Plotly.react('dsurf-plot',[
+      {x:xg,y:yg,z:zg,type:'heatmap',colorscale:INFERNO,zmin:0,zmax:1,colorbar:{title:'μ',thickness:10,len:0.9},hoverinfo:'skip'},
+      {x:px,y:py,mode:'markers',marker:{size:6,color:pc,colorscale:INFERNO,cmin:0,cmax:1,showscale:false,line:{width:1,color:'#fff'}},hoverinfo:'skip'}
+    ],{xaxis:{title:'x₁',range:[-2,2]},yaxis:{title:'x₂',range:[-2,2],scaleanchor:'x'},margin:{t:5,r:10,b:35,l:45},paper_bgcolor:'rgba(0,0,0,0)',plot_bgcolor:'rgba(0,0,0,0)',font:{size:12},showlegend:false},{displayModeBar:false});
   }
   function trainStep(){
-    var lr=Math.pow(10,parseFloat(document.getElementById('dmlp-lr-slider').value));
-    var B=128;
-    var N=data.X.length;
-    var rng=createRNG(epoch);
-    var bl=0;
-    for(var b=0;b<B;b++){var i=Math.floor(rng()*N);var p=net.forward(data.X[i]);var y=data.Y[i];p=Math.max(1e-7,Math.min(1-1e-7,p));bl+=-(y*Math.log(p)+(1-y)*Math.log(1-p));net.backward(y,lr);}
-    batchLossHist.push(bl/B);
-    var tl=0;
-    for(var i=0;i<N;i++){var p=net.forward(data.X[i]);var y=data.Y[i];p=Math.max(1e-7,Math.min(1-1e-7,p));tl+=-(y*Math.log(p)+(1-y)*Math.log(1-p));}
-    lossHist.push(tl/N);epoch++;
-    document.getElementById('dmlp-epoch-label').textContent='Step '+epoch;
+    // Full-batch gradient descent: average the gradient over ALL training points.
+    var lr=Math.pow(10,parseFloat(document.getElementById('dsurf-lr-slider').value));
+    var N=data.X.length, perLr=lr/N, tl=0;
+    for(var i=0;i<N;i++){var p=net.forward(data.X[i]);var r=p-data.T[i];tl+=0.5*r*r;net.backward(data.T[i],perLr);}
+    lossHist.push(tl/N); epoch++;
+    document.getElementById('dsurf-epoch-label').textContent='Step '+epoch;
   }
   function trainLoop(){
     trainStep();
-    if(epoch%3===0) renderB();
+    if(epoch%3===0) renderSurf();
     var ep=[]; for(var i=0;i<lossHist.length;i++) ep.push(i);
-    Plotly.react('dmlp-loss-plot',[
-      {x:ep,y:batchLossHist,mode:'lines',line:{width:1,color:'#bdc3c7'},name:'Mini-batch'},
-      {x:ep,y:lossHist,mode:'lines',line:{width:2,color:'#e74c3c'},name:'Full dataset'}
-    ],{xaxis:{title:'Step',range:[0,Math.max(epoch,10)]},yaxis:{title:'CE loss'},margin:{t:5,r:10,b:35,l:50},paper_bgcolor:'rgba(0,0,0,0)',plot_bgcolor:'rgba(0,0,0,0)',font:{size:12},legend:{x:0.5,y:0.99,bgcolor:'rgba(255,255,255,0.8)',font:{size:9}}},{displayModeBar:false});
+    Plotly.react('dsurf-loss-plot',[
+      {x:ep,y:lossHist,mode:'lines',line:{width:2,color:'#e74c3c'},name:'MSE'}
+    ],{xaxis:{title:'Step',range:[0,Math.max(epoch,10)]},yaxis:{title:'MSE (mean over all data)'},margin:{t:5,r:10,b:35,l:50},paper_bgcolor:'rgba(0,0,0,0)',plot_bgcolor:'rgba(0,0,0,0)',font:{size:12},showlegend:false},{displayModeBar:false});
     if(epoch<5000)animId=setTimeout(trainLoop,100);
   }
-  document.getElementById('dmlp-train-btn').addEventListener('click',function(){if(animId){clearTimeout(animId);animId=null;return;}trainLoop();});
-  document.getElementById('dmlp-reset-btn').addEventListener('click',reset);
-  document.getElementById('dmlp-width-slider').addEventListener('input',function(){document.getElementById('dmlp-width-val').textContent=Math.pow(2,parseInt(this.value));});
-  document.getElementById('dmlp-lr-slider').addEventListener('input',function(){document.getElementById('dmlp-lr-val').textContent=Math.pow(10,parseFloat(this.value)).toFixed(3);});
-  document.getElementById('dmlp-dataset').addEventListener('change',reset);
-  document.getElementById('dmlp-act').addEventListener('change',reset);
-  document.getElementById('dmlp-layers').addEventListener('change',reset);
-  function init(e){
-    if(e.currentSlide&&e.currentSlide.querySelector('#dmlp-boundary-plot')) reset();
-    else if(animId){ clearTimeout(animId); animId=null; }
-  }
-  Reveal.on('slidechanged',init);
+  document.getElementById('dsurf-train-btn').addEventListener('click',function(){if(animId){clearTimeout(animId);animId=null;return;}trainLoop();});
+  document.getElementById('dsurf-reset-btn').addEventListener('click',reset);
+  document.getElementById('dsurf-depth-slider').addEventListener('input',function(){document.getElementById('dsurf-depth-val').textContent=this.value;});
+  document.getElementById('dsurf-width-slider').addEventListener('input',function(){document.getElementById('dsurf-width-val').textContent=Math.pow(2,parseInt(this.value));});
+  document.getElementById('dsurf-lr-slider').addEventListener('input',function(){document.getElementById('dsurf-lr-val').textContent=Math.pow(10,parseFloat(this.value)).toFixed(3);});
+  document.getElementById('dsurf-target').addEventListener('change',reset);
+  document.getElementById('dsurf-act').addEventListener('change',reset);
+  document.getElementById('dsurf-depth-slider').addEventListener('change',reset);
+  Reveal.on('slidechanged',function(e){
+    if(e.currentSlide&&e.currentSlide.querySelector('#dsurf-plot')) reset();
+    else if(animId){clearTimeout(animId);animId=null;}
+  });
 })();
 
 // DEMO: Gradient descent animation

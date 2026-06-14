@@ -121,6 +121,30 @@
     padding: 3px 10px;
     border-radius: 20px;
   }
+  .lecture-card.optional {
+    background: #fbfbfc;
+    border-style: dashed;
+    border-color: #cfd6da;
+  }
+  .lecture-card.optional:hover {
+    border-color: #95a5a6;
+    background: #f4f6f7;
+    box-shadow: 0 4px 20px rgba(149, 165, 166, 0.12);
+  }
+  .lecture-card.optional .number { color: #95a5a6; }
+  .optional-badge {
+    display: inline-block;
+    font-size: 0.7em;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: #fff;
+    background: #95a5a6;
+    padding: 2px 9px;
+    border-radius: 20px;
+    vertical-align: middle;
+    margin-left: 8px;
+  }
   .footer {
     margin-top: 60px;
     padding-top: 24px;
@@ -230,6 +254,27 @@
          target="_blank">
         <img src="https://colab.research.google.com/assets/colab-badge.svg" alt="Open In Colab">
         <span>Hands-on session 1 APP example &mdash; gravitational-wave chirp</span>
+      </a>
+    </li>
+    <li>
+      <a class="lecture-card optional" href="lecture2b-extra.html">
+        <div class="number">Companion to Lecture 2b <span class="optional-badge">Optional</span></div>
+        <div class="title">Making Deep Learning Work in Practice</div>
+        <div class="description">
+          A self-contained, orthogonal deep-dive into actually training deep networks: backpropagation,
+          vanishing/exploding gradients and initialisation, normalisation, momentum and Adam, learning-rate
+          schedules, and why overparameterised models still generalise (double descent, spectral bias).
+          Not part of the core SBI thread &mdash; dip in for the training mechanics behind Lecture 2b.
+        </div>
+        <div class="topics">
+          <span class="tag">Backpropagation</span>
+          <span class="tag">Gradient flow</span>
+          <span class="tag">Initialisation</span>
+          <span class="tag">Normalisation</span>
+          <span class="tag">Adam</span>
+          <span class="tag">Double descent</span>
+          <span class="tag">Spectral bias</span>
+        </div>
       </a>
     </li>
     <li>
