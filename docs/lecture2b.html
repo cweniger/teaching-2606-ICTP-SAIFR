@@ -600,48 +600,6 @@
   </ul>
 </section>
 
-<!-- ============================================================ -->
-<!-- CLOSING — SUMMARY & WHAT'S NEXT                              -->
-<!-- ============================================================ -->
-<section>
-  <h2>Summary &amp; What's Next</h2>
-  <div style="display:flex; gap:15px; font-size:0.9em;">
-    <div class="box" style="flex:1;">
-      <h3 style="margin-top:0; color:#2980b9;">Learnable bases</h3>
-      <ul style="font-size:0.9em; line-height:1.5;">
-        <li>Neuron \(g(\mathbf{v}_j^T x + b_j)\); activation zoo</li>
-        <li>One hidden layer = learnable \(\boldsymbol{\phi}\)</li>
-        <li>Universal approximation theorem</li>
-      </ul>
-    </div>
-    <div class="box" style="flex:1;">
-      <h3 style="margin-top:0; color:#e67e22;">Training</h3>
-      <ul style="font-size:0.9em; line-height:1.5;">
-        <li>No closed form &mdash; descend the loss</li>
-        <li>Gradient descent; step size and curvature</li>
-        <li>Mini-batch SGD = true gradient + noise</li>
-      </ul>
-    </div>
-    <div class="box" style="flex:1;">
-      <h3 style="margin-top:0; color:#27ae60;">Going deep</h3>
-      <ul style="font-size:0.9em; line-height:1.5;">
-        <li>Stacking layers; richer effective bases</li>
-        <li>Depth beats width for hard problems</li>
-        <li>Backprop = chain rule through all layers</li>
-      </ul>
-    </div>
-  </div>
-  <div class="box" style="text-align:center; margin-top:12px; padding:8px; font-size:0.85em;">
-    <strong>Key equations:</strong> &nbsp;
-    \(\mu_\theta(x) = \sum_j w_j\, g(\mathbf{v}_j^T x + b_j)\) &nbsp;|&nbsp;
-    \(\boldsymbol\phi \leftarrow \boldsymbol\phi - \eta\,\nabla_{\!\boldsymbol\phi}\,E(\boldsymbol\phi)\) &nbsp;|&nbsp;
-    \(\widehat{\nabla E} = \tfrac{1}{B}\sum_{n\in\mathcal{B}} \nabla_{\!\boldsymbol\phi} E_n\)
-  </div>
-  <p style="text-align:center; margin-top:10px; font-size:0.85em; color:#7f8c8d;">
-    Next, in <strong>Lecture 3</strong>: when the \((\theta, x)\) pairs come from a simulator, training \(q_\phi\) by NLL is <strong>neural posterior estimation</strong> (NPE) &mdash; with input-dependent \(\sigma(x)\), multivariate \(\boldsymbol\theta\), and normalising flows beyond the Gaussian head.
-  </p>
-</section>
-
 </div>
 </div>
 
