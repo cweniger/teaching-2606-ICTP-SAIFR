@@ -182,22 +182,41 @@
       </a>
     </li>
     <li>
-      <a class="lecture-card" href="lecture2.html">
-        <div class="number">Lecture 2</div>
-        <div class="title">From Linear Regression to Deep Learning</div>
+      <a class="lecture-card" href="lecture2a.html">
+        <div class="number">Lecture 2a</div>
+        <div class="title">Linear Regression as Conditional Density Estimation</div>
         <div class="description">
-          One continuous story: parameterise p(&theta;&thinsp;|&thinsp;<em>x</em>) and make it
-          more flexible as need demands. &chi;&sup2; as conditional Gaussian density estimation,
-          overfitting and the basis-function problem, neural networks + SGD, heteroscedastic
-          and flexible q<sub>&phi;</sub>(&theta;&thinsp;|&thinsp;<em>x</em>).
+          Least-squares fitting <em>is</em> conditional density estimation: the curve is
+          &mu;(<em>x</em>), the residual scatter is &sigma;, together giving
+          q(&theta;&thinsp;|&thinsp;<em>x</em>) = &Nscr;(&mu;(<em>x</em>),&nbsp;&sigma;&sup2;).
+          Maximum likelihood, the closed-form solution, and where a fixed basis starts to overfit.
         </div>
         <div class="topics">
-          <span class="tag">&chi;&sup2; / MLE</span>
+          <span class="tag">Conditional densities</span>
           <span class="tag">Basis functions</span>
+          <span class="tag">Maximum likelihood</span>
+          <span class="tag">Closed-form solution</span>
           <span class="tag">Overfitting</span>
+          <span class="tag">Validation</span>
+        </div>
+      </a>
+    </li>
+    <li>
+      <a class="lecture-card" href="lecture2b.html">
+        <div class="number">Lecture 2b</div>
+        <div class="title">Deep Neural Networks for Density Estimation</div>
+        <div class="description">
+          The hand-picked basis was the bottleneck &mdash; so learn it. Neurons as learnable
+          basis functions, the universal approximation theorem, training by gradient descent and
+          mini-batch SGD, and how stacking layers builds richer effective bases.
+        </div>
+        <div class="topics">
           <span class="tag">Neural networks</span>
+          <span class="tag">Activations</span>
+          <span class="tag">Universal approximation</span>
+          <span class="tag">Gradient descent</span>
           <span class="tag">SGD</span>
-          <span class="tag">Gaussian-head NPE</span>
+          <span class="tag">Depth</span>
         </div>
       </a>
       <a class="colab-link"
