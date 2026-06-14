@@ -305,16 +305,16 @@
 <!-- Gradient Descent (interactive) -->
 <section>
   <h2>Gradient Descent</h2>
-  <p>Bundle every trainable quantity into a single parameter vector \(\boldsymbol\phi\):</p>
-  <div class="box" style="text-align:center; font-size:1.0em; padding:8px 12px; margin-top:4px;">
-    \[ \boldsymbol\phi \;=\; \bigl(\,\mathbf{W}^{(1)},\,\mathbf{b}^{(1)},\,\ldots,\,\mathbf{W}^{(L)},\,\mathbf{b}^{(L)},\,\sigma_\theta,\,\ldots\bigr) \]
-    <p style="margin:4px 0 0; font-size:0.85em; color:#7f8c8d;">weights, biases, output-noise scale &mdash; everything the loss depends on, in one flat vector</p>
+  <p style="font-size:0.9em; margin:4px 0;">Bundle every trainable quantity into a single parameter vector \(\boldsymbol\phi\):</p>
+  <div style="text-align:center; font-size:0.95em; margin:2px 0;">
+    \( \boldsymbol\phi = \bigl(\mathbf{W}^{(1)},\mathbf{b}^{(1)},\ldots,\mathbf{W}^{(L)},\mathbf{b}^{(L)},\sigma_\theta,\ldots\bigr) \)
+    <div style="font-size:0.78em; color:#7f8c8d; margin-top:2px;">weights, biases, output-noise scale: everything the loss depends on, in one flat vector</div>
   </div>
-  <p style="margin-top:6px;">Start somewhere, then repeatedly step in the direction that <strong>decreases the loss</strong>:</p>
-  <div class="box" style="text-align:center; font-size:1.1em; padding:14px; margin-top:4px;">
-    \[ \boldsymbol\phi \;\leftarrow\; \boldsymbol\phi - \eta \,\nabla_{\!\boldsymbol\phi}\, E(\boldsymbol\phi) \]
+  <p style="font-size:0.9em; margin:6px 0 2px;">Start somewhere, then repeatedly step in the direction that <strong>decreases the loss</strong>:</p>
+  <div style="text-align:center; font-size:1.0em; margin:2px 0;">
+    \( \boldsymbol\phi \leftarrow \boldsymbol\phi - \eta \,\nabla_{\!\boldsymbol\phi}\, E(\boldsymbol\phi) \)
   </div>
-  <p>\(\eta\) = <strong>learning rate</strong>. The gradient is taken w.r.t. <em>every</em> component of \(\boldsymbol\phi\) at once.</p>
+  <p style="font-size:0.9em; margin:4px 0;">\(\eta\) = <strong>learning rate</strong>. The gradient is taken w.r.t. <em>every</em> component of \(\boldsymbol\phi\) at once.</p>
   <div id="gd-narration" style="min-height:2em; margin-top:6px;">
     <span style="color:#7f8c8d; font-size:0.9em;">Click <strong>Next &#9654;</strong> to see how the learning rate affects convergence.</span>
   </div>

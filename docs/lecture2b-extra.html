@@ -973,50 +973,13 @@
 <section>
   <h2>Key Takeaways</h2>
   <ul style="font-size:0.92em; line-height:1.6;">
-    <li class="fragment"><strong>Making gradients flow:</strong> backprop = chain rule through the computation graph. He initialization + ReLU variants + input normalization keep signals healthy.</li>
-    <li class="fragment"><strong>Making training work:</strong> Adam adapts learning rates per parameter. Learning rate schedules (warmup + decay) improve convergence.</li>
-    <li class="fragment"><strong>Why deep learning works:</strong> overparameterized networks generalize because the training trajectory learns simple (generalizable) features first.</li>
+    <li class="fragment"><strong>Gradients must flow:</strong> backpropagation applies the chain rule through the computation graph, and He initialization, ReLU variants, and input normalization keep signals from vanishing or exploding.</li>
+    <li class="fragment"><strong>Smarter optimizers:</strong> momentum and Adam adapt each parameter's step size using running averages of past gradients.</li>
+    <li class="fragment"><strong>Schedules matter:</strong> warming the learning rate up and then decaying it stabilizes early training and sharpens final convergence.</li>
+    <li class="fragment"><strong>Overparameterization helps:</strong> networks far larger than needed still generalize well, defying the classical bias-variance tradeoff (double descent).</li>
+    <li class="fragment"><strong>Simple features first:</strong> training learns smooth, generalizable patterns before fitting noise, so early stopping captures the good solution.</li>
+    <li class="fragment"><strong>Next up:</strong> convolutional networks build translation equivariance directly into the architecture.</li>
   </ul>
-</section>
-
-<!-- SLIDE 27: Summary & What's Next -->
-<section>
-  <h2>Summary &amp; What's Next</h2>
-  <div style="display:flex; gap:15px; font-size:0.9em;">
-    <div class="box" style="flex:1;">
-      <h3 style="margin-top:0; color:#2980b9;">Making gradients flow</h3>
-      <ul style="font-size:0.9em; line-height:1.5;">
-        <li>Backpropagation &amp; computation graph</li>
-        <li>Gradient pathologies &amp; ReLU variants</li>
-        <li>He initialization &amp; input normalization</li>
-      </ul>
-    </div>
-    <div class="box" style="flex:1;">
-      <h3 style="margin-top:0; color:#e67e22;">Making training work</h3>
-      <ul style="font-size:0.9em; line-height:1.5;">
-        <li>EMA &amp; SGD with momentum</li>
-        <li>Adam optimizer</li>
-        <li>Learning rate schedules</li>
-      </ul>
-    </div>
-    <div class="box" style="flex:1;">
-      <h3 style="margin-top:0; color:#27ae60;">Why deep learning works</h3>
-      <ul style="font-size:0.9em; line-height:1.5;">
-        <li>Double descent</li>
-        <li>Spectral bias &amp; early stopping</li>
-        <li>Training trajectories</li>
-      </ul>
-    </div>
-  </div>
-  <div class="box" style="text-align:center; margin-top:12px; padding:8px; font-size:0.85em;">
-    <strong>Key equations:</strong> &nbsp;
-    EMA: \(m_t = \beta\,m_{t-1} + (1-\beta)\,g_t\) &nbsp;|&nbsp;
-    Adam: \(\mathbf{w} \leftarrow \mathbf{w} - \eta\,\hat{\mathbf{m}}/(\sqrt{\hat{\mathbf{v}}}+\epsilon)\) &nbsp;|&nbsp;
-    He init: \(\text{Var}(w) = 2/n_{\text{in}}\)
-  </div>
-  <p style="text-align:center; margin-top:10px; font-size:0.85em; color:#7f8c8d;">
-    Next lecture: Convolutional neural networks &mdash; building translation equivariance into the architecture.
-  </p>
 </section>
 
 </div>
