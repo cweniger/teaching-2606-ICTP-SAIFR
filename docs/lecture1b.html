@@ -117,7 +117,7 @@
 
   <p class="fragment" style="margin-top:30px; padding:12px 16px; background:#f8f9fa; border-left:4px solid #8e44ad; border-radius:4px;">
     <strong>Simulation-based inference.</strong> We have only the forward direction (a simulator).
-    SBI builds the inverse by drawing \((\boldsymbol\theta, \mathbf{x})\) pairs from the simulator and training a neural network to output the posterior directly &mdash; just like the CNN classifier did for images.
+    SBI builds the inverse by drawing \((\boldsymbol\theta, \mathbf{x})\) pairs from the simulator and training a neural network to output the posterior directly.
   </p>
 </section>
 
@@ -165,10 +165,10 @@
     <div style="flex:0 0 32%; text-align:left;">
       <p style="font-size:0.95em;">A cannon fires a ball at launch angle \(\theta\) with initial speed \(v\) (also uncertain). We observe only the noisy landing position \(x\), denoted \(x_\mathrm{obs}\) below.</p>
       <div class="box" style="margin-top:8px; padding:8px 12px; font-size:0.88em;">
-        \[ p(x\mid v,\theta) \;=\; \mathcal{N}\!\left(x;\; \mu(v,\theta),\; \sigma_\mathrm{obs}^2\right) \]
+        \[ p(x\mid v,\theta) \;=\; \mathcal{N}\!\left(x;\; \mu(v,\theta),\; \sigma_\mathrm{x}^2\right) \]
         \[ p(v) \;=\; \mathcal{N}\!\left(v;\; \mu_v,\; \sigma_v^2\right) \]
         \[ p(\theta) \;=\; \mathcal{U}(5°,\, 85°) \]
-        <p style="font-size:0.85em; color:#555; margin:4px 0 0;">with \(\mu_v = 10\) m/s, \(\sigma_v = 0.2\) m/s, \(\sigma_\mathrm{obs} = 0.5\) m.</p>
+        <p style="font-size:0.85em; color:#555; margin:4px 0 0;">with \(\mu_v = 10\) m/s, \(\sigma_v = 0.2\) m/s, \(\sigma_\mathrm{x} = 0.5\) m.</p>
       </div>
       <p style="margin-top:6px; font-size:0.9em; color:#555;">Note: \(\theta \leftrightarrow \tfrac{\pi}{2}-\theta\) gives the same expected landing &mdash; the posterior is generically <strong>bimodal</strong>.</p>
     </div>
@@ -184,6 +184,9 @@
         <button id="cannon-resample-noise">&#x21bb; Resample v &amp; noise</button>
         <button id="cannon-resample-all">&#x21bb; Resample everything (incl. &theta;)</button>
       </div>
+      <div style="text-align:center; font-size:0.95em; margin-top:8px;">
+        \[ \mu(v,\theta) \;=\; \frac{v^2}{g}\sin(2\theta) \]
+      </div>
     </div>
   </div>
 </section>
@@ -197,8 +200,7 @@
     <div style="flex:1; display:flex; flex-direction:column;">
       <h3 style="margin:0 0 4px; font-size:1.0em; color:#1e7e3f;">Simulator (forward sampling)</h3>
       <div class="box box-green" style="margin:0 0 6px; padding:8px 12px; font-size:0.9em;">
-        \[ \mu(v,\theta) \;=\; \frac{v^2}{g}\sin(2\theta) \]
-        \[ \theta \sim p(\theta),\ \ v \sim p(v),\ \ x \sim \mathcal{N}\!\left(\mu(v,\theta),\, \sigma_\mathrm{obs}^2\right) \]
+        \[ \theta \sim p(\theta),\ \ v \sim p(v),\ \ x \sim \mathcal{N}\!\left(\mu(v,\theta),\, \sigma_\mathrm{x}^2\right) \]
       </div>
       <div id="fwd-scatter" style="width:100%; height:260px;"></div>
       <div class="ctrl-row" style="justify-content:center; margin-top:4px;">
@@ -209,7 +211,7 @@
     <div style="flex:1; display:flex; flex-direction:column;">
       <h3 style="margin:0 0 4px; font-size:1.0em; color:#2980b9;">Likelihood (analytic)</h3>
       <div class="box box-blue" style="margin:0 0 6px; padding:8px 12px; font-size:0.9em;">
-        \[ p(x \mid \theta) \;=\; \int p(x \mid v, \theta)\, p(v)\, dv \]
+        \[ p(x_{\rm obs} \mid \theta) \;=\; \int p(x_{\rm obs} \mid v, \theta)\, p(v)\, dv \]
       </div>
       <div id="lik-plot" style="width:100%; height:260px;"></div>
       <p style="text-align:center; font-size:0.85em; color:#2980b9; margin:4px 0 0;"><em>Requires integration over \(v\).</em></p>
@@ -442,58 +444,28 @@
 </section>
 
 <!-- ============================================================ -->
-<!-- CLOSING — KEY TAKEAWAYS                                      -->
+<!-- CLOSING — KEY TAKEAWAYS (single slide, structured)            -->
 <!-- ============================================================ -->
 <section>
   <h2>Key Takeaways</h2>
-  <ul style="font-size:0.92em; line-height:1.6;">
-    <li class="fragment"><strong>Rejection ABC:</strong> the simplest likelihood-free loop &mdash; sample from the prior, run the simulator, keep what lands near \(x_\mathrm{obs}\). Correct in the limit \(\varepsilon\to 0\), but pays for it in wasted simulator calls.</li>
-    <li class="fragment"><strong>Summary statistics:</strong> a well-chosen \(s(x)\) shrinks \(\varepsilon_\mathrm{eff}\) for free and buys orders of magnitude in sample efficiency &mdash; provided we know what to summarise. Hand-engineered summaries are where classical ABC breaks down.</li>
-    <li class="fragment"><strong>KDE on \((\theta, x)\):</strong> stop filtering, start modelling the joint density. No \(\varepsilon\), every sim contributes, and the result is amortised &mdash; one cloud, any \(x_\mathrm{obs}\).</li>
-    <li class="fragment"><strong>The conceptual jump:</strong> from "accept/reject samples" to "fit a density on the simulator output". This is the seed idea of every neural-SBI method that follows.</li>
-  </ul>
-</section>
+  <ul style="font-size:0.95em; line-height:1.5;">
+    <li class="fragment"><strong>Approximate Bayesian Computation:</strong> sample from the prior, run the simulator, keep what lands near the observation. A likelihood-free recipe whose three sliders walked us through the whole story of SBI.</li>
 
-<!-- ============================================================ -->
-<!-- CLOSING — SUMMARY & WHAT'S NEXT                              -->
-<!-- ============================================================ -->
-<section>
-  <h2>Summary &amp; What's Next</h2>
-  <div style="display:flex; gap:15px; font-size:0.9em;">
-    <div class="box" style="flex:1;">
-      <h3 style="margin-top:0; color:#2980b9;">Rejection ABC</h3>
-      <ul style="font-size:0.9em; line-height:1.5;">
-        <li>Prior &middot; simulator &middot; distance \(d\), tolerance \(\varepsilon\)</li>
-        <li>Top-\(M\) variant for live demos</li>
-        <li>The sample-efficiency cliff</li>
+    <li class="fragment" style="margin-top:10px;"><strong>What works generically (and will keep working):</strong>
+      <ul style="margin-top:4px;">
+        <li class="fragment"><strong>Amortised inference.</strong> Model the joint density once on simulator output; any new observation is then a free slice &mdash; no chain to re-run per query.</li>
+        <li class="fragment"><strong>No likelihood evaluations.</strong> Only samples from the simulator are needed, never pointwise \(p(x\mid\theta)\). This is what unlocks problems where the likelihood is intractable or implicit in the simulator.</li>
+        <li class="fragment"><strong>Trivial marginalisation.</strong> Nuisance parameters fold in for free by sampling them inside the simulator &mdash; no integrals to do at inference time.</li>
       </ul>
-    </div>
-    <div class="box" style="flex:1;">
-      <h3 style="margin-top:0; color:#e67e22;">Summary statistics</h3>
-      <ul style="font-size:0.9em; line-height:1.5;">
-        <li>Many throws per \(\theta\), summary \(\bar x\)</li>
-        <li>\(\varepsilon_\mathrm{eff}\) shrinks as \(\sigma/\sqrt{n_\mathrm{balls}}\)</li>
-        <li>Raw \(L^2\) distance fails: curse of dimensionality</li>
+    </li>
+
+    <li class="fragment" style="margin-top:10px;"><strong>What is challenging (and what the rest of the school is about):</strong>
+      <ul style="margin-top:4px;">
+        <li class="fragment"><strong>Density estimation in high D.</strong> KDE on \((\theta, x)\) collapses once dimensions stack up. We will replace it by a flexible <em>learned</em> conditional density \(q_\phi(\theta\mid x)\) &mdash; normalising flows, neural posterior estimation. <em>(Lectures 2&ndash;3)</em></li>
+        <li class="fragment"><strong>Summary construction.</strong> Hand-engineered summaries are fine for 1D toys, but who chooses one for an image, a waveform, a graph? We will learn the summary as part of the model &mdash; neural embedding networks. <em>(Lecture 4)</em></li>
       </ul>
-    </div>
-    <div class="box" style="flex:1;">
-      <h3 style="margin-top:0; color:#27ae60;">KDE on the joint</h3>
-      <ul style="font-size:0.9em; line-height:1.5;">
-        <li>Weight every sim by \(K_{h_x}(x_\mathrm{obs}-x_i)\)</li>
-        <li>No \(\varepsilon\), uses all \(N\) sims</li>
-        <li>Amortised: pay once, query any \(x_\mathrm{obs}\)</li>
-      </ul>
-    </div>
-  </div>
-  <div class="box" style="text-align:center; margin-top:12px; padding:8px; font-size:0.85em;">
-    <strong>Key equations:</strong> &nbsp;
-    ABC: \(\theta_i\sim p(\theta),\ x_i\sim p(x\mid\theta_i),\ \text{keep if } d(x_i,x_\mathrm{obs})&lt;\varepsilon\) &nbsp;|&nbsp;
-    Summary: \(\mathrm{Var}(\bar x) = \sigma^2/n\) &nbsp;|&nbsp;
-    KDE: \(\hat p(\theta\mid x_\mathrm{obs}) \propto \sum_i K_{h_x}(x_\mathrm{obs}-x_i)\,K_{h_\theta}(\theta-\theta_i)\)
-  </div>
-  <p style="text-align:center; margin-top:10px; font-size:0.85em; color:#7f8c8d;">
-    Next: replace hand-picked summaries by <strong>neural embedding networks</strong>, and KDE on the joint by a <strong>learned conditional density</strong> \(q_\phi(\theta\mid x)\) &mdash; the path into neural SBI.
-  </p>
+    </li>
+  </ul>
 </section>
 
 </div>
