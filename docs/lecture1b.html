@@ -220,6 +220,29 @@
 </section>
 
 <!-- ============================================================ -->
+<!-- 3b — LBI ANALOGUE: MCMC on the analytic likelihood           -->
+<!-- ============================================================ -->
+<section>
+  <h2>Likelihood-based inference &mdash; MCMC</h2>
+  <p style="text-align:left; font-size:0.95em; margin:-2px 0 4px;">
+    If the likelihood \(p(x\mid\theta)\) is available analytically, we can sample the posterior directly with MCMC. Same observation, same posterior &mdash; different ingredients. This is the LBI sibling of rejection ABC.
+  </p>
+  <div class="ctrl-row">
+    <label><input type="range" id="lbi1-xobs" min="3.5" max="10.4" step="0.05" value="9.50" style="width:220px; vertical-align:middle;">
+      &nbsp;\(x_\mathrm{obs}\) = <span id="lbi1-xobs-val" style="display:inline-block; min-width:2.8em;">9.50</span> m</label>
+    <button id="lbi1-run">▶ run MCMC (1000 steps)</button>
+    <span id="lbi1-status" style="color:#7f8c8d; font-size:0.9em;"></span>
+  </div>
+  <div style="display:flex; gap:8px; margin-top:6px;">
+    <div id="lbi1-like" style="flex:1; height:320px;"></div>
+    <div id="lbi1-post" style="flex:1; height:320px;"></div>
+  </div>
+  <p style="text-align:center; font-size:0.85em; color:#7f8c8d; margin-top:2px;">
+    Left: likelihood \(L(\theta) = \mathcal{N}(x_\mathrm{obs};\, r(\theta),\, \sigma^2)\) vs \(\theta\). Right: MCMC samples (blue) vs reference posterior (red, dashed). Dotted line at \(\theta_\mathrm{true}\). <strong>Ingredients:</strong> prior, <em>pointwise</em> likelihood evaluations.
+  </p>
+</section>
+
+<!-- ============================================================ -->
 <!-- 4 — WHAT IS ABC                                              -->
 <!-- ============================================================ -->
 <section>
@@ -248,20 +271,22 @@
 <section>
   <h2>Demo 1 &mdash; Rejection ABC</h2>
   <div class="ctrl-row">
-    <label><input type="range" id="d1-n" min="100" max="20000" step="100" value="2000" style="width:180px; vertical-align:middle;">
+    <label><input type="range" id="d1-n" min="100" max="20000" step="100" value="2000" style="width:160px; vertical-align:middle;">
       &nbsp;\(N\) = <span id="d1-n-val" style="display:inline-block; min-width:3.4em;">2000</span></label>
-    <label><input type="range" id="d1-m" min="5" max="2000" step="5" value="200" style="width:140px; vertical-align:middle;">
+    <label><input type="range" id="d1-m" min="5" max="2000" step="5" value="200" style="width:120px; vertical-align:middle;">
       &nbsp;\(M\) = <span id="d1-m-val" style="display:inline-block; min-width:2.8em;">200</span></label>
+    <label><input type="range" id="d1-xobs" min="3.5" max="10.4" step="0.05" value="9.50" style="width:160px; vertical-align:middle;">
+      &nbsp;\(x_\mathrm{obs}\) = <span id="d1-xobs-val" style="display:inline-block; min-width:2.8em;">9.50</span> m</label>
     <button id="d1-resample">⟳ Resample</button>
     <span id="d1-readout" style="color:#7f8c8d;"></span>
   </div>
   <div style="display:flex; gap:8px; margin-top:6px;">
-    <div id="d1-scatter" style="flex:1; height:350px;"></div>
-    <div id="d1-post"    style="flex:1; height:350px;"></div>
+    <div id="d1-scatter" style="flex:1; height:320px;"></div>
+    <div id="d1-post"    style="flex:1; height:320px;"></div>
   </div>
-  <p style="text-align:center; font-size:0.85em; color:#7f8c8d; margin-top:2px;">
-    Left: \(N\) prior draws (grey) and the top-\(M\) kept (orange) by distance to \(x_\mathrm{obs}\). Right: histogram of accepted \(\theta\) vs reference posterior. The readout reports \(\varepsilon_\mathrm{eff} = \max_{i \in \mathrm{kept}} |x_i - x_\mathrm{obs}|\).
-  </p>
+  <div class="box box-green" style="margin-top:6px; padding:6px 12px; font-size:0.9em; text-align:center;">
+    <strong>Results are amortised!</strong> Moving the \(x_\mathrm{obs}\) slider does <em>not</em> re-run the simulator &mdash; the same cloud is just re-ranked. <em>Amortised = simulation cost paid once up front; every new observation is then essentially free.</em>
+  </div>
 </section>
 
 <!-- ============================================================ -->
@@ -388,62 +413,6 @@
 </section>
 
 <!-- ============================================================ -->
-<!-- 12 — SBI vs LBI: 2x2 panel comparison (the punchline)        -->
-<!-- ============================================================ -->
-<section>
-  <h2>SBI vs LBI &mdash; two routes to the same posterior</h2>
-  <div style="text-align:center; font-size:0.95em; margin:-4px 0 4px;">
-    \( p(\theta\mid x_\mathrm{obs}) \;\propto\; \underbrace{p(x_\mathrm{obs}\mid\theta)}_{\text{likelihood}} \cdot \underbrace{p(\theta)}_{\text{prior (uniform here)}} \)
-  </div>
-  <div class="ctrl-row" style="justify-content:center;">
-    <label><input type="range" id="amort-xobs" min="3.5" max="10.4" step="0.05" value="9.50" style="width:260px; vertical-align:middle;">
-      &nbsp;\(x_\mathrm{obs}\) = <span id="amort-xobs-val" style="display:inline-block; min-width:2.8em;">9.50</span> m</label>
-    <button id="amort-mcmc-run">▶ run MCMC (500 steps)</button>
-    <span id="amort-status" style="color:#7f8c8d; font-size:0.9em;"></span>
-  </div>
-  <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:6px;">
-    <div style="text-align:center; font-size:0.85em; font-weight:600; color:#1e7e3f;">SBI &mdash; KDE of \(N=2000\) training sims</div>
-    <div style="text-align:center; font-size:0.85em; font-weight:600; color:#2980b9;">LBI &mdash; analytic likelihood surface</div>
-    <div id="sbi-top" style="height:185px;"></div>
-    <div id="lbi-top" style="height:185px;"></div>
-    <div style="text-align:center; font-size:0.85em; font-weight:600; color:#1e7e3f;">posterior = KDE slice at \(x_\mathrm{obs}\) &mdash; <em>free</em>, amortised</div>
-    <div style="text-align:center; font-size:0.85em; font-weight:600; color:#2980b9;">posterior = MCMC at \(x_\mathrm{obs}\) &mdash; <em>re-run</em> per query</div>
-    <div id="sbi-bot" style="height:170px;"></div>
-    <div id="lbi-bot" style="height:170px;"></div>
-  </div>
-</section>
-
-<!-- ============================================================ -->
-<!-- 13 — STAIRCASE RECAP + HANDOFF                               -->
-<!-- ============================================================ -->
-<section>
-  <h2>Three demos, in one breath &mdash; and what comes next</h2>
-  <div style="display:flex; gap:18px;">
-    <div style="flex:1;">
-      <h3 style="margin-top:0; font-size:1.0em;">The staircase, in retrospect</h3>
-      <ol>
-        <li><strong>Rejection ABC.</strong> Works in principle, drowns in Monte Carlo cost in practice.</li>
-        <li><strong>+ Summary statistic.</strong> Rescues sample efficiency &mdash; when we know what to summarise.</li>
-        <li><strong>KDE on \((\theta, x)\).</strong> Uses every sim, no \(\varepsilon\), and is <em>amortised</em>: pay once, infer for any \(x_\mathrm{obs}\).</li>
-      </ol>
-      <p style="margin-top:10px;">The conceptual jump &mdash; from "filter samples" to "model the joint density" &mdash; is the seed of every neural SBI method that follows.</p>
-    </div>
-    <div style="flex:1;">
-      <h3 style="margin-top:0; font-size:1.0em;">Where classical ABC dies, and where we go</h3>
-      <div class="box box-orange" style="margin:6px 0; padding:8px 12px;">
-        <strong>Hand-picked summaries don't scale</strong> when \(x\) is an image, a waveform, a graph.
-        <span style="color:#e74c3c;">&rarr; Neural summary / embedding networks. <strong>Lecture 4.</strong></span>
-      </div>
-      <div class="box box-purple" style="margin:6px 0; padding:8px 12px;">
-        <strong>KDE on the joint dies in high D.</strong> A kernel cannot model \(p(\theta, x)\) when \(\dim\theta\) or \(\dim x\) is large.
-        <span style="color:#e74c3c;">&rarr; Replace KDE by a <em>learned</em> conditional density \(q_\phi(\theta\mid x)\). <strong>Lectures 2&ndash;3.</strong></span>
-      </div>
-      <p style="margin-top:10px; font-size:0.95em;">Classical ABC is the rejection-sampling skeleton of the whole field. Everything we add from here is a way to spend simulator calls more wisely.</p>
-    </div>
-  </div>
-</section>
-
-<!-- ============================================================ -->
 <!-- CLOSING — KEY TAKEAWAYS (single slide, structured)            -->
 <!-- ============================================================ -->
 <section>
@@ -453,16 +422,16 @@
 
     <li class="fragment" style="margin-top:10px;"><strong>What works generically (and will keep working):</strong>
       <ul style="margin-top:4px;">
-        <li class="fragment"><strong>Amortised inference.</strong> Model the joint density once on simulator output; any new observation is then a free slice &mdash; no chain to re-run per query.</li>
-        <li class="fragment"><strong>No likelihood evaluations.</strong> Only samples from the simulator are needed, never pointwise \(p(x\mid\theta)\). This is what unlocks problems where the likelihood is intractable or implicit in the simulator.</li>
-        <li class="fragment"><strong>Trivial marginalisation.</strong> Nuisance parameters fold in for free by sampling them inside the simulator &mdash; no integrals to do at inference time.</li>
+        <li class="fragment"><strong>Amortised inference.</strong> Pay simulation cost once; any new \(x_\mathrm{obs}\) is a free query.</li>
+        <li class="fragment"><strong>No likelihood evaluations.</strong> Only simulator samples needed, never pointwise \(p(x\mid\theta)\).</li>
+        <li class="fragment"><strong>Trivial marginalisation.</strong> Nuisances fold in for free by sampling them inside the simulator.</li>
       </ul>
     </li>
 
     <li class="fragment" style="margin-top:10px;"><strong>What is challenging (and what the rest of the school is about):</strong>
       <ul style="margin-top:4px;">
-        <li class="fragment"><strong>Density estimation in high D.</strong> KDE on \((\theta, x)\) collapses once dimensions stack up. We will replace it by a flexible <em>learned</em> conditional density \(q_\phi(\theta\mid x)\) &mdash; normalising flows, neural posterior estimation. <em>(Lectures 2&ndash;3)</em></li>
-        <li class="fragment"><strong>Summary construction.</strong> Hand-engineered summaries are fine for 1D toys, but who chooses one for an image, a waveform, a graph? We will learn the summary as part of the model &mdash; neural embedding networks. <em>(Lecture 4)</em></li>
+        <li class="fragment"><strong>Density estimation in high D.</strong> KDE collapses; replace by a learned \(q_\phi(\theta\mid x)\) &mdash; normalising flows, NPE. <em>(Lec 2&ndash;3)</em></li>
+        <li class="fragment"><strong>Summary construction.</strong> Hand-picked summaries don't scale to images, waveforms, graphs &mdash; learn them. <em>(Lec 4)</em></li>
       </ul>
     </li>
   </ul>
@@ -834,13 +803,15 @@ function trajectory(theta, nPts) {
     const N = parseInt(document.getElementById('d1-n').value);
     let M = parseInt(document.getElementById('d1-m').value);
     M = Math.min(M, N);
+    const xObs = parseFloat(document.getElementById('d1-xobs').value);
     document.getElementById('d1-n-val').textContent = N;
     document.getElementById('d1-m-val').textContent = M;
+    document.getElementById('d1-xobs-val').textContent = xObs.toFixed(2);
     const sim = getCloud(N);
-    const keep = topMidx(sim.x, X_OBS, M);
+    const keep = topMidx(sim.x, xObs, M);
     const accT = keep.map(i=>sim.theta[i]);
     const accX = keep.map(i=>sim.x[i]);
-    const epsEff = Math.max.apply(null, accX.map(v=>Math.abs(v-X_OBS)));
+    const epsEff = Math.max.apply(null, accX.map(v=>Math.abs(v-xObs)));
     document.getElementById('d1-readout').textContent =
       'M/N = '+(M/N).toFixed(3)+',   ε_eff = '+epsEff.toFixed(3)+' m';
 
@@ -849,25 +820,27 @@ function trajectory(theta, nPts) {
         marker:{size:3, color:'rgba(127,140,141,0.45)'} },
       { x:accT, y:accX, mode:'markers', name:'kept (top M)',
         marker:{size:5, color:'#e67e22'} },
-      { x:[PRIOR_LO, PRIOR_HI], y:[X_OBS, X_OBS], mode:'lines', name:'x_obs',
+      { x:[PRIOR_LO, PRIOR_HI], y:[xObs, xObs], mode:'lines', name:'x_obs',
         line:{color:'#2c3e50', dash:'dash', width:1.5} },
-      { x:[PRIOR_LO, PRIOR_HI], y:[X_OBS-epsEff, X_OBS-epsEff], mode:'lines',
+      { x:[PRIOR_LO, PRIOR_HI], y:[xObs-epsEff, xObs-epsEff], mode:'lines',
         name:'ε_eff band', line:{color:'rgba(230,126,34,0.7)', width:1, dash:'dot'} },
-      { x:[PRIOR_LO, PRIOR_HI], y:[X_OBS+epsEff, X_OBS+epsEff], mode:'lines',
+      { x:[PRIOR_LO, PRIOR_HI], y:[xObs+epsEff, xObs+epsEff], mode:'lines',
         name:'', showlegend:false, line:{color:'rgba(230,126,34,0.7)', width:1, dash:'dot'} }
     ], baseLayout({
       xaxis:{title:'θ (rad)', range:[PRIOR_LO, PRIOR_HI]},
       yaxis:{title:'x (m)',   range:[-0.5, RMAX+0.5]}
     }), {displayModeBar:false});
 
+    const refP = refPosterior(1, xObs);
+    const refMax = Math.max.apply(null, refP);
     Plotly.react('d1-post', [
       { x: accT, type:'histogram', name:'ABC posterior',
         histnorm:'probability density', autobinx:false,
         xbins:{start:PRIOR_LO, end:PRIOR_HI, size:(PRIOR_HI-PRIOR_LO)/40},
         marker:{color:'rgba(230,126,34,0.55)', line:{color:'#b3621c', width:0.5}} },
-      { x: THETA_GRID, y: REF_POST_1, mode:'lines', name:'reference',
+      { x: THETA_GRID, y: refP, mode:'lines', name:'reference',
         line:{color:'#c0392b', width:3} },
-      { x:[THETA_TRUE, THETA_TRUE], y:[0, Math.max.apply(null,REF_POST_1)*1.15],
+      { x:[THETA_TRUE, THETA_TRUE], y:[0, refMax*1.15],
         mode:'lines', name:'θ_true',
         line:{color:'#2c3e50', dash:'dash', width:1.2} }
     ], baseLayout({
@@ -877,6 +850,7 @@ function trajectory(theta, nPts) {
   }
   document.getElementById('d1-n').addEventListener('input', draw);
   document.getElementById('d1-m').addEventListener('input', draw);
+  document.getElementById('d1-xobs').addEventListener('input', draw);
   document.getElementById('d1-resample').onclick = function() {
     seed = (seed*1664525 + 1013904223) | 0; cache.key = null; draw();
   };
@@ -1203,86 +1177,9 @@ function trajectory(theta, nPts) {
 })();
 
 // ============================================================
-// SLIDE 12 — SBI vs LBI in a 2x2 grid
-// Top row: where samples / surfaces come from.
-//   SBI (left)  : training sims with KDE contours (estimate of p(θ,x))
-//   LBI (right) : analytic likelihood surface L(θ,x) = N(x; r(θ), σ²)
-// Bottom row: extracted posterior at x_obs.
-//   SBI (left)  : KDE slice — free, amortised
-//   LBI (right) : likelihood curve + MCMC histogram (after ▶)
+// SLIDE 3b — LBI analogue: MCMC on the analytic likelihood
 // ============================================================
 (function(){
-  // ---------- pre-built training cloud + KDE bandwidths ----------
-  const N_AMORT = 2000;
-  const cloud = simulateCloud(N_AMORT, 1, 4242);
-  const sT = (function(){ let m=0; for(let i=0;i<N_AMORT;i++) m+=cloud.theta[i]; m/=N_AMORT;
-    let v=0; for(let i=0;i<N_AMORT;i++) v+=(cloud.theta[i]-m)**2; return Math.sqrt(v/N_AMORT); })();
-  const hT = Math.max(0.025, 0.30 * sT * Math.pow(N_AMORT, -1/6));
-  const hX = SIGMA;
-
-  // ---------- precompute the 2D KDE contour grid (SBI top) ----------
-  const NXC = 60, NYC = 40;
-  const xLo = 0, xHi = RMAX + 0.5;
-  const thetaC = new Array(NXC), xCgrid = new Array(NYC);
-  for (let i=0;i<NXC;i++) thetaC[i] = PRIOR_LO + (PRIOR_HI-PRIOR_LO)*i/(NXC-1);
-  for (let j=0;j<NYC;j++) xCgrid[j] = xLo + (xHi-xLo)*j/(NYC-1);
-  const Zkde = new Array(NYC);
-  for (let j=0;j<NYC;j++) Zkde[j] = new Array(NXC).fill(0);
-  for (let i=0;i<N_AMORT;i++) {
-    const ti = cloud.theta[i], xi = cloud.x[i];
-    for (let a=0;a<NXC;a++) {
-      const dt = (thetaC[a]-ti)/hT;
-      const kt = Math.exp(-0.5*dt*dt);
-      if (kt < 1e-6) continue;
-      for (let b=0;b<NYC;b++) {
-        const dx = (xCgrid[b]-xi)/hX;
-        Zkde[b][a] += kt * Math.exp(-0.5*dx*dx);
-      }
-    }
-  }
-
-  // ---------- precompute the analytic likelihood surface (LBI top) ----------
-  const Zlike = new Array(NYC);
-  for (let j=0;j<NYC;j++) {
-    Zlike[j] = new Array(NXC);
-    const x = xCgrid[j];
-    for (let a=0;a<NXC;a++) {
-      const r = rangeMean(thetaC[a]);
-      Zlike[j][a] = Math.exp(-0.5*(x-r)*(x-r)/(SIGMA*SIGMA));
-    }
-  }
-
-  // ---------- helpers ----------
-  function kdeSlice(x_obs) {
-    const post = new Array(NG).fill(0);
-    for (let i=0;i<N_AMORT;i++) {
-      const dx = (x_obs - cloud.x[i]) / hX;
-      const wi = Math.exp(-0.5*dx*dx);
-      if (wi < 1e-12) continue;
-      const ti = cloud.theta[i];
-      for (let g=0;g<NG;g++) {
-        const dt = (THETA_GRID[g] - ti) / hT;
-        post[g] += wi * Math.exp(-0.5*dt*dt);
-      }
-    }
-    const dth = THETA_GRID[1]-THETA_GRID[0];
-    let area = 0;
-    for (let g=0;g<NG-1;g++) area += 0.5*(post[g]+post[g+1])*dth;
-    if (area > 0) for (let g=0;g<NG;g++) post[g] /= area;
-    return post;
-  }
-  function likeCurve(x_obs) {
-    const c = new Array(NG);
-    for (let g=0;g<NG;g++) {
-      const r = rangeMean(THETA_GRID[g]);
-      c[g] = Math.exp(-0.5*(x_obs-r)*(x_obs-r)/(SIGMA*SIGMA));
-    }
-    const dth = THETA_GRID[1]-THETA_GRID[0];
-    let area = 0;
-    for (let g=0;g<NG-1;g++) area += 0.5*(c[g]+c[g+1])*dth;
-    if (area > 0) for (let g=0;g<NG;g++) c[g] /= area;
-    return c;
-  }
   function runMCMC(x_obs, nSteps, seed) {
     function logL(th) {
       if (th < PRIOR_LO || th > PRIOR_HI) return -Infinity;
@@ -1305,119 +1202,95 @@ function trajectory(theta, nPts) {
     }
     return {samples, accRate: accepted/nSteps};
   }
+  function likeCurve(x_obs) {
+    const c = new Array(NG);
+    for (let g=0;g<NG;g++) {
+      const r = rangeMean(THETA_GRID[g]);
+      c[g] = Math.exp(-0.5*(x_obs-r)*(x_obs-r)/(SIGMA*SIGMA));
+    }
+    return c;
+  }
 
   let mcmcSamples = [];
   let mcmcKey = '';
 
-  // ---------- shared layout helper for the four panels ----------
-  function topLayout(title) {
-    return baseLayout({
-      title:{text:title, font:{size:11, color:'#2c3e50'}, x:0.02, xanchor:'left'},
-      margin:{t:22, r:10, b:30, l:42},
-      xaxis:{title:{text:'θ (rad)', font:{size:11}}, range:[PRIOR_LO, PRIOR_HI]},
-      yaxis:{title:{text:'x (m)',   font:{size:11}}, range:[xLo, xHi]},
-      showlegend:false
-    });
-  }
-  function botLayout(title, ymax) {
-    return baseLayout({
-      title:{text:title, font:{size:11, color:'#2c3e50'}, x:0.02, xanchor:'left'},
-      margin:{t:22, r:10, b:30, l:42},
-      xaxis:{title:{text:'θ (rad)', font:{size:11}}, range:[PRIOR_LO, PRIOR_HI]},
-      yaxis:{title:{text:'density', font:{size:11}}, rangemode:'tozero', range:[0, ymax]},
-      showlegend:false
-    });
-  }
-
   function draw() {
-    const xObs = parseFloat(document.getElementById('amort-xobs').value);
-    document.getElementById('amort-xobs-val').textContent = xObs.toFixed(2);
+    const xObs = parseFloat(document.getElementById('lbi1-xobs').value);
+    document.getElementById('lbi1-xobs-val').textContent = xObs.toFixed(2);
 
-    // ---- SBI top: KDE contours + training sims + x_obs line ----
-    Plotly.react('sbi-top', [
-      { x:thetaC, y:xCgrid, z:Zkde, type:'contour',
-        showscale:false,
-        colorscale:[[0,'rgba(39,174,96,0)'],[0.25,'rgba(39,174,96,0.2)'],[1,'rgba(39,174,96,0.8)']],
-        contours:{coloring:'fill', showlines:false}, hoverinfo:'skip' },
-      { x:cloud.theta, y:cloud.x, mode:'markers',
-        marker:{size:2, color:'rgba(30,30,30,0.35)'}, hoverinfo:'skip' },
-      { x:[PRIOR_LO, PRIOR_HI], y:[xObs, xObs], mode:'lines',
-        line:{color:'#c0392b', dash:'dash', width:2}, hoverinfo:'skip' }
-    ], topLayout('p(θ, x) estimated from sims'), {displayModeBar:false});
+    // ---- left: likelihood curve ----
+    const L = likeCurve(xObs);
+    const Lmax = Math.max.apply(null, L) || 1;
+    Plotly.react('lbi1-like', [
+      { x:THETA_GRID, y:L, mode:'lines',
+        line:{color:'#2980b9', width:3}, fill:'tozeroy',
+        fillcolor:'rgba(41,128,185,0.18)', hoverinfo:'skip' },
+      { x:[THETA_TRUE, THETA_TRUE], y:[0, Lmax*1.1], mode:'lines',
+        line:{color:'#2c3e50', dash:'dot', width:1.5}, hoverinfo:'skip' }
+    ], baseLayout({
+      title:{text:'likelihood L(θ) = N(x_obs; r(θ), σ²)', font:{size:11, color:'#2c3e50'}, x:0.02, xanchor:'left'},
+      margin:{t:24, r:10, b:42, l:48},
+      xaxis:{title:{text:'θ (rad)', font:{size:11}}, range:[PRIOR_LO, PRIOR_HI]},
+      yaxis:{title:{text:'L(θ)',    font:{size:11}}, rangemode:'tozero'},
+      showlegend:false
+    }), {displayModeBar:false});
 
-    // ---- LBI top: analytic likelihood surface + x_obs line ----
-    Plotly.react('lbi-top', [
-      { x:thetaC, y:xCgrid, z:Zlike, type:'contour',
-        showscale:false,
-        colorscale:[[0,'rgba(41,128,185,0)'],[0.25,'rgba(41,128,185,0.18)'],[1,'rgba(41,128,185,0.85)']],
-        contours:{coloring:'fill', showlines:false}, hoverinfo:'skip' },
-      { x:[PRIOR_LO, PRIOR_HI], y:[xObs, xObs], mode:'lines',
-        line:{color:'#c0392b', dash:'dash', width:2}, hoverinfo:'skip' }
-    ], topLayout('L(θ, x) = N(x; r(θ), σ²)'), {displayModeBar:false});
-
-    // ---- bottom panels: posteriors ----
-    const t0 = performance.now();
-    const postKDE = kdeSlice(xObs);
-    const tKDE = performance.now() - t0;
-    const postL = likeCurve(xObs);
-    const ymax = Math.max(
-      Math.max.apply(null, postKDE),
-      Math.max.apply(null, postL)
-    )*1.18;
-
-    Plotly.react('sbi-bot', [
-      { x:THETA_GRID, y:postKDE, mode:'lines',
-        line:{color:'#1e7e3f', width:3}, fill:'tozeroy',
-        fillcolor:'rgba(39,174,96,0.18)', hoverinfo:'skip' }
-    ], botLayout('KDE slice (' + tKDE.toFixed(1) + ' ms; one-time cost amortised)', ymax),
-       {displayModeBar:false});
-
-    const tracesB = [
-      { x:THETA_GRID, y:postL, mode:'lines',
-        line:{color:'#2980b9', width:2.5}, hoverinfo:'skip' }
-    ];
+    // ---- right: MCMC samples + reference posterior ----
+    const refP = refPosterior(1, xObs);
+    const ymax = Math.max.apply(null, refP)*1.30;
+    const traces = [];
     if (mcmcSamples.length && mcmcKey === xObs.toFixed(2)) {
-      tracesB.push({
+      traces.push({
         x:mcmcSamples, type:'histogram',
         histnorm:'probability density', autobinx:false,
-        xbins:{start:PRIOR_LO, end:PRIOR_HI, size:(PRIOR_HI-PRIOR_LO)/60},
-        marker:{color:'rgba(41,128,185,0.5)', line:{color:'#1f5a86', width:0.3}},
+        xbins:{start:PRIOR_LO, end:PRIOR_HI, size:(PRIOR_HI-PRIOR_LO)/50},
+        marker:{color:'rgba(41,128,185,0.55)', line:{color:'#1f5a86', width:0.3}},
         hoverinfo:'skip'
       });
     }
-    Plotly.react('lbi-bot', tracesB, botLayout('likelihood curve + MCMC samples (when ▶ run)', ymax),
-       {displayModeBar:false});
+    traces.push({ x:THETA_GRID, y:refP, mode:'lines',
+      line:{color:'#c0392b', width:2, dash:'dash'}, hoverinfo:'skip' });
+    traces.push({ x:[THETA_TRUE, THETA_TRUE], y:[0, ymax], mode:'lines',
+      line:{color:'#2c3e50', dash:'dot', width:1.5}, hoverinfo:'skip' });
+    Plotly.react('lbi1-post', traces, baseLayout({
+      title:{text:'posterior — MCMC samples vs reference', font:{size:11, color:'#2c3e50'}, x:0.02, xanchor:'left'},
+      margin:{t:24, r:10, b:42, l:48},
+      xaxis:{title:{text:'θ (rad)', font:{size:11}}, range:[PRIOR_LO, PRIOR_HI]},
+      yaxis:{title:{text:'density', font:{size:11}}, range:[0, ymax]},
+      showlegend:false
+    }), {displayModeBar:false});
   }
 
-  document.getElementById('amort-xobs').addEventListener('input', function() {
+  document.getElementById('lbi1-xobs').addEventListener('input', function() {
     mcmcSamples = []; mcmcKey = '';
-    document.getElementById('amort-status').textContent =
+    document.getElementById('lbi1-status').textContent =
       'x_obs changed — MCMC chain invalidated; press ▶ to re-run.';
     draw();
   });
-  document.getElementById('amort-mcmc-run').onclick = function() {
-    const xObs = parseFloat(document.getElementById('amort-xobs').value);
-    document.getElementById('amort-status').textContent = 'running 500 MH steps…';
+  document.getElementById('lbi1-run').onclick = function() {
+    const xObs = parseFloat(document.getElementById('lbi1-xobs').value);
+    document.getElementById('lbi1-status').textContent = 'running 1000 MH steps…';
     setTimeout(function(){
       const t0 = performance.now();
-      const r = runMCMC(xObs, 500, 7);
+      const r = runMCMC(xObs, 1000, 11);
       const dt = performance.now() - t0;
       mcmcSamples = r.samples;
       mcmcKey = xObs.toFixed(2);
-      document.getElementById('amort-status').textContent =
-        '500 MH steps · ' + dt.toFixed(1) + ' ms · acc ' + (r.accRate*100).toFixed(0) + '%';
+      document.getElementById('lbi1-status').textContent =
+        '1000 MH steps · ' + dt.toFixed(1) + ' ms · acc ' + (r.accRate*100).toFixed(0) + '%';
       draw();
     }, 10);
   };
   function init(e) {
-    if (!e.currentSlide.querySelector('#sbi-top')) return;
+    if (!e.currentSlide.querySelector('#lbi1-like')) return;
     mcmcSamples = []; mcmcKey = '';
-    document.getElementById('amort-status').textContent =
+    document.getElementById('lbi1-status').textContent =
       'press ▶ to run MCMC for this x_obs';
     draw();
   }
   Reveal.on('slidechanged', init); Reveal.on('ready', init);
 })();
+
 
 </script>
 </body>
