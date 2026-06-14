@@ -100,15 +100,17 @@
 <section>
   <h2>A short history of statistical / computational astronomy</h2>
   <ul>
-    <li><strong>1809</strong> &mdash; Gauss, <em>Theoria Motus</em>: least squares rediscovers Ceres. ML-before-ML.</li>
+    <li><strong>1809</strong> &mdash; Gauss, <em><a href="https://www.actuaries.asn.au/research-analysis/gauss-least-squares-and-the-missing-planet">Theoria Motus</a></em>: least squares rediscovers Ceres. ML-before-ML.</li>
     <li><strong>1911&ndash;1913</strong> &mdash; Hertzsprung &amp; Russell: statistical population study of stellar luminosities &amp; colours.</li>
-    <li><strong>1968</strong> &mdash; Schmidt, V/V<sub>max</sub>: inference on a real survey.</li>
-    <li><strong>1996</strong> &mdash; Bertin &amp; Arnouts, SExtractor: <em>CLASS_STAR</em> is a feed-forward NN. Deployed on every modern survey.</li>
+    <li><strong>1968</strong> &mdash; <a href="https://ui.adsabs.harvard.edu/abs/1968ApJ...151..393S">Schmidt</a>, V/V<sub>max</sub>: testing population 
+      uniformity in flux limited surveys, selection effects built in.</li>
+    <li><strong>1996</strong> &mdash; Bertin &amp; Arnouts, SExtractor: its <em>CLASS_STAR</em> star/galaxy classifier is a small feed-forward NN, trained on simulations. Shipped in every modern survey pipeline.</li>
     <li><strong>2010</strong> &mdash; Ball &amp; Brunner review: Sloan-era ML (RF, SVM, photo-z, classification).</li>
     <li><strong>2015</strong> &mdash; Dieleman, Willett &amp; Dambre: rotation-invariant CNN wins the Galaxy Zoo Kaggle challenge. The deep-learning era begins for astro.</li>
   </ul>
   <div class="box" style="margin-top:14px;">
-    Statistical inference and pattern recognition have been doing the same work for two centuries; only the function approximators changed.
+    Statistical inference and pattern recognition has been doing work for two centuries.
+    The principles and questions remain the same, what has massively expanded is what is possible in practice.
   </div>
   <p class="ref">Bertin &amp; Arnouts 1996 (A&amp;AS 117, 393); Ball &amp; Brunner 2010 (<a href="https://arxiv.org/abs/0906.2173">arXiv:0906.2173</a>); Dieleman et al. 2015 (<a href="https://arxiv.org/abs/1503.07077">arXiv:1503.07077</a>).</p>
 </section>
@@ -183,9 +185,9 @@
       <ul>
         <li><strong>NRSur7dq4</strong> (Varma et al. 2019): 1528 NR sims, <em>q</em> &le; 4, &chi; &le; 0.8, generic spins. <strong>&ge;1 order of magnitude more accurate</strong> than alternatives <em>within training range</em>. Used in GW190521.</li>
         <li><strong>mlgw</strong> (Schmidt 2020) and <strong>mlgw-bns</strong> (Tissino 2022): PCA+regression on EOB waveforms; 10&ndash;50&times; speedup. BNS validated on GW170817.</li>
-        <li><strong>DANSur</strong> (Fernandes et al. 2024): dual-stage NN, pretrained on approximants then fine-tuned with NR. Millions of waveforms in &lt;20 ms on GPU; mean NR mismatch &sim;10<sup>&minus;4</sup>.</li>
+        <li><strong>DANSur</strong> (Freitas et al. 2024): dual-stage NN, pretrained on approximants then fine-tuned with NR. Millions of waveforms in &lt;20 ms on GPU; mean NR mismatch &sim;10<sup>&minus;4</sup>.</li>
       </ul>
-      <p class="ref">Varma et al. 2019 (<a href="https://arxiv.org/abs/1905.09300">arXiv:1905.09300</a>); Fernandes et al. 2024 (<a href="https://arxiv.org/abs/2412.06946">arXiv:2412.06946</a>).</p>
+      <p class="ref">Varma et al. 2019 (<a href="https://arxiv.org/abs/1905.09300">arXiv:1905.09300</a>); Freitas et al. 2024 (<a href="https://arxiv.org/abs/2412.06946">arXiv:2412.06946</a>).</p>
     </div>
   </div>
 </section>
@@ -318,7 +320,7 @@
   </div>
   <ul>
     <li><strong>Gabbard et al. 2018</strong> (PRL): CNN matches matched-filter ROC on simulated data. The "is this possible?" demonstration.</li>
-    <li><strong>AresGW</strong> (Nousi et al. 2022, 2024): 54-layer ResNet + Deep Adaptive Input Normalization + dynamic augmentation + curriculum learning. <strong>Detects non-aligned-spin BBH in real LIGO O3a noise</strong>; reports new ML-only candidate events in the 7&ndash;50 M<sub>&odot;</sub> training range.</li>
+    <li><strong>AresGW</strong> (Nousi et al. 2022, Koloniari et al. 2024): 54-layer ResNet + Deep Adaptive Input Normalization + dynamic augmentation + curriculum learning. <strong>Detects non-aligned-spin BBH in real LIGO O3a noise</strong>; reports new ML-only candidate events in the 7&ndash;50 M<sub>&odot;</sub> training range.</li>
     <li>Six years from "can it work?" to "it's finding events the pipelines missed."</li>
   </ul>
   <p class="ref">Gabbard et al. 2018 (<a href="https://arxiv.org/abs/1712.06041">arXiv:1712.06041</a>); AresGW (<a href="https://arxiv.org/abs/2211.01520">2211.01520</a> &amp; <a href="https://arxiv.org/abs/2407.07820">2407.07820</a>).</p>
