@@ -328,25 +328,6 @@
   </div>
 </section>
 
-<!-- Validation vs Test in Practice -->
-<section>
-  <h2>Validation vs. Test in Practice</h2>
-  <p style="font-size:0.9em;">Pick \(M\) using <span style="color:#e67e22; font-weight:bold;">validation</span> RMSE. The <span style="color:#e74c3c; font-weight:bold;">test</span> RMSE is your honest final score.</p>
-  <div class="ctrl-row">
-    <label>\(M\) = <span id="vt-deg-val">2</span>
-      <input type="range" id="vt-deg-slider" min="1" max="13" step="1" value="2" style="width:120px;"></label>
-    <button id="vt-resample-btn">&#x21bb; Resample</button>
-    <button id="vt-reveal-test" style="background:#e74c3c; color:white; border:none; border-radius:4px; padding:3px 12px; cursor:pointer;">Reveal test RMSE</button>
-  </div>
-  <div style="display:flex; gap:10px;">
-    <div id="vt-fit-plot" style="flex:1; height:260px;"></div>
-    <div id="vt-err-plot" style="flex:1; height:260px;"></div>
-  </div>
-  <div id="vt-narration" style="min-height:2.2em; margin-top:4px;">
-    <span style="color:#7f8c8d; font-size:0.9em;">1. Adjust \(M\) to minimise <span style="color:#e67e22;">validation</span> RMSE. 2. Click <strong>Reveal test RMSE</strong> to see the final score.</span>
-  </div>
-</section>
-
 <!-- Why fixed bases break in higher dimensions -->
 <section>
   <h2>Choosing a basis gets hard in higher dimensions</h2>
@@ -856,99 +837,6 @@ function _mse(xArr, yArr, w) {
     document.getElementById('lr-noise-slider').value = 0.30;
     generateLRData(false);
   });
-})();
-
-// ============================================================
-// Slide VT — Validation vs Test in practice
-// ============================================================
-(function(){
-  const vtTrueF = x => Math.sin(2*Math.PI*x);
-  let vtSeed = 777;
-  let trX=[], trY=[], vaX=[], vaY=[], teX=[], teY=[];
-  let testRevealed = false;
-  function generateVTData(resample) {
-    if (resample) vtSeed++;
-    testRevealed = false;
-    const rng = createRNG(vtSeed);
-    trX=[]; trY=[]; vaX=[]; vaY=[]; teX=[]; teY=[];
-    const sigma = 0.35;
-    for (let i = 0; i < 15; i++) { const xi = rng(); trX.push(xi); trY.push(vtTrueF(xi) + sigma*(2*rng()-1)*1.7); }
-    for (let i = 0; i < 10; i++) { const xi = rng(); vaX.push(xi); vaY.push(vtTrueF(xi) + sigma*(2*rng()-1)*1.7); }
-    for (let i = 0; i < 10; i++) { const xi = rng(); teX.push(xi); teY.push(vtTrueF(xi) + sigma*(2*rng()-1)*1.7); }
-    document.getElementById('vt-narration').innerHTML = '<span style="color:#7f8c8d; font-size:0.9em;">1. Adjust \\(M\\) to minimise <span style="color:#e67e22;">validation</span> RMSE. 2. Click <strong>Reveal test RMSE</strong> to see the final score.</span>';
-    if (window.MathJax && window.MathJax.typesetPromise) window.MathJax.typesetPromise([document.getElementById('vt-narration')]).catch(function(){});
-    updateVT();
-  }
-  function updateVT() {
-    const M = parseInt(document.getElementById('vt-deg-slider').value);
-    const deg = M - 1;
-    document.getElementById('vt-deg-val').textContent = M;
-    const w = _solveRidge(trX, trY, deg, 1e-10);
-    const xFine=[]; for (let t = 0; t <= 1; t += 0.005) xFine.push(t);
-    const yFit = xFine.map(x => _evalPolyW(w, x));
-    const yClip = yFit.map(v => Math.max(-3, Math.min(3, v)));
-    const yTrue = xFine.map(vtTrueF);
-    // ±1σ band from training residuals
-    const sigmaVT = Math.sqrt(_mse(trX, trY, w));
-    const upVT = yClip.map(v => Math.min(3, v + sigmaVT));
-    const dnVT = yClip.map(v => Math.max(-3, v - sigmaVT));
-    const fitTraces = [
-      { x:xFine.concat(xFine.slice().reverse()), y:upVT.concat(dnVT.slice().reverse()),
-        fill:'toself', fillcolor:'rgba(127,140,141,0.25)', line:{width:0},
-        name:'fit ± σ', hoverinfo:'skip' },
-      { x:xFine, y:yTrue, mode:'lines', name:'True f(x)', line:{width:2, color:'#bdc3c7', dash:'dash'} },
-      { x:trX, y:trY, mode:'markers', name:'Train', marker:{size:7, color:'#3498db'} },
-      { x:vaX, y:vaY, mode:'markers', name:'Validation', marker:{size:7, color:'#e67e22', symbol:'triangle-up'} }
-    ];
-    if (testRevealed) fitTraces.push({ x:teX, y:teY, mode:'markers', name:'Test', marker:{size:7, color:'#e74c3c', symbol:'square'} });
-    fitTraces.push({ x:xFine, y:yClip, mode:'lines', name:'Fit (M='+M+')', line:{width:2.5, color:'#27ae60'} });
-    Plotly.react('vt-fit-plot', fitTraces, {
-      xaxis:{title:'x', range:[0,1]}, yaxis:{title:'θ', range:[-2.5,2.5]},
-      margin:{t:5, r:10, b:35, l:45},
-      paper_bgcolor:'rgba(0,0,0,0)', plot_bgcolor:'rgba(0,0,0,0)',
-      font:{size:11}, legend:{x:0.6, y:0.98}
-    }, {displayModeBar:false});
-    const trainErr=[], valErr=[], testErr=[], mVals=[];
-    for (let d = 0; d <= 12; d++) {
-      mVals.push(d+1);
-      const wd = _solveRidge(trX, trY, d, 1e-10);
-      trainErr.push(Math.sqrt(_mse(trX, trY, wd)));
-      valErr.push(Math.min(3, Math.sqrt(_mse(vaX, vaY, wd))));
-      testErr.push(Math.min(3, Math.sqrt(_mse(teX, teY, wd))));
-    }
-    const errTraces = [
-      { x:mVals, y:trainErr, mode:'lines+markers', name:'Train', line:{width:2, color:'#3498db'}, marker:{size:4} },
-      { x:mVals, y:valErr,   mode:'lines+markers', name:'Validation', line:{width:2, color:'#e67e22'}, marker:{size:4} }
-    ];
-    const annotations = [
-      { x:0.02, y:1.12, xref:'paper', yref:'paper', showarrow:false, font:{size:11, color:'#3498db'}, text:'Train: '+trainErr[deg].toFixed(3) },
-      { x:0.35, y:1.12, xref:'paper', yref:'paper', showarrow:false, font:{size:11, color:'#e67e22'}, text:'Val: '+valErr[deg].toFixed(3) }
-    ];
-    if (testRevealed) {
-      errTraces.push({ x:mVals, y:testErr, mode:'lines+markers', name:'Test', line:{width:2, color:'#e74c3c', dash:'dash'}, marker:{size:4} });
-      annotations.push({ x:0.68, y:1.12, xref:'paper', yref:'paper', showarrow:false, font:{size:11, color:'#e74c3c'}, text:'Test: '+testErr[deg].toFixed(3) });
-    }
-    errTraces.push({ x:[M], y:[trainErr[deg]], mode:'markers', showlegend:false, marker:{size:10, color:'#3498db', symbol:'star'} });
-    errTraces.push({ x:[M], y:[valErr[deg]],   mode:'markers', showlegend:false, marker:{size:10, color:'#e67e22', symbol:'star'} });
-    if (testRevealed) errTraces.push({ x:[M], y:[testErr[deg]], mode:'markers', showlegend:false, marker:{size:10, color:'#e74c3c', symbol:'star'} });
-    Plotly.react('vt-err-plot', errTraces, {
-      xaxis:{title:'M', dtick:1}, yaxis:{title:'RMSE', range:[0,2]},
-      margin:{t:30, r:10, b:35, l:45},
-      paper_bgcolor:'rgba(0,0,0,0)', plot_bgcolor:'rgba(0,0,0,0)',
-      font:{size:11}, legend:{x:0.6, y:0.98},
-      annotations: annotations
-    }, {displayModeBar:false});
-  }
-  document.getElementById('vt-deg-slider').addEventListener('input', updateVT);
-  document.getElementById('vt-resample-btn').addEventListener('click', () => generateVTData(true));
-  document.getElementById('vt-reveal-test').addEventListener('click', function(e) {
-    e.preventDefault(); e.stopPropagation();
-    testRevealed = true;
-    document.getElementById('vt-narration').innerHTML = '<span style="font-size:0.9em;"><strong style="color:#e74c3c;">Test RMSE revealed.</strong> This is the honest estimate of the model performance.</span>';
-    updateVT();
-  });
-  function initVT(e) { if (e.currentSlide && e.currentSlide.querySelector('#vt-fit-plot')) generateVTData(false); }
-  Reveal.on('slidechanged', initVT); Reveal.on('ready', initVT);
 })();
 
 </script>
