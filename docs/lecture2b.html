@@ -378,6 +378,63 @@
   </ul>
 </section>
 
+<!-- Target Functions: preview gallery (NEW) -->
+<section>
+  <h2>Three Functions to Infer</h2>
+  <p>Imagine an unknown smooth field \(\theta(x_1,x_2)\) over the plane. We observe noisy samples at scattered locations and want to <strong>infer the whole surface</strong>. Three targets, easy &rarr; hard:</p>
+  <div style="display:flex; gap:14px; margin-top:10px;">
+    <div style="flex:1; text-align:center;">
+      <div id="tgtprev-blob" style="height:300px;"></div>
+      <div style="font-size:0.8em; margin-top:2px;"><strong>Blob</strong> &nbsp; \(\theta=e^{-\lVert\mathbf{x}-\mathbf{c}\rVert^2/2s^2}\)</div>
+    </div>
+    <div style="flex:1; text-align:center;">
+      <div id="tgtprev-moons" style="height:300px;"></div>
+      <div style="font-size:0.8em; margin-top:2px;"><strong>Moons</strong> &nbsp; two curved ridges</div>
+    </div>
+    <div style="flex:1; text-align:center;">
+      <div id="tgtprev-spiral" style="height:300px;"></div>
+      <div style="font-size:0.8em; margin-top:2px;"><strong>Spiral</strong> &nbsp; \(\theta=\sin(\angle\mathbf{x}-k\lVert\mathbf{x}\rVert)\)</div>
+    </div>
+  </div>
+  <p class="fragment" style="font-size:0.82em; margin-top:8px;">The <strong>prior</strong> is uniform over the square: training inputs are drawn uniformly, so the network sees the whole domain. All three are pure <strong>regression</strong> &mdash; map \(\mathbb{R}^2\!\to\!\mathbb{R}\), no classification needed.</p>
+</section>
+
+<!-- MLP in Action: Inferring a 2D Function (NEW) -->
+<section>
+  <h2>MLP in Action: Inferring a 2D Function</h2>
+  <p>The <strong>same architecture</strong> as the 1D regression demo, now with a 2D input \((x_1,x_2)\) and plain <strong>MSE</strong> loss:</p>
+  <div class="ctrl-row">
+    <label>Target:
+      <select id="surf-target" style="padding:2px 6px; font-size:1em;">
+        <option value="blob" selected>Blob</option>
+        <option value="moons">Moons</option>
+        <option value="spiral">Spiral</option>
+      </select>
+    </label>
+    <label>Activation:
+      <select id="surf-act" style="padding:2px 6px; font-size:1em;">
+        <option value="relu" selected>ReLU</option>
+        <option value="sigmoid">Sigmoid</option>
+      </select>
+    </label>
+    <label>Width = <span id="surf-width-val">8</span>
+      <input type="range" id="surf-width-slider" min="0" max="7" step="1" value="3" style="width:80px;"></label>
+    <label>&eta; = <span id="surf-lr-val">0.100</span>
+      <input type="range" id="surf-lr-slider" min="-3" max="0" step="0.1" value="-1" style="width:80px;"></label>
+    <button id="surf-train-btn" style="font-weight:600;">&#9654; Train</button>
+    <button id="surf-reset-btn">&#8634; Reset</button>
+    <span id="surf-epoch-label" style="color:#7f8c8d; font-size:0.9em;"></span>
+  </div>
+  <div style="display:flex; gap:10px;">
+    <div id="surf-plot" style="flex:1; height:340px;"></div>
+    <div id="surf-loss-plot" style="flex:0 0 320px; height:340px;"></div>
+  </div>
+  <ul class="fragment" style="font-size:0.82em; margin-top:2px;">
+    <li><strong>Colour = inferred value</strong> \(\mu(x_1,x_2)\); scattered points are the noisy training targets on the <strong>same</strong> scale.</li>
+    <li>One hidden layer fits the smooth <strong>Blob</strong> easily, but struggles with the high-frequency <strong>Spiral</strong> &mdash; motivation for going deep.</li>
+  </ul>
+</section>
+
 <!-- MLP in Action: Classification -->
 <section>
   <h2>MLP in Action: Classification</h2>
@@ -1076,6 +1133,115 @@ function genClassData(type, n) {
     else if(ranimId){ clearTimeout(ranimId); ranimId=null; }
   }
   Reveal.on('slidechanged',init);
+})();
+
+// Inferno colorscale (plotly.js core ships only Viridis/Cividis, not Inferno) — hand-defined stops.
+var INFERNO = [[0,'#fcffa4'],[0.1111,'#f7d13d'],[0.2222,'#fb9a06'],[0.3333,'#ed6925'],[0.4444,'#cf4446'],[0.5555,'#a52c60'],[0.6666,'#781c6d'],[0.7777,'#4a0c6b'],[0.8888,'#1b0c41'],[1,'#000004']];
+
+// Smooth scalar target fields θ(x1,x2) ∈ [0,1] over the square [-2,2]²
+// Same three fields are reused by the preview gallery and the 2D regression demo.
+function targetField(type, x1, x2) {
+  if (type === 'spiral') {
+    var r = Math.sqrt(x1*x1 + x2*x2);
+    return 0.5*(1 + Math.sin(Math.atan2(x2, x1) - 2.5*r));
+  }
+  if (type === 'moons') {
+    // Two interleaved Gaussian ridges (the smooth analog of make_moons), centred on the origin.
+    var sig = 0.10;  // width² control via 2*sig
+    // upper arc: circle centre (0,0) r=1, upper half
+    var u1 = x1 + 0.5, u2 = x2 + 0.25;
+    var rU = Math.sqrt(u1*u1 + u2*u2);
+    var ridgeU = Math.exp(-(rU-1)*(rU-1)/(2*sig)) / (1 + Math.exp(-(u2+0.15)/0.1));
+    // lower arc: circle centre (1,0.5) r=1, lower half
+    var vu1 = u1 - 1.0, vu2 = u2 - 0.5;
+    var rL = Math.sqrt(vu1*vu1 + vu2*vu2);
+    var ridgeL = Math.exp(-(rL-1)*(rL-1)/(2*sig)) / (1 + Math.exp((u2-0.65)/0.1));
+    return Math.max(ridgeU, ridgeL);
+  }
+  // blob: single Gaussian bump at the origin
+  return Math.exp(-(x1*x1 + x2*x2)/(2*0.6*0.6));
+}
+
+// Preview gallery: three static heatmaps of the target fields (inferno).
+(function() {
+  function heat(id, type, showbar) {
+    var res = 60, x = [], y = [], z = [];
+    for (var i = 0; i < res; i++) {
+      var row = [], yi = -2 + 4*i/(res-1); y.push(yi);
+      for (var j = 0; j < res; j++) {
+        var xi = -2 + 4*j/(res-1); if (i === 0) x.push(xi);
+        row.push(targetField(type, xi, yi));
+      }
+      z.push(row);
+    }
+    Plotly.react(id, [{
+      x:x, y:y, z:z, type:'heatmap', colorscale:INFERNO, zmin:0, zmax:1,
+      showscale:showbar, colorbar:{title:'θ', thickness:10, len:0.9}, hoverinfo:'skip'
+    }], {
+      xaxis:{visible:false, range:[-2,2]}, yaxis:{visible:false, range:[-2,2], scaleanchor:'x'},
+      margin:{t:4,r:showbar?0:4,b:4,l:4}, paper_bgcolor:'rgba(0,0,0,0)', plot_bgcolor:'rgba(0,0,0,0)'
+    }, {displayModeBar:false});
+  }
+  function render() { heat('tgtprev-blob','blob',false); heat('tgtprev-moons','moons',false); heat('tgtprev-spiral','spiral',true); }
+  Reveal.on('slidechanged', function(e){ if(e.currentSlide && e.currentSlide.querySelector('#tgtprev-blob')) render(); });
+})();
+
+// DEMO: MLP 2D regression trainer (1 hidden layer, MSE loss). IDs: surf-*
+(function() {
+  var net=null, data=null, lossHist=[], batchLossHist=[], epoch=0, animId=null;
+  function buildNet(){var w=Math.pow(2,parseInt(document.getElementById('surf-width-slider').value));var act=document.getElementById('surf-act').value;return new MLPReg([2,w,1],act);}
+  function genData(type){
+    var rng=createRNG(303), X=[], T=[];
+    for(var i=0;i<1000;i++){var x1=-2+4*rng(), x2=-2+4*rng(); X.push([x1,x2]); T.push(targetField(type,x1,x2)+0.04*boxMuller(rng));}
+    return {X:X, T:T};
+  }
+  function reset(){
+    if(animId){clearTimeout(animId);animId=null;}
+    data=genData(document.getElementById('surf-target').value);
+    net=buildNet(); lossHist=[]; batchLossHist=[]; epoch=0;
+    document.getElementById('surf-epoch-label').textContent='';
+    renderSurf();
+  }
+  function renderSurf(){
+    var res=50, xg=[], yg=[], zg=[];
+    for(var i=0;i<res;i++){var row=[], yi=-2+4*i/(res-1); yg.push(yi); for(var j=0;j<res;j++){var xi=-2+4*j/(res-1); if(i===0)xg.push(xi); row.push(net.forward([xi,yi]));}zg.push(row);}
+    var px=[], py=[], pc=[];
+    for(var k=0;k<data.X.length;k++){px.push(data.X[k][0]); py.push(data.X[k][1]); pc.push(data.T[k]);}
+    Plotly.react('surf-plot',[
+      {x:xg,y:yg,z:zg,type:'heatmap',colorscale:INFERNO,zmin:0,zmax:1,colorbar:{title:'μ',thickness:10,len:0.9},hoverinfo:'skip'},
+      {x:px,y:py,mode:'markers',marker:{size:6,color:pc,colorscale:INFERNO,cmin:0,cmax:1,showscale:false,line:{width:1,color:'#fff'}},hoverinfo:'skip'}
+    ],{xaxis:{title:'x₁',range:[-2,2]},yaxis:{title:'x₂',range:[-2,2],scaleanchor:'x'},margin:{t:5,r:10,b:35,l:45},paper_bgcolor:'rgba(0,0,0,0)',plot_bgcolor:'rgba(0,0,0,0)',font:{size:12},showlegend:false},{displayModeBar:false});
+  }
+  function trainStep(){
+    var lr=Math.pow(10,parseFloat(document.getElementById('surf-lr-slider').value));
+    var B=64, N=data.X.length, rng=createRNG(epoch), bl=0;
+    for(var b=0;b<B;b++){var i=Math.floor(rng()*N);var p=net.forward(data.X[i]);var t=data.T[i];var r=p-t;bl+=0.5*r*r;net.backward(t,lr);}
+    batchLossHist.push(bl/B);
+    var tl=0;
+    for(var i=0;i<N;i++){var p=net.forward(data.X[i]);var r=p-data.T[i];tl+=0.5*r*r;}
+    lossHist.push(tl/N); epoch++;
+    document.getElementById('surf-epoch-label').textContent='Step '+epoch;
+  }
+  function trainLoop(){
+    trainStep();
+    if(epoch%3===0) renderSurf();
+    var ep=[]; for(var i=0;i<lossHist.length;i++) ep.push(i);
+    Plotly.react('surf-loss-plot',[
+      {x:ep,y:batchLossHist,mode:'lines',line:{width:1,color:'#bdc3c7'},name:'Mini-batch'},
+      {x:ep,y:lossHist,mode:'lines',line:{width:2,color:'#e74c3c'},name:'Full dataset'}
+    ],{xaxis:{title:'Step',range:[0,Math.max(epoch,10)]},yaxis:{title:'MSE'},margin:{t:5,r:10,b:35,l:50},paper_bgcolor:'rgba(0,0,0,0)',plot_bgcolor:'rgba(0,0,0,0)',font:{size:12},legend:{x:0.5,y:0.99,bgcolor:'rgba(255,255,255,0.8)',font:{size:9}}},{displayModeBar:false});
+    if(epoch<5000)animId=setTimeout(trainLoop,100);
+  }
+  document.getElementById('surf-train-btn').addEventListener('click',function(){if(animId){clearTimeout(animId);animId=null;return;}trainLoop();});
+  document.getElementById('surf-reset-btn').addEventListener('click',reset);
+  document.getElementById('surf-width-slider').addEventListener('input',function(){document.getElementById('surf-width-val').textContent=Math.pow(2,parseInt(this.value));});
+  document.getElementById('surf-lr-slider').addEventListener('input',function(){document.getElementById('surf-lr-val').textContent=Math.pow(10,parseFloat(this.value)).toFixed(3);});
+  document.getElementById('surf-target').addEventListener('change',reset);
+  document.getElementById('surf-act').addEventListener('change',reset);
+  Reveal.on('slidechanged',function(e){
+    if(e.currentSlide&&e.currentSlide.querySelector('#surf-plot')) reset();
+    else if(animId){clearTimeout(animId);animId=null;}
+  });
 })();
 
 // DEMO: Deep MLP trainer (multi-layer)
