@@ -368,54 +368,14 @@
 <!-- ============================================================ -->
 <section>
   <h2>Key Takeaways</h2>
-  <ul style="font-size:0.92em; line-height:1.6;">
-    <li class="fragment"><strong>Conditional densities from regression:</strong> a \(\chi^2\)/least-squares fit is already conditional density estimation. The fitted curve is \(\mu_\theta(x)\), the residual scatter is \(\sigma_\theta\), and together they define \(q(\theta\mid x) = \mathcal{N}(\mu_\theta(x), \sigma_\theta^{2})\).</li>
-    <li class="fragment"><strong>Maximum likelihood:</strong> Gaussian noise turns the log-likelihood into a sum-of-squares loss. With a fixed basis \(\boldsymbol{\phi}(x)\) the loss is convex, so \(\mathbf{w}_{\mathrm{ML}}\) and \(\sigma_\theta\) both follow in closed form.</li>
-    <li class="fragment"><strong>Overfitting and validation:</strong> a flexible enough basis drives training error to zero while validation error explodes. Held-out data, not training data, is what tells you the model generalises.</li>
-    <li class="fragment"><strong>The open problem:</strong> with a fixed, hand-picked basis you only have one knob &mdash; its size &mdash; controlling both expressiveness and noise sensitivity. Lecture 2b learns the basis instead.</li>
+  <ul style="font-size:0.86em; line-height:1.4;">
+    <li class="fragment"><strong>Regression is conditional density estimation:</strong> read the joint cloud column-wise, and a least-squares fit already hands you a full \(q(\theta\mid x)\) &mdash; the fitted curve is the mean, the residual scatter is the width.</li>
+    <li class="fragment"><strong>Gaussian band model:</strong> assume the slice at every \(x\) is Gaussian with a mean curve and a single shared width &mdash; the simplest honest model of uncertainty.</li>
+    <li class="fragment"><strong>Linear basis:</strong> build the mean curve as a weighted sum of fixed basis functions (polynomials, Gaussians, sigmoids). It is linear in the weights even when the basis itself is nonlinear.</li>
+    <li class="fragment"><strong>Maximum likelihood = least squares:</strong> Gaussian noise turns the log-likelihood into a sum-of-squares loss; both the weights and the noise width then follow in closed form.</li>
+    <li class="fragment"><strong>Overfitting and validation:</strong> a flexible enough basis memorises noise &mdash; training error keeps dropping while validation error turns up. Use train / validation / test, and never tune on the test set.</li>
+    <li class="fragment"><strong>The catch with fixed bases:</strong> one knob (the basis size) trades expressiveness against noise sensitivity, and hand-picking a good basis gets exponentially harder in higher dimensions.</li>
   </ul>
-</section>
-
-<!-- ============================================================ -->
-<!-- CLOSING — SUMMARY & WHAT'S NEXT                              -->
-<!-- ============================================================ -->
-<section>
-  <h2>Summary &amp; What's Next</h2>
-  <div style="display:flex; gap:15px; font-size:0.9em;">
-    <div class="box" style="flex:1;">
-      <h3 style="margin-top:0; color:#2980b9;">Conditional densities</h3>
-      <ul style="font-size:0.9em; line-height:1.5;">
-        <li>Joint cloud, read column-wise at each \(x\)</li>
-        <li>\(q(\theta\mid x) = \mathcal{N}(\mu_\theta(x), \sigma_\theta^{2})\)</li>
-        <li>Linear basis \(\mu_\theta(x) = \mathbf{w}^T\boldsymbol{\phi}(x)\)</li>
-      </ul>
-    </div>
-    <div class="box" style="flex:1;">
-      <h3 style="margin-top:0; color:#e67e22;">Maximum likelihood</h3>
-      <ul style="font-size:0.9em; line-height:1.5;">
-        <li>Gaussian log-likelihood = sum-of-squares loss</li>
-        <li>Closed-form \(\mathbf{w}_{\mathrm{ML}}\) via normal equations</li>
-        <li>Closed-form \(\sigma_\theta\) from residual variance</li>
-      </ul>
-    </div>
-    <div class="box" style="flex:1;">
-      <h3 style="margin-top:0; color:#27ae60;">Overfitting</h3>
-      <ul style="font-size:0.9em; line-height:1.5;">
-        <li>Too-flexible basis memorises noise</li>
-        <li>Train / validation / test split; the U-curve</li>
-        <li>One knob (basis size) controls everything</li>
-      </ul>
-    </div>
-  </div>
-  <div class="box" style="text-align:center; margin-top:12px; padding:8px; font-size:0.85em;">
-    <strong>Key equations:</strong> &nbsp;
-    \(q(\theta\mid x) = \mathcal{N}\!\bigl(\mu_\theta(x), \sigma_\theta^{2}\bigr)\) &nbsp;|&nbsp;
-    \(\mathbf{w}_{\mathrm{ML}} = (\boldsymbol\Phi^T\boldsymbol\Phi)^{-1}\boldsymbol\Phi^T\boldsymbol\theta\) &nbsp;|&nbsp;
-    \(\sigma_\theta^{2} = \tfrac{1}{N}\sum_n (\theta_n - \mu_\theta(x_n))^2\)
-  </div>
-  <p style="text-align:center; margin-top:10px; font-size:0.85em; color:#7f8c8d;">
-    Next, in <strong>Lecture 2b</strong>: the modelling burden sits entirely on the hand-picked basis \(\boldsymbol{\phi}\). We make \(\boldsymbol{\phi}\) itself learnable &mdash; neural networks &mdash; and train it by stochastic gradient descent.
-  </p>
 </section>
 
 </div>
