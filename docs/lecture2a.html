@@ -184,36 +184,32 @@
 </section>
 
 <!-- A3 — from likelihood to loss function -->
-<section>
+<section style="font-size:0.59em;">
   <h2>From model likelihood to loss function</h2>
   <p>With independent Gaussian noise, the joint likelihood factorises:</p>
-  <div class="box">
-    \[ p(\boldsymbol\theta \mid \mathbf{w}, \sigma_\theta) \;=\; \prod_{n=1}^{N} \mathcal{N}\!\bigl(\theta_n \,\big|\, \mu_\theta(x_n;\mathbf{w}),\, \sigma_\theta^{2}\bigr) \]
-    <p class="fragment" style="margin:6px 0 0;">Take the log and write the constant explicitly in terms of \(N\) and \(\sigma_\theta\):</p>
-    <div class="fragment">
-    \[ \ln p(\boldsymbol\theta \mid \mathbf{w}, \sigma_\theta) \;=\; -\frac{N}{2}\ln\!\bigl(2\pi\sigma_\theta^{2}\bigr) \;-\; \frac{1}{2\sigma_\theta^{2}}\sum_{n=1}^{N}\bigl(\theta_n - \mu_\theta(x_n;\mathbf{w})\bigr)^{2} \]
-    </div>
+  \[ p(\boldsymbol\theta \mid \mathbf{w}, \sigma_\theta) \;=\; \prod_{n=1}^{N} \mathcal{N}\!\bigl(\theta_n \,\big|\, \mu_\theta(x_n;\mathbf{w}),\, \sigma_\theta^{2}\bigr) \]
+  <p class="fragment" style="margin:6px 0 0;">Take the log and write the constant explicitly in terms of \(N\) and \(\sigma_\theta\):</p>
+  <div class="fragment">
+  \[ \ln p(\boldsymbol\theta \mid \mathbf{w}, \sigma_\theta) \;=\; -\frac{N}{2}\ln\!\bigl(2\pi\sigma_\theta^{2}\bigr) \;-\; \frac{1}{2\sigma_\theta^{2}}\sum_{n=1}^{N}\bigl(\theta_n - \mu_\theta(x_n;\mathbf{w})\bigr)^{2} \]
   </div>
   <p class="fragment" style="margin-top:8px;">Negate to turn maximising the likelihood into minimising a loss:</p>
-  <div class="box fragment" style="text-align:center;">
+  <div class="fragment" style="text-align:center;">
     \[ E(\mathbf{w}, \sigma_\theta) \;=\; \frac{N}{2}\ln\!\bigl(2\pi\sigma_\theta^{2}\bigr) \;+\; \frac{1}{2\sigma_\theta^{2}}\sum_{n=1}^{N}\bigl(\theta_n - \mu_\theta(x_n;\mathbf{w})\bigr)^{2} \]
   </div>
 </section>
 
 <!-- A4 — closed-form MLE for w and σ_θ -->
-<section>
+<section style="font-size:0.59em;">
   <h2>Solving for the weights and the variance</h2>
   <p>Split the loss into a \(\sigma_\theta\)-independent shape \(S(\mathbf{w})\) and a \(\sigma_\theta\)-only piece:</p>
-  <div class="box" style="text-align:center;">
-    \[ E(\mathbf{w}, \sigma_\theta) \;=\; \frac{N}{2}\ln\!\bigl(2\pi\sigma_\theta^{2}\bigr) \;+\; \frac{S(\mathbf{w})}{2\sigma_\theta^{2}}, \qquad
-       S(\mathbf{w}) = \sum_{n}\bigl(\theta_n - \mathbf{w}^T\boldsymbol{\phi}(x_n)\bigr)^{2} \]
-  </div>
+  \[ E(\mathbf{w}, \sigma_\theta) \;=\; \frac{N}{2}\ln\!\bigl(2\pi\sigma_\theta^{2}\bigr) \;+\; \frac{S(\mathbf{w})}{2\sigma_\theta^{2}}, \qquad
+     S(\mathbf{w}) = \sum_{n}\bigl(\theta_n - \mathbf{w}^T\boldsymbol{\phi}(x_n)\bigr)^{2} \]
   <p class="fragment" style="margin-top:6px;"><strong>Step 1 &mdash; weights.</strong> The \(\sigma_\theta\) prefactor is positive, so minimising \(E\) in \(\mathbf{w}\) is the same as minimising \(S(\mathbf{w})\). Set \(\nabla_\mathbf{w} S = 0\); with the design matrix \(\boldsymbol\Phi_{nj} = \phi_j(x_n)\),</p>
-  <div class="box fragment" style="text-align:center;">
+  <div class="fragment" style="text-align:center;">
     \[ \mathbf{w}_{\mathrm{ML}} \;=\; (\boldsymbol\Phi^T\boldsymbol\Phi)^{-1}\boldsymbol\Phi^T\boldsymbol\theta \]
   </div>
   <p class="fragment" style="margin-top:6px;"><strong>Step 2 &mdash; variance.</strong> Plug \(\mathbf{w}_{\mathrm{ML}}\) back and set \(\partial E/\partial\sigma_\theta = 0\):</p>
-  <div class="box fragment" style="text-align:center;">
+  <div class="fragment" style="text-align:center;">
     \[ \frac{N}{\sigma_\theta} \;-\; \frac{S(\mathbf{w}_{\mathrm{ML}})}{\sigma_\theta^{3}} \;=\; 0
        \quad\Longrightarrow\quad
        \sigma_\theta^{2} \;=\; \frac{1}{N}\sum_{n}\bigl(\theta_n - \mu_\theta(x_n;\mathbf{w}_{\mathrm{ML}})\bigr)^{2} \]
