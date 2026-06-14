@@ -351,6 +351,18 @@
   </div>
 </section>
 
+<!-- Why fixed bases break in higher dimensions -->
+<section>
+  <h2>Choosing a basis gets hard in higher dimensions</h2>
+  <p>In a \(D\)-dimensional input \(\mathbf{x} = (x_1, \ldots, x_D)\) we still write \(\mu_\theta(\mathbf{x}) = \mathbf{w}^T\boldsymbol{\phi}(\mathbf{x})\), but the basis must be hand-picked to tile the whole space:</p>
+  <ul style="font-size:0.95em; line-height:1.9; margin-top:14px;">
+    <li><strong>Polynomials:</strong> \(1,\; x_1,\; x_2,\; x_1^2,\; x_1 x_2,\; x_2^2,\; \ldots\)</li>
+    <li><strong>Gaussian blobs:</strong> \(e^{-\lVert\mathbf{x}-\boldsymbol{\mu}_1\rVert^2/2s^2},\; e^{-\lVert\mathbf{x}-\boldsymbol{\mu}_2\rVert^2/2s^2},\; \ldots\)</li>
+    <li><strong>Fourier modes:</strong> \(\sin(\mathbf{k}_1\!\cdot\mathbf{x}),\; \cos(\mathbf{k}_1\!\cdot\mathbf{x}),\; \sin(\mathbf{k}_2\!\cdot\mathbf{x}),\; \ldots\)</li>
+  </ul>
+  <p class="fragment" style="margin-top:16px;">Tiling \(D\) dimensions needs \(\sim M^D\) of them, and you must place every centre, width and frequency yourself: the <strong>curse of dimensionality</strong>. Lecture 2b's fix: let the network <strong>learn</strong> the basis.</p>
+</section>
+
 <!-- ============================================================ -->
 <!-- CLOSING — KEY TAKEAWAYS                                      -->
 <!-- ============================================================ -->
