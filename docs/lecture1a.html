@@ -49,47 +49,48 @@
 
   <div style="display:flex; gap:10px; margin-top:8px;">
     <div class="box box-blue" style="flex:1;">
-      <strong>theory</strong><br>
+      <strong>Theory</strong><br>
       <span style="font-size:0.9em;">GR, &Lambda;CDM, &nu; oscillation Hamiltonian, dark-matter halo models, EFT of LSS</span>
     </div>
     <div class="arrow">&rarr;</div>
     <div class="box box-blue" style="flex:1;">
-      <strong>model / simulator</strong><br>
+      <strong>Model / Simulator</strong><br>
       <span style="font-size:0.9em;">LALSimulation, CORSIKA, <em>N</em>-body, hydro, &nu; propagation</span>
     </div>
   </div>
 
   <div style="display:flex; gap:10px; margin-top:8px;">
     <div class="box box-green" style="flex:1;">
-      <strong>instrument</strong><br>
+      <strong>Instrument</strong><br>
       <span style="font-size:0.9em;">LIGO/Virgo/KAGRA, IceCube, Fermi-LAT, Euclid, LSST, CTA, SKA, CMB-S4</span>
     </div>
     <div class="arrow">&rarr;</div>
     <div class="box box-green" style="flex:1;">
-      <strong>data</strong><br>
+      <strong>Data</strong><br>
       <span style="font-size:0.9em;">strain <em>h</em>(<em>t</em>), DOM hits, &gamma;-ray photon lists, survey images, CMB maps, visibilities</span>
     </div>
   </div>
 
   <div style="display:flex; gap:10px; margin-top:8px;">
     <div class="box box-orange" style="flex:1;">
-      <strong>data + model</strong><br>
+      <strong>Data + Model</strong><br>
       <span style="font-size:0.9em;">forward model meets observation</span>
     </div>
     <div class="arrow">&rarr;</div>
     <div class="box box-orange" style="flex:1;">
-      <strong>inference</strong><br>
+      <strong>Inference</strong><br>
       <span style="font-size:0.9em;">posteriors on &theta;: BH masses/spins, mixing angles, &Omega;<sub>m</sub>, &sigma;<sub>8</sub></span>
     </div>
     <div class="arrow">&rarr;</div>
     <div class="box box-purple" style="flex:1;">
-      <strong>insight</strong><br>
+      <strong>Insight</strong><br>
       <span style="font-size:0.9em;">H<sub>0</sub>, NS equation of state, dark-matter mass, &nu; hierarchy</span>
     </div>
   </div>
 
   <p style="margin-top:14px; text-align:center;">
-    ML now lives at <strong>every arrow</strong>. We will touch on each, but the lecture &mdash; and the rest of the school &mdash; spend most time on the <span class="highlight">bottom line</span>: inference.
+    <strong>Machine learning and artificial intelligence</strong> play a role in defining new theories, setting up and accelerating models and simulations, instrumental design, data acquisition and processing
+    <strong>sistical analysis and inference</strong>, as well as interpretation of results. It has permeated the entire scientific workflow.
   </p>
 </section>
 
@@ -294,7 +295,7 @@
     <div style="text-align:center;">
       <div style="width:200px; height:4px; background:linear-gradient(90deg,#2980b9,#e74c3c); margin:0 auto 25px;"></div>
       <h1 style="font-size:2em; margin:0;">ML for the inference</h1>
-      <p style="font-size:1.1em; color:#7f8c8d; margin-top:15px;">Posteriors on physical parameters &mdash; where the rest of the school lives.</p>
+      <p style="font-size:1.1em; color:#7f8c8d; margin-top:15px;">Posteriors on physical parameters</p>
       <div style="width:200px; height:4px; background:linear-gradient(90deg,#2980b9,#e74c3c); margin:25px auto 0;"></div>
     </div>
   </div>
@@ -396,7 +397,7 @@
       <ul style="margin:6px 0 0 0;">
         <li>No explicit likelihood. Only \((\theta_i, x_i) \sim p(\theta)\,p(x\mid\theta)\) pairs.</li>
         <li>Learn the posterior (<strong>NPE</strong>), the likelihood (NLE), or the ratio (NRE) directly.</li>
-        <li>DINGO is NPE. Most of the rest of this school is here.</li>
+        <li>DINGO is NPE.</li>
       </ul>
     </div>
   </div>
@@ -414,21 +415,48 @@
       <ul style="margin:6px 0 0 0;">
         <li><strong>AstroCLIP</strong> (Parker et al. 2024): cross-modal image-spectrum embedding; transfers to photo-z, morphology, redshift.</li>
         <li><strong>AstroLLaMA</strong> (Nguyen et al. 2023): LLaMA-2 domain-adapted on astro-ph abstracts.</li>
-        <li><em>No Mistral-in-astro paper exists to my knowledge as of mid-2026.</em></li>
       </ul>
-    </div>
-    <div class="box box-green" style="flex:1;">
-      <strong>Where Lec 1b picks up</strong>
-      <p style="margin:6px 0;">Approximate Bayesian Computation (ABC):</p>
-      <pre style="font-size:0.85em; margin:6px 0;"><code>for i in 1..N:
-    &theta;_i &sim; p(&theta;)
-    x_i &sim; p(x | &theta;_i)
-    if d(x_i, x_obs) &lt; &epsilon;:
-        accept &theta;_i</code></pre>
-      <p style="margin:4px 0;">The whole inference row of slide 1 lives or dies on what we can do with this loop. Lec 1b: how it breaks, and what neural SBI fixes.</p>
     </div>
   </div>
   <p class="ref">AstroCLIP (<a href="https://arxiv.org/abs/2310.03024">arXiv:2310.03024</a>); AstroLLaMA (<a href="https://arxiv.org/abs/2309.06126">arXiv:2309.06126</a>).</p>
+</section>
+
+<section>
+  <h2> Plan for this course</h2>
+  <div style="display:flex; gap:20px; align-items:flex-start">
+  <p class="box box-purple" style="flex:1; text-align: left">
+    In this course we will introduce the <strong>foundational concepts of simulation-based
+    inference</strong>. We will introduce key concepts step-by-step, with multiple examples
+    to develop intuition. The hands-on exercises, as well as lecture notes, support this.
+  </p>
+  <ul style="flex:1.5">
+    <li> <strong>Monday</strong></li>
+    <ul>
+      <li> Lecture 1a: Motivation (this lecture)</li>
+      <li> Lecture 1b: Approximate Bayesian Computation</li>
+      <li> Lecture 2a: Linear regression</li>
+      <li> Lecture 2b: Deep learning</li>
+      <li> Hands-on exercises</li>
+    </ul>
+    <li> <strong>Wednesday </strong></li>
+    <ul>
+      <li> Colloquium: Ongoing work</li>
+      <li> Lecture 3a: Density estimation</li>
+      <li> Lecture 3b: Diffusion models</li>
+    </ul>
+    <li> <strong>Thursday </strong></li>
+    <ul>
+      <li> Lecture 4a: Summary networks CNN</li>
+      <li> Lecture 4b: Summary networks GNNs</li>
+    </ul>
+    <li> <strong>Friday </strong></li>
+    <ul>
+      <li> Lecture 5a: Sequential SBI</li>
+      <li> Lecture 5b: Diagnostics</li>
+      <li> Hands-on exercises</li>
+    </ul>
+  </ul>
+  </div>
 </section>
 
 </div>
