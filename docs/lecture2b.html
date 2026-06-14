@@ -264,6 +264,44 @@
   </p>
 </section>
 
+<!-- What the Network Actually Is (math <-> code mirror) -->
+<section>
+  <h2>What the Network Actually Is</h2>
+  <p style="margin:2px 0 10px;">Concretely, the one-hidden-layer network from the previous slide, as <strong>math</strong> (left) and as the <strong>PyTorch module</strong> you would actually run (right). Colours link each line:</p>
+  <div style="display:flex; gap:18px; align-items:stretch;">
+    <div class="box" style="flex:2; min-width:0; border-left:4px solid #7f8c8d;">
+      <h3 style="margin-top:0; color:#34495e; font-size:1em;">The math &nbsp;<span style="color:#7f8c8d; font-weight:normal; font-size:0.85em;">(input \(\mathbf{x}\in\mathbb{R}^2\), width \(H\))</span></h3>
+      <div style="font-size:1.00em; margin-top:18px; line-height:2.4;">
+        <div style="color:#2980b9;">\( \mathbf{z} = W^{(1)}\mathbf{x} + \mathbf{b}^{(1)} \)</div>
+        <div style="color:#27ae60;">\( \mathbf{h} = g(\mathbf{z}) \)</div>
+        <div style="color:#8e44ad;">\( \mu = W^{(2)}\mathbf{h} + b^{(2)} \)</div>
+      </div>
+      <p style="font-size:0.8em; color:#7f8c8d; margin-top:14px;">
+        \(W^{(1)}\!\in\!\mathbb{R}^{H\times 2}\), \(\mathbf{b}^{(1)}\!\in\!\mathbb{R}^{H}\), &nbsp;
+        \(W^{(2)}\!\in\!\mathbb{R}^{1\times H}\), \(b^{(2)}\!\in\!\mathbb{R}\); &nbsp; \(g=\text{ReLU}\).
+      </p>
+    </div>
+    <div style="flex:3; min-width:0;">
+      <pre style="background:#2c3e50; color:#ecf0f1; padding:14px 16px; border-radius:8px; font-size:0.62em; line-height:1.5; margin:0; overflow-x:auto;"><code><span style="color:#e67e22;">import</span> torch.nn <span style="color:#e67e22;">as</span> nn
+
+<span style="color:#e67e22;">class</span> <span style="color:#f1c40f;">MLP</span>(nn.Module):
+    <span style="color:#e67e22;">def</span> <span style="color:#3498db;">__init__</span>(self, H=16):
+        super().__init__()
+        self.fc1 = nn.Linear(2, H)   <span style="color:#5dade2;"># W⁽¹⁾ (H×2), b⁽¹⁾ (H)</span>
+        self.g   = nn.ReLU()         <span style="color:#58d68d;"># activation g</span>
+        self.fc2 = nn.Linear(H, 1)   <span style="color:#bb8fce;"># W⁽²⁾ (1×H), b⁽²⁾ (1)</span>
+
+    <span style="color:#e67e22;">def</span> <span style="color:#3498db;">forward</span>(self, x):
+        z = self.fc1(x)              <span style="color:#5dade2;"># z = W⁽¹⁾x + b⁽¹⁾</span>
+        h = self.g(z)                <span style="color:#58d68d;"># h = g(z)</span>
+        <span style="color:#e67e22;">return</span> self.fc2(h)           <span style="color:#bb8fce;"># μ = W⁽²⁾h + b⁽²⁾</span></code></pre>
+    </div>
+  </div>
+  <p class="fragment box box-orange" style="margin-top:12px; font-size:0.88em; text-align:center;">
+    The learnable parameters are \(\boldsymbol\phi=\{W^{(1)},\mathbf{b}^{(1)},W^{(2)},b^{(2)}\}\). PyTorch collects them in <code>model.parameters()</code>; the optimizer descends the loss over all of them at once.
+  </p>
+</section>
+
 <!-- Gradient Descent (interactive) -->
 <section>
   <h2>Gradient Descent</h2>
@@ -521,6 +559,44 @@
   </div>
 </section>
 
+<!-- What a Deep Network Is (math <-> code mirror, deep version) -->
+<section>
+  <h2>What a Deep Network Is</h2>
+  <p style="margin:2px 0 10px;">The same object, now with \(L\) hidden layers. Depth is just the <strong>one-layer rule repeated</strong>, a loop in code and a recursion in math:</p>
+  <div style="display:flex; gap:18px; align-items:stretch;">
+    <div class="box" style="flex:2; min-width:0; border-left:4px solid #7f8c8d;">
+      <h3 style="margin-top:0; color:#34495e; font-size:1em;">The math &nbsp;<span style="color:#7f8c8d; font-weight:normal; font-size:0.85em;">(\(\mathbf{x}\in\mathbb{R}^2\), width \(H\), depth \(L\))</span></h3>
+      <div style="font-size:1.00em; margin-top:16px; line-height:2.3;">
+        <div style="color:#7f8c8d;">\( \mathbf{h}^{(0)} = \mathbf{x} \)</div>
+        <div style="color:#27ae60;">\( \mathbf{h}^{(\ell)} = g\big(W^{(\ell)}\mathbf{h}^{(\ell-1)} + \mathbf{b}^{(\ell)}\big) \)</div>
+        <div style="color:#27ae60; font-size:0.82em; margin-left:1.6em;">for \( \ell = 1,\dots,L \)</div>
+        <div style="color:#8e44ad;">\( \mu = W^{(L+1)}\mathbf{h}^{(L)} + b^{(L+1)} \)</div>
+      </div>
+      <p style="font-size:0.8em; color:#7f8c8d; margin-top:14px;">
+        One <span style="color:#27ae60;">hidden-layer rule</span>, applied \(L\) times, then a linear <span style="color:#8e44ad;">head</span>. Each layer has its own \(W^{(\ell)},\mathbf{b}^{(\ell)}\).
+      </p>
+    </div>
+    <div style="flex:2; min-width:0;">
+      <pre style="background:#2c3e50; color:#ecf0f1; padding:14px 16px; border-radius:8px; font-size:0.61em; line-height:1.5; margin:0; overflow-x:auto;"><code><span style="color:#e67e22;">import</span> torch.nn <span style="color:#e67e22;">as</span> nn
+
+<span style="color:#e67e22;">class</span> <span style="color:#f1c40f;">DeepMLP</span>(nn.Module):
+    <span style="color:#e67e22;">def</span> <span style="color:#3498db;">__init__</span>(self, L=4, H=16):
+        super().__init__()
+        dims = [2] + [H]*L
+        self.layers = nn.ModuleList(
+            nn.Linear(dims[l], dims[l+1]) <span style="color:#e67e22;">for</span> l <span style="color:#e67e22;">in</span> <span style="color:#3498db;">range</span>(L))
+        self.g    = nn.ReLU()              <span style="color:#58d68d;"># activation g</span>
+        self.head = nn.Linear(H, 1)        <span style="color:#bb8fce;"># W⁽ᴸ⁺¹⁾, b⁽ᴸ⁺¹⁾</span>
+
+    <span style="color:#e67e22;">def</span> <span style="color:#3498db;">forward</span>(self, x):
+        h = x                              <span style="color:#95a5a6;"># h⁽⁰⁾ = x</span>
+        <span style="color:#e67e22;">for</span> layer <span style="color:#e67e22;">in</span> self.layers:        <span style="color:#58d68d;"># stack L hidden layers</span>
+            h = self.g(layer(h))           <span style="color:#58d68d;"># h⁽ˡ⁾ = g(W⁽ˡ⁾h⁽ˡ⁻¹⁾ + b⁽ˡ⁾)</span>
+        <span style="color:#e67e22;">return</span> self.head(h)             <span style="color:#bb8fce;"># μ = W⁽ᴸ⁺¹⁾h⁽ᴸ⁾ + b⁽ᴸ⁺¹⁾</span></code></pre>
+    </div>
+  </div>
+</section>
+
 <!-- How Do We Train Deep Networks? -->
 <section>
   <h2>How Do We Train Deep Networks?</h2>
@@ -550,7 +626,7 @@
 <!-- MLP in Action: Stacking Hidden Layers (NEW) -->
 <section>
   <h2>MLP in Action: Stacking Hidden Layers</h2>
-  <p>The <strong>same demo</strong>, now with a slider for the <strong>number of hidden layers</strong> &mdash; each of the chosen width:</p>
+  <p>The <strong>same demo</strong>, now with a slider for the <strong>number of hidden layers</strong></p>
   <div class="ctrl-row">
     <label>Target:
       <select id="dsurf-target" style="padding:2px 6px; font-size:1em;">
