@@ -319,7 +319,7 @@ ax.legend(loc="upper right", fontsize=9)
 fig.tight_layout(); plt.show()
 
 # %% [markdown]
-# ### <span style="color:#c0392b;">Exercise — amortisation</span>
+# ### ✏️ EXERCISE — amortisation
 #
 # Repeat the above plot for three different $(\mathcal{M}_c, d_L)$
 # truths *without retraining* — the same network produces every

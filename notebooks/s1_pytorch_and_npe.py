@@ -186,7 +186,7 @@ plt.show()
 # the most common PyTorch bug.
 
 # %% [markdown]
-# ### <span style="color:#c0392b;">Exercise 1.A — your turn</span>
+# ### ✏️ EXERCISE 1.A — your turn
 #
 # Replace `sin(x)` with `cos(2x)`, retrain, and plot. You should not
 # need to change anything other than the target.
@@ -303,7 +303,7 @@ plt.xlabel(r"$\theta$ [rad]"); plt.ylabel("x (mean landing)"); plt.legend(); plt
 # variance) so the network is free to predict any real number while
 # `σ²` stays positive.
 #
-# ### <span style="color:#c0392b;">Exercise 2.A — implement `GaussianHead.forward`</span>
+# ### ✏️ EXERCISE 2.A — implement `GaussianHead.forward`
 #
 # Fill in the `forward` method so that it returns `(mu, log_var)` —
 # both of shape `(batch, 1)`. The body of the network is provided.
@@ -353,7 +353,7 @@ class GaussianHead(nn.Module):  # noqa: F811
 # %% [markdown]
 # ### 2.4 — Gaussian negative log-likelihood
 #
-# ### <span style="color:#c0392b;">Exercise 2.B — implement `gaussian_nll`</span>
+# ### ✏️ EXERCISE 2.B — implement `gaussian_nll`
 #
 # Implement the per-sample Gaussian NLL,
 #
@@ -466,7 +466,7 @@ plt.tight_layout(); plt.show()
 # the cleanest validation we can give NPE without resorting to flows.
 
 # %% [markdown]
-# ### <span style="color:#c0392b;">Exercise 2.C — amortisation</span>
+# ### ✏️ EXERCISE 2.C — amortisation
 #
 # The same trained network produces a posterior for *any* `x_obs` —
 # this is what is meant by **amortised** inference: training is
