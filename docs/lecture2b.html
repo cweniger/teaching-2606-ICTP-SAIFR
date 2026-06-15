@@ -440,7 +440,7 @@
 <!-- MLP in Action: Inferring a 2D Function (NEW) -->
 <section>
   <h2>MLP in Action: Inferring a 2D Function</h2>
-  <p>The <strong>same architecture</strong> as the 1D regression demo, now with a 2D input \((x_1,x_2)\) and plain <strong>MSE</strong> loss:</p>
+  <p>A <strong>single hidden layer</strong> mapping \((x_1,x_2)\to\mu\), trained with <strong>mini-batch SGD</strong> on the MSE loss:</p>
   <div class="ctrl-row">
     <label>Target:
       <select id="surf-target" style="padding:2px 6px; font-size:1em;">
@@ -449,10 +449,11 @@
         <option value="spiral">Spiral</option>
       </select>
     </label>
-    <label>Width = <span id="surf-width-val">8</span>
+    <label>Width = <span id="surf-width-val" style="display:inline-block; min-width:2.2em; text-align:right;">8</span>
       <input type="range" id="surf-width-slider" min="0" max="7" step="1" value="3" style="width:80px;"></label>
-    <label>&eta; = <span id="surf-lr-val">0.010</span>
-      <input type="range" id="surf-lr-slider" min="-4" max="-1" step="0.1" value="-2" style="width:80px;"></label>
+    <div style="flex-basis:100%; height:0;"></div>
+    <label>&eta; = <span id="surf-lr-val" style="display:inline-block; min-width:4em; text-align:right;">0.010</span>
+      <input type="range" id="surf-lr-slider" min="-4" max="0" step="0.1" value="-2" style="width:140px;"></label>
     <button id="surf-train-btn" style="font-weight:600;">&#9654; Train</button>
     <button id="surf-reset-btn">&#8634; Reset</button>
     <span id="surf-epoch-label" style="color:#7f8c8d; font-size:0.9em;"></span>
@@ -463,7 +464,7 @@
   </div>
   <ul class="fragment" style="font-size:0.82em; margin-top:2px;">
     <li><strong>Colour = inferred value</strong> \(\mu(x_1,x_2)\); scattered points are the noisy training targets on the <strong>same</strong> scale.</li>
-    <li>One hidden layer fits the smooth <strong>Blob</strong> easily, but struggles with the high-frequency <strong>Spiral</strong> &mdash; motivation for going deep.</li>
+    <li>One hidden layer fits the smooth <strong>Blob</strong> easily, but struggles with the high-frequency <strong>Spiral</strong>: motivation for going deep.</li>
   </ul>
 </section>
 
@@ -629,12 +630,12 @@
         <option value="spiral" selected>Spiral</option>
       </select>
     </label>
-    <label>Layers = <span id="dsurf-depth-val">1</span>
+    <label>Layers = <span id="dsurf-depth-val" style="display:inline-block; min-width:1.2em; text-align:right;">1</span>
       <input type="range" id="dsurf-depth-slider" min="1" max="5" step="1" value="1" style="width:80px;"></label>
-    <label>Width = <span id="dsurf-width-val">8</span>
+    <label>Width = <span id="dsurf-width-val" style="display:inline-block; min-width:2.2em; text-align:right;">8</span>
       <input type="range" id="dsurf-width-slider" min="0" max="7" step="1" value="3" style="width:80px;"></label>
     <div style="flex-basis:100%; height:0;"></div>
-    <label>&eta; = <span id="dsurf-lr-val">0.010</span>
+    <label>&eta; = <span id="dsurf-lr-val" style="display:inline-block; min-width:4em; text-align:right;">0.010</span>
       <input type="range" id="dsurf-lr-slider" min="-4" max="0" step="0.1" value="-2" style="width:140px;"></label>
     <button id="dsurf-train-btn" style="font-weight:600;">&#9654; Train</button>
     <button id="dsurf-reset-btn">&#8634; Reset</button>
@@ -679,6 +680,9 @@
 // ============= Imported from old/lecture3.html ==================
 // ================================================================
 var boxMuller = gaussN;  // alias so imported demos work unchanged
+
+// Adaptive-precision formatter for the learning-rate readout (~2 sig figs, never "0.000").
+function fmtEta(e){ if(e>=0.1) return e.toFixed(2); if(e>=0.01) return e.toFixed(3); if(e>=0.001) return e.toFixed(4); return e.toFixed(5); }
 
 // DEMO: Building block 1D
 (function() {
@@ -1028,7 +1032,8 @@ function targetField(type, x1, x2) {
 
 // DEMO: MLP 2D regression trainer (1 hidden layer, MSE loss). IDs: surf-*
 (function() {
-  var net=null, data=null, lossHist=[], batchLossHist=[], epoch=0, animId=null;
+  // Same internals as the depth demo (dsurf), but the network is hard-wired to ONE hidden layer.
+  var net=null, data=null, lossHist=[], batchLossHist=[], epoch=0, animId=null, lastRenderT=0;
   function buildNet(){var w=Math.pow(2,parseInt(document.getElementById('surf-width-slider').value));return new MLPReg([2,w,1],'relu');}
   function genData(type){
     var rng=createRNG(303), X=[], T=[];
@@ -1038,7 +1043,7 @@ function targetField(type, x1, x2) {
   function reset(){
     if(animId){clearTimeout(animId);animId=null;}
     data=genData(document.getElementById('surf-target').value);
-    net=buildNet(); lossHist=[]; batchLossHist=[]; epoch=0;
+    net=buildNet(); lossHist=[]; batchLossHist=[]; epoch=0; lastRenderT=0;
     document.getElementById('surf-epoch-label').textContent='';
     renderSurf();
   }
@@ -1052,27 +1057,30 @@ function targetField(type, x1, x2) {
       {x:px,y:py,mode:'markers',marker:{size:6,color:pc,colorscale:INFERNO,cmin:0,cmax:1,showscale:false,line:{width:1,color:'#fff'}},hoverinfo:'skip'}
     ],{xaxis:{title:'x₁',range:[-2,2]},yaxis:{title:'x₂',range:[-2,2],scaleanchor:'x'},margin:{t:5,r:10,b:35,l:45},paper_bgcolor:'rgba(0,0,0,0)',plot_bgcolor:'rgba(0,0,0,0)',font:{size:12},showlegend:false},{displayModeBar:false});
   }
+  var BATCH=64, STEPS_PER_FRAME=12;
   function trainStep(){
-    // Full-batch gradient descent: average the gradient over ALL training points.
+    // Mini-batch SGD: one gradient step on BATCH random points (mean gradient, step size = lr).
     var lr=Math.pow(10,parseFloat(document.getElementById('surf-lr-slider').value));
-    var N=data.X.length, perLr=lr/N, tl=0;
-    for(var i=0;i<N;i++){var p=net.forward(data.X[i]);var r=p-data.T[i];tl+=0.5*r*r;net.backward(data.T[i],perLr);}
-    lossHist.push(tl/N); epoch++;
-    document.getElementById('surf-epoch-label').textContent='Step '+epoch;
+    var N=data.X.length, perLr=lr/BATCH, rng=createRNG(epoch), bl=0;
+    for(var b=0;b<BATCH;b++){var i=Math.floor(rng()*N);var p=net.forward(data.X[i]);var r=p-data.T[i];bl+=0.5*r*r;net.backward(data.T[i],perLr);}
+    lossHist.push(bl/BATCH); epoch++;
   }
   function trainLoop(){
-    trainStep();
-    if(epoch%3===0) renderSurf();
+    for(var s=0;s<STEPS_PER_FRAME;s++) trainStep();
+    var nowT=performance.now();
+    if(nowT-lastRenderT>=200){renderSurf();lastRenderT=nowT;}   // throttle heatmap to <=5 fps
+    document.getElementById('surf-epoch-label').textContent='Update '+epoch;
     var ep=[]; for(var i=0;i<lossHist.length;i++) ep.push(i);
     Plotly.react('surf-loss-plot',[
-      {x:ep,y:lossHist,mode:'lines',line:{width:2,color:'#e74c3c'},name:'MSE'}
-    ],{xaxis:{title:'Step',range:[0,Math.max(epoch,10)]},yaxis:{title:'MSE (mean over all data)',type:'log'},margin:{t:5,r:10,b:35,l:50},paper_bgcolor:'rgba(0,0,0,0)',plot_bgcolor:'rgba(0,0,0,0)',font:{size:12},showlegend:false},{displayModeBar:false});
-    if(epoch<5000)animId=setTimeout(trainLoop,100);
+      {x:ep,y:lossHist,mode:'lines',line:{width:1.5,color:'#e74c3c'},name:'Mini-batch MSE'}
+    ],{xaxis:{title:'Update',range:[0,Math.max(epoch,10)]},yaxis:{title:'Mini-batch MSE',type:'log'},margin:{t:5,r:10,b:35,l:50},paper_bgcolor:'rgba(0,0,0,0)',plot_bgcolor:'rgba(0,0,0,0)',font:{size:12},showlegend:false},{displayModeBar:false});
+    if(epoch<20000)animId=setTimeout(trainLoop,30);
+    else{renderSurf();animId=null;}   // final full-state frame
   }
   document.getElementById('surf-train-btn').addEventListener('click',function(){if(animId){clearTimeout(animId);animId=null;return;}trainLoop();});
   document.getElementById('surf-reset-btn').addEventListener('click',reset);
   document.getElementById('surf-width-slider').addEventListener('input',function(){document.getElementById('surf-width-val').textContent=Math.pow(2,parseInt(this.value));});
-  document.getElementById('surf-lr-slider').addEventListener('input',function(){document.getElementById('surf-lr-val').textContent=Math.pow(10,parseFloat(this.value)).toFixed(3);});
+  document.getElementById('surf-lr-slider').addEventListener('input',function(){document.getElementById('surf-lr-val').textContent=fmtEta(Math.pow(10,parseFloat(this.value)));});
   document.getElementById('surf-target').addEventListener('change',reset);
   Reveal.on('slidechanged',function(e){
     if(e.currentSlide&&e.currentSlide.querySelector('#surf-plot')) reset();
@@ -1136,7 +1144,7 @@ function targetField(type, x1, x2) {
   document.getElementById('dsurf-reset-btn').addEventListener('click',reset);
   document.getElementById('dsurf-depth-slider').addEventListener('input',function(){document.getElementById('dsurf-depth-val').textContent=this.value;});
   document.getElementById('dsurf-width-slider').addEventListener('input',function(){document.getElementById('dsurf-width-val').textContent=Math.pow(2,parseInt(this.value));});
-  document.getElementById('dsurf-lr-slider').addEventListener('input',function(){document.getElementById('dsurf-lr-val').textContent=Math.pow(10,parseFloat(this.value)).toFixed(3);});
+  document.getElementById('dsurf-lr-slider').addEventListener('input',function(){document.getElementById('dsurf-lr-val').textContent=fmtEta(Math.pow(10,parseFloat(this.value)));});
   document.getElementById('dsurf-target').addEventListener('change',reset);
   document.getElementById('dsurf-depth-slider').addEventListener('change',reset);
   Reveal.on('slidechanged',function(e){
