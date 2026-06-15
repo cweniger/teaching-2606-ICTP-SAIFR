@@ -18,11 +18,11 @@
 #    homoscedastic Gaussian band from Lecture 2a,
 #    `q_φ(θ|x) = N(μ_θ(x), σ_θ²)`, in PyTorch. Train it on the
 #    ball-throw simulator and validate against the *exact* analytic
-#    posterior. You end on a cliffhanger: the single shared width is
+#    posterior. You end on an open question: the single shared width is
 #    visibly wrong near the edge of the prior, which is exactly what
 #    Session 1B fixes.
 #
-# **Session 1B (the GW example)** picks up from that cliffhanger: a
+# **Session 1B (the GW example)** picks up from there: a
 # width that depends on `x` (heteroscedastic), a real
 # gravitational-wave simulator, and the normalising flows that finally
 # capture the awkward posterior shapes.
@@ -606,7 +606,7 @@ plt.xlabel("epoch"); plt.ylabel("Gaussian NLL"); plt.legend()
 plt.title("Gaussian band — training"); plt.tight_layout(); plt.show()
 
 # %% [markdown]
-# ### 2.4 — Validate, amortise, and meet the cliffhanger
+# ### 2.4 — Validate, amortise, and find where one width isn't enough
 #
 # The decisive test: this is a 1D problem, so we have the *exact*
 # analytic posterior on a grid (`sim.true_posterior`). We sweep several
@@ -656,8 +656,8 @@ fig.tight_layout(); plt.show()
 #
 # The true posterior width genuinely depends on `x`. A homoscedastic
 # model is mathematically incapable of expressing that. This is the
-# limit of Lecture 2a's Gaussian band, and it is the cliffhanger for
-# Session 1B.
+# limit of Lecture 2a's Gaussian band, and it is the limitation
+# Session 1B opens with.
 #
 # ---
 #

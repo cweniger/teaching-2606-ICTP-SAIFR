@@ -5,7 +5,7 @@
 #
 # **Hands-on session 1B (after Lecture 2). Runs on a laptop CPU. ~60 min.**
 #
-# Session 1 ended on a cliffhanger. The Gaussian *band* you built,
+# Session 1A ended with a problem left open. The Gaussian *band* you built,
 # `q_φ(θ|x) = N(μ_θ(x), σ_θ²)`, predicted the mean beautifully but used a
 # **single shared width** `σ_θ`, so it was too wide where the posterior
 # is narrow and too narrow where the posterior is wide. The width should
@@ -48,7 +48,7 @@ np.random.seed(SEED)
 # %% [markdown]
 # ---
 #
-# ## 1 — Close the Session-1A cliffhanger: let the width depend on `x`
+# ## 1 — Close the Session-1A gap: let the width depend on `x`
 #
 # Before the gravitational waves, a two-minute fix of the band. The only
 # change from Session 1A is that the log-variance is now a **second
@@ -125,7 +125,7 @@ fig.tight_layout(); plt.show()
 # %% [markdown]
 # The band is now **narrow** near `θ = 0.15` and **wide** near
 # `θ = 0.70`, matching the exact posterior at both. Letting `σ` be a
-# network output, not a constant, fixed the Session-1A cliffhanger. Keep
+# network output, not a constant, fixed the Session-1A shortcoming. Keep
 # this idea; we use it again immediately, in 2-D.
 #
 # ---
@@ -571,7 +571,7 @@ except Exception as e:
 #
 # ## Where this lands you
 #
-# - You fixed the Session-1 cliffhanger: a width that depends on `x`.
+# - You fixed the Session-1A limitation: a width that depends on `x`.
 # - You turned an 8192-sample time series into a 2-number summary by
 #   hand, via matched filtering against the score directions.
 # - You built a 2-D Gaussian head with a learned correlation and used it
