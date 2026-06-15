@@ -218,37 +218,78 @@ class GWChirp:
         sim = GWChirp()
         theta = sim.sample_prior(n)          # (n, 2) array of (Mc, dL)
         x = sim.simulate(theta)              # (n, n_samples) time-domain strain
-        s = sim.summary(x)                   # (n, 2) hand-built summary
-        mc_g, dl_g, post = sim.true_posterior(x[0])  # 2-D reference posterior
+        s = sim.summary(x)                   # (n, 2) score-compression summary
+        mc_g, dl_g, post = sim.true_posterior_summary(s[0])  # 2-D reference
+
+    Summary statistic (score / derivative compression)
+    ---------------------------------------------------
+    The summary is the projection of the data onto the two *score
+    directions* at a fiducial parameter point: the finite-difference
+    derivative templates ``dh/dMc`` and ``dh/ddL``. For Gaussian noise
+    this is the locally-sufficient statistic (the Lecture-2 Taylor /
+    Fisher picture). It is whitened so that, under pure noise, the two
+    summaries are independent N(0, 1); under a signal each is centred on
+    the overlap of the data with that score direction (roughly "how much
+    heavier than fiducial" and "how loud"). The summary is linear in the
+    data, so p(s | theta) is an exact Gaussian with mean
+    ``summary_mean(theta)`` and identity covariance, which makes the
+    summary-space reference posterior ``true_posterior_summary`` analytic
+    and cheap. The score directions are sufficient only near the
+    fiducial; far away the mean-map curves, which is the limitation a
+    flow later fixes.
     """
 
-    mc_low: float = 10.0
-    mc_high: float = 60.0
-    dl_low: float = 100.0
-    dl_high: float = 2000.0
+    # Prior is deliberately kept in the regime where the local
+    # score-compression summary stays valid: wide enough to span loud
+    # (SNR ~ 22) to marginal (SNR ~ 7) signals, narrow enough that the
+    # summary-space reference posterior stays unimodal (no folding of the
+    # derivative-template mean-map) across the whole prior.
+    mc_low: float = 20.0
+    mc_high: float = 45.0
+    dl_low: float = 300.0
+    dl_high: float = 1200.0
     duration: float = 4.0
     f_sample: float = 2048.0
     f_low: float = 20.0
 
-    # Reference-template chirp masses for the 2-scalar matched-filter
-    # summary. One light (inspiral-dominated), one heavy (ringdown-
-    # dominated); together they disentangle Mc and dL.
-    _ref_mc_lo: float = 15.0
-    _ref_mc_hi: float = 45.0
-    _ref_dl: float = 500.0
+    # Fiducial point for score compression, and the finite-difference
+    # steps used to build the derivative (score) templates. The fiducial
+    # is central in the prior and loud so the linearisation is meaningful;
+    # the steps are small enough to resolve the derivative and large
+    # enough to beat round-off.
+    _fid_mc: float = 32.0
+    _fid_dl: float = 600.0
+    _dmc: float = 0.5     # Msun
+    _ddl: float = 10.0    # Mpc
 
     def __post_init__(self) -> None:
-        # Precompute and cache normalised reference templates for summary().
         Sn = self.psd(self.freqs)
-        h_lo = self._waveform_fd(self._ref_mc_lo, self._ref_dl)
-        h_hi = self._waveform_fd(self._ref_mc_hi, self._ref_dl)
-        # Inner-product normalisation: <h|h> in rfft-convention, dropping
-        # constant prefactors that cancel under the ratio below.
-        norm_lo = float(np.sqrt(np.sum(np.abs(h_lo) ** 2 / Sn)))
-        norm_hi = float(np.sqrt(np.sum(np.abs(h_hi) ** 2 / Sn)))
-        self._h_lo_n = h_lo / norm_lo
-        self._h_hi_n = h_hi / norm_hi
         self._Sn_cache = Sn
+
+        # Score (derivative) templates by central finite difference at the
+        # fiducial point. dL enters only as an amplitude (h ~ 1/dL), so its
+        # central difference is exact; Mc enters the phase non-trivially.
+        h_p_mc = self._waveform_fd(self._fid_mc + self._dmc, self._fid_dl)
+        h_m_mc = self._waveform_fd(self._fid_mc - self._dmc, self._fid_dl)
+        g_mc = (h_p_mc - h_m_mc) / (2.0 * self._dmc)
+        h_p_dl = self._waveform_fd(self._fid_mc, self._fid_dl + self._ddl)
+        h_m_dl = self._waveform_fd(self._fid_mc, self._fid_dl - self._ddl)
+        g_dl = (h_p_dl - h_m_dl) / (2.0 * self._ddl)
+        self._g = (g_mc, g_dl)
+
+        # Template Gram matrix (the Fisher matrix in this inner product):
+        #   G_ij = Re sum_k conj(g_i) g_j / S_n.
+        G = np.empty((2, 2))
+        for i in range(2):
+            for j in range(2):
+                G[i, j] = float(np.real(np.sum(np.conj(self._g[i]) * self._g[j] / Sn)))
+        self._fisher_mat = G
+
+        # Noise covariance of the raw scores t_i = Re sum conj(d) g_i / S_n
+        # is (N f_s / 4) * G (see derivation in summary()). Whiten by its
+        # Cholesky factor so the summary has identity noise covariance.
+        C = (self.n_samples * self.f_sample / 4.0) * G
+        self._whiten = np.linalg.inv(np.linalg.cholesky(C))  # 2x2, W = L^{-1}
 
     # ------------------------------------------------------------------
     # Derived quantities
@@ -385,38 +426,41 @@ class GWChirp:
     # ------------------------------------------------------------------
     # Hand-built summary (2 scalars)
     # ------------------------------------------------------------------
+    def _raw_scores(self, Xf: np.ndarray) -> np.ndarray:
+        """Un-whitened matched-filter scores t_i = Re sum conj(X) g_i / S_n.
+
+        Xf : rfft spectra, shape (N, F). Returns (N, 2).
+        """
+        Sn = self._Sn_cache
+        t = np.empty((Xf.shape[0], 2))
+        for i in range(2):
+            t[:, i] = np.real(np.sum(np.conj(Xf) * self._g[i][None, :] / Sn, axis=-1))
+        return t
+
     def summary(self, x: np.ndarray) -> np.ndarray:
-        """Two-scalar matched-filter summary against a 2-template mini-bank.
+        """Whitened score-compression summary of strain data.
 
-        Both entries are normalised matched-filter responses,
+        Projects the data onto the two score directions (derivative
+        templates ``dh/dMc``, ``dh/ddL`` at the fiducial point) and
+        whitens, so that under pure noise the result is independent
+        N(0, 1) and under a signal it is centred on the signal's overlap
+        with each score direction.
 
-            rho_k = Re < d | h_k > / sqrt( < h_k | h_k > )
-
-        against two fixed reference templates: a light chirp
-        (``_ref_mc_lo``) and a heavy one (``_ref_mc_hi``), both at
-        ``_ref_dl``. Under pure noise each rho has zero mean and unit
-        variance; under a true signal each rho is centred on the
-        overlap of that template with the signal — so the *ratio*
-        rho_hi / rho_lo carries information about chirp mass, while
-        their *magnitude* carries information about luminosity distance.
+        Derivation of the whitening: the raw score
+        ``t_i = Re sum_k conj(d_k) g_{i,k} / S_n`` is a real linear
+        functional of the rfft-convention noise, whose covariance works
+        out to ``Cov(t_i, t_j) = (N f_s / 4) * <g_i, g_j>`` with
+        ``<a, b> = Re sum_k conj(a) b / S_n``. Whitening by the Cholesky
+        factor of that covariance gives unit, decorrelated noise.
 
         x : shape (N, n_samples) or (n_samples,). Returns (N, 2) or (2,).
         """
         single = x.ndim == 1
         x = np.atleast_2d(x)
         Xf = np.fft.rfft(x, axis=-1)
-        Sn = self._Sn_cache
-        # The inner-product normalisation already absorbs S_n; here we
-        # take the real part of < x | h_n > = sum_k conj(X_k) h_n,k / S_n.
-        rho_lo = np.real(np.sum(np.conj(Xf) * self._h_lo_n[None, :] / Sn, axis=-1))
-        rho_hi = np.real(np.sum(np.conj(Xf) * self._h_hi_n[None, :] / Sn, axis=-1))
-        # Rescale to (approximately) unit-variance under noise. For an
-        # rfft-convention spectrum, the variance of Re < n | hat h > is
-        # N * f_s / 4 (see _draw_noise_fd). Divide it out so students
-        # see numbers of O(SNR), not O(1e5).
-        scale = np.sqrt(self.n_samples * self.f_sample / 4.0)
-        out = np.stack([rho_lo, rho_hi], axis=1) / scale
-        return out[0] if single else out
+        t = self._raw_scores(Xf)
+        s = t @ self._whiten.T          # s_n = W t_n
+        return s[0] if single else s
 
     def simulate_summary(
         self,
@@ -425,6 +469,90 @@ class GWChirp:
     ) -> np.ndarray:
         """Convenience: simulate() + summary()."""
         return self.summary(self.simulate(theta, rng=rng))
+
+    # ------------------------------------------------------------------
+    # Score-compression ingredients (exposed so students can rebuild the
+    # matched-filter summary by hand) and the analytic summary statistics.
+    # ------------------------------------------------------------------
+    def score_templates(self) -> tuple[np.ndarray, np.ndarray]:
+        """The two raw score (derivative) templates on ``self.freqs``."""
+        return self._g[0].copy(), self._g[1].copy()
+
+    def whitening_matrix(self) -> np.ndarray:
+        """2x2 whitening matrix W mapping raw scores t to summaries s = W t."""
+        return self._whiten.copy()
+
+    def fisher(self) -> np.ndarray:
+        """Template Gram / Fisher matrix G_ij = <g_i, g_j> at the fiducial."""
+        return self._fisher_mat.copy()
+
+    def summary_mean(self, theta: np.ndarray) -> np.ndarray:
+        """Noiseless (expected) summary m(theta) = E[summary | theta].
+
+        Because the summary is linear in the data, the expected summary
+        for a signal at ``theta`` is the whitened overlap of the noiseless
+        waveform with the score directions. ``p(s | theta)`` is then
+        ``N(s; summary_mean(theta), I)``.
+
+        theta : (2,) or (N, 2). Returns (2,) or (N, 2).
+        """
+        theta = np.asarray(theta, dtype=float)
+        single = theta.ndim == 1
+        theta = np.atleast_2d(theta)
+        Sn = self._Sn_cache
+        out = np.empty((theta.shape[0], 2))
+        for n in range(theta.shape[0]):
+            h = self._waveform_fd(float(theta[n, 0]), float(theta[n, 1]))
+            t = np.array([np.real(np.sum(np.conj(h) * self._g[i] / Sn))
+                          for i in range(2)])
+            out[n] = self._whiten @ t
+        return out[0] if single else out
+
+    def true_posterior_summary(
+        self,
+        s_obs: np.ndarray,
+        n_mc: int = 70,
+        n_dl: int = 70,
+    ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+        """Analytic reference posterior p(theta | s_obs) in summary space.
+
+        Since ``p(s | theta) = N(s; m(theta), I)`` with whitened summary,
+        the log-posterior on a grid is just ``-1/2 |s_obs - m(theta)|^2``
+        plus the (uniform) log-prior. This is the *best possible*
+        posterior given the same summary, so any gap between it and a
+        trained network is purely the network's density-family
+        approximation, not information loss in the summary.
+
+        Uses that the waveform amplitude scales as 1/dL, so the
+        Mc-dependent overlaps need to be evaluated only once per Mc and
+        then rescaled along dL -- the grid costs ``n_mc`` waveform
+        evaluations, not ``n_mc * n_dl``.
+
+        Returns (mc_grid, dl_grid, post) with post normalised by 2-D
+        trapezoid.
+        """
+        mc_grid = np.linspace(self.mc_low, self.mc_high, n_mc)
+        dl_grid = np.linspace(self.dl_low, self.dl_high, n_dl)
+        Sn = self._Sn_cache
+        s_obs = np.asarray(s_obs, dtype=float)
+
+        # Raw signal scores at the reference distance, per Mc.
+        A = np.empty((n_mc, 2))
+        for a, mc in enumerate(mc_grid):
+            h = self._waveform_fd(float(mc), self._fid_dl)
+            A[a] = [np.real(np.sum(np.conj(h) * self._g[i] / Sn)) for i in range(2)]
+
+        log_post = np.empty((n_mc, n_dl))
+        for a in range(n_mc):
+            for b, dl in enumerate(dl_grid):
+                t = A[a] * (self._fid_dl / dl)     # amplitude scales as 1/dL
+                m = self._whiten @ t
+                d = s_obs - m
+                log_post[a, b] = -0.5 * float(d @ d)
+        log_post -= log_post.max()
+        post = np.exp(log_post)
+        post /= trapezoid(trapezoid(post, dl_grid, axis=1), mc_grid)
+        return mc_grid, dl_grid, post
 
     # ------------------------------------------------------------------
     # Reference posterior (brute-force 2-D grid)

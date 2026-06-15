@@ -1,28 +1,30 @@
 # %% [markdown]
 # [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/cweniger/teaching-2606-ICTP-SAIFR/blob/main/notebooks/s1_app_gw.ipynb)
 #
-# # Session 1 — APP example: gravitational-wave chirp
+# # Session 2 — A real(istic) inference problem: a gravitational-wave chirp
 #
-# **Session 1, Block 3 (~45 min). Runs on a laptop CPU.**
+# **Hands-on session 2 (after Lecture 2/3). Runs on a laptop CPU. ~60 min.**
 #
-# Take the Gaussian-head NPE machinery you built in
-# [s1_pytorch_and_npe](./s1_pytorch_and_npe.ipynb) and point it at an
-# astroparticle-flavoured simulator: an equal-mass binary black-hole
-# inspiral-merger-ringdown (IMR) waveform in coloured advanced-LIGO
-# noise. Two parameters,
+# Session 1 ended on a cliffhanger. The Gaussian *band* you built,
+# `q_φ(θ|x) = N(μ_θ(x), σ_θ²)`, predicted the mean beautifully but used a
+# **single shared width** `σ_θ`, so it was too wide where the posterior
+# is narrow and too narrow where the posterior is wide. The width should
+# depend on `x`.
 #
-# - **chirp mass** $\mathcal{M}\in[10,60]\,M_\odot$,
-# - **luminosity distance** $d_L\in[100, 2000]$ Mpc,
+# Today we (1) fix that with a width that depends on `x`
+# (**heteroscedastic**), (2) point the same machinery at a real
+# gravitational-wave simulator with **two** parameters, and (3) upgrade
+# the head to a full **2-D Gaussian with a learned correlation** so it
+# can capture the tilted, banana-shaped posterior that two correlated
+# parameters produce. We close with a quick preview of a normalising
+# **flow** from the `sbi` library, the tool the next session is built on.
 #
-# everything else (mass ratio fixed equal, optimal sky/orientation,
-# coalescence at segment centre) is baked into the simulator.
+# **What's genuinely new here:**
 #
-# **What you build:** a 4-second strain time series at 2048 Hz → a 2-D
-# hand-built matched-filter summary → the **same** `GaussianHead` and
-# `gaussian_nll` from Block 2, only with `in_dim=2, out_dim=4`. The
-# residual chirp-mass / distance correlation that the diagonal Gaussian
-# head visibly misses becomes your motivation for normalising flows in
-# Session 2.
+# - the observation is a *time series* (8192 numbers), so we cannot feed
+#   it raw to a tiny MLP: we need a **summary statistic**, and you build
+#   one by hand from matched filtering;
+# - the posterior lives in *2-D* and its parameters are *correlated*.
 
 # %%
 # !pip install -q --upgrade --force-reinstall --no-deps git+https://github.com/cweniger/teaching-2606-ICTP-SAIFR.git  # noqa: E501
@@ -34,7 +36,7 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 
-from samma_sbi.simulators import GWChirp
+from samma_sbi.simulators import BallThrow, GWChirp
 
 SEED = 0
 torch.manual_seed(SEED)
@@ -43,363 +45,528 @@ np.random.seed(SEED)
 # %% [markdown]
 # ---
 #
-# ## 1 — Inside the simulator
+# ## 1 — Close the Session-1 cliffhanger: let the width depend on `x`
 #
-# Under the hood, `GWChirp` is the Ajith et al. 2007 PhenomA waveform
-# evaluated at equal mass ratio, added to coloured Gaussian noise drawn
-# from an analytic aLIGO-design PSD. You do not need any of those words
-# to use it; the interface mirrors `BallThrow`:
+# Before the gravitational waves, a two-minute fix of the band. The only
+# change from Session 1 is that the log-variance is now a **second
+# output of the network**, `log σ²_θ(x)`, instead of one shared
+# `nn.Parameter`. That is the whole idea of a **heteroscedastic** head.
+# We show it on the same ball-throw, at the same two observations where
+# the shared-width band failed.
+
+# %%
+def gaussian_nll(theta, mu, log_var):
+    """1-D Gaussian NLL, averaged over the batch (from Session 1)."""
+    return 0.5 * (((theta - mu) ** 2) / torch.exp(log_var) + log_var).mean()
+
+
+class HeteroBand1D(nn.Module):
+    """Gaussian band whose width now depends on x: mu_θ(x) AND log σ²_θ(x)."""
+
+    def __init__(self, hidden=64):
+        super().__init__()
+        self.trunk = nn.Sequential(
+            nn.Linear(1, hidden), nn.ReLU(),
+            nn.Linear(hidden, hidden), nn.ReLU(),
+        )
+        self.head_mu = nn.Linear(hidden, 1)
+        self.head_logvar = nn.Linear(hidden, 1)   # <-- the new part
+
+    def forward(self, x):
+        h = self.trunk(x)
+        return self.head_mu(h), self.head_logvar(h)
+
+
+# Train on the ball-throw (same setup as Session 1, prior (0.05, pi/4)).
+N_BALLS = 10
+sim_bt = BallThrow(prior_low=0.05, prior_high=np.pi / 4)
+rng = np.random.default_rng(SEED)
+theta_bt = sim_bt.sample_prior(4000, rng=rng)
+x_bt = sim_bt.simulate_summary(theta_bt, n_balls=N_BALLS, rng=rng)
+theta_bt = torch.tensor(theta_bt, dtype=torch.float32).unsqueeze(1)
+x_bt = torch.tensor(x_bt, dtype=torch.float32).unsqueeze(1)
+
+model_bt = HeteroBand1D()
+opt = optim.Adam(model_bt.parameters(), lr=1e-3)
+for _ in range(120):
+    perm = torch.randperm(x_bt.shape[0])
+    for i in range(0, x_bt.shape[0], 256):
+        idx = perm[i:i + 256]
+        opt.zero_grad()
+        mu, lv = model_bt(x_bt[idx])
+        gaussian_nll(theta_bt[idx], mu, lv).backward()
+        opt.step()
+
+theta_grid_bt = np.linspace(sim_bt.prior_low, sim_bt.prior_high, 600)
+fig, axes = plt.subplots(1, 2, figsize=(9, 3.2), sharey=True)
+for ax, theta_t in zip(axes, [0.15, 0.70]):
+    x_obs = float(sim_bt.simulate_summary(np.array([theta_t]), n_balls=N_BALLS,
+                                          rng=np.random.default_rng(int(1000 * theta_t)))[0])
+    with torch.no_grad():
+        mu, lv = model_bt(torch.tensor([[x_obs]], dtype=torch.float32))
+    mu = mu.item(); sg = float(torch.exp(0.5 * lv).item())
+    q = (1 / (sg * np.sqrt(2 * np.pi))) * np.exp(-0.5 * ((theta_grid_bt - mu) / sg) ** 2)
+    _, p_true = sim_bt.true_posterior(x_obs, n_balls=N_BALLS, theta_grid=theta_grid_bt)
+    ax.plot(theta_grid_bt, p_true, "k-", lw=1.5, label="exact posterior")
+    ax.plot(theta_grid_bt, q, "C0--", lw=1.5, label="heteroscedastic band")
+    ax.axvline(theta_t, color="C3", lw=1)
+    ax.set_xlabel(r"$\theta$"); ax.set_title(fr"$\theta_{{\rm true}} = {theta_t}$")
+    ax.legend(fontsize=8)
+axes[0].set_ylabel("density")
+fig.suptitle("width now depends on x: narrow where it should be, wide where it should be")
+fig.tight_layout(); plt.show()
+
+# %% [markdown]
+# The band is now **narrow** near `θ = 0.15` and **wide** near
+# `θ = 0.70`, matching the exact posterior at both. Letting `σ` be a
+# network output, not a constant, fixed the Session-1 cliffhanger. Keep
+# this idea; we use it again immediately, in 2-D.
+#
+# ---
+#
+# ## 2 — The gravitational-wave simulator
+#
+# `GWChirp` forward-models the strain from an equal-mass binary
+# black-hole inspiral-merger-ringdown in coloured advanced-LIGO noise.
+# Two parameters are free:
+#
+# - **chirp mass** `Mc` (sets how the signal sweeps up in frequency),
+# - **luminosity distance** `dL` (sets how loud it is).
+#
+# Everything else is fixed inside the simulator. The interface mirrors
+# `BallThrow`.
 
 # %%
 sim = GWChirp()
-print(f"duration  = {sim.duration} s")
-print(f"f_sample  = {sim.f_sample} Hz")
-print(f"n_samples = {sim.n_samples}  (= {sim.duration}s x {sim.f_sample}Hz)")
-print(f"prior     : Mc in [{sim.mc_low}, {sim.mc_high}] M_sun, "
+print(f"observation length : {sim.n_samples} samples "
+      f"({sim.duration}s x {sim.f_sample:.0f} Hz)")
+print(f"prior : Mc in [{sim.mc_low}, {sim.mc_high}] Msun, "
       f"dL in [{sim.dl_low}, {sim.dl_high}] Mpc")
 
 # %% [markdown]
-# **Forward simulation.** A single call gives one realisation of strain
-# (signal + noise) sampled at 2048 Hz over 4 seconds.
-
-# %%
-rng = np.random.default_rng(SEED)
-theta_demo = np.array([30.0, 500.0])  # Mc = 30 M_sun, dL = 500 Mpc
-x_demo = sim.simulate(theta_demo, rng=rng)
-print("x shape:", x_demo.shape, "  amplitude:", float(np.std(x_demo)))
-
-# %% [markdown]
-# Plot the time series, then the *whitened* time series — the signal is
-# essentially invisible in raw strain (drowned in low-frequency noise)
-# but pops out clearly after whitening by $1/\sqrt{S_n(f)}$.
+# **One observation.** Strain (signal + noise) over 4 seconds. The raw
+# strain is dominated by low-frequency noise and the signal is invisible;
+# after **whitening** (dividing each frequency by the noise amplitude
+# `√S_n(f)`, so every frequency contributes on an equal footing) the
+# chirp leading into the merger at `t = 2 s` pops out.
 
 # %%
 def whiten(x, sim):
-    Xf = np.fft.rfft(x)
-    Xf = Xf / np.sqrt(sim.psd(sim.freqs))
+    Xf = np.fft.rfft(x) / np.sqrt(sim.psd(sim.freqs))
     return np.fft.irfft(Xf, n=sim.n_samples)
 
 
+theta_true = np.array([30.0, 600.0])   # Mc = 30 Msun, dL = 600 Mpc
+x_demo = sim.simulate(theta_true, rng=np.random.default_rng(1))
 t = np.arange(sim.n_samples) / sim.f_sample
+
 fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(7.5, 4), sharex=True)
-ax1.plot(t, x_demo, color="C7", lw=0.4)
-ax1.set_ylabel("raw strain")
+ax1.plot(t, x_demo, color="C7", lw=0.4); ax1.set_ylabel("raw strain")
 ax2.plot(t, whiten(x_demo, sim), color="C0", lw=0.6)
-ax2.set_xlabel("time [s]"); ax2.set_ylabel("whitened strain")
-ax2.set_xlim(1.5, 2.3)  # zoom around the merger at t=2
-fig.suptitle(r"$\mathcal{M}_c = 30\,M_\odot,\ d_L = 500$ Mpc")
+ax2.set_xlabel("time [s]"); ax2.set_ylabel("whitened"); ax2.set_xlim(1.6, 2.2)
+fig.suptitle(r"$M_c = 30\,M_\odot,\ d_L = 600$ Mpc")
 fig.tight_layout(); plt.show()
 
 # %% [markdown]
-# The chirp leading into the merger spike at $t = 2\,$s is the
-# astrophysical event you are trying to characterise.
-#
-# **Noiseless template, for reference.** The same waveform without
-# adding noise lets you see the chirp + merger + ringdown structure
-# directly.
+# **How the two parameters change the signal.** Below are noiseless
+# whitened templates: lighter `Mc` chirps for longer and reaches higher
+# frequency; nearer `dL` (smaller) is louder. Try changing the values.
 
 # %%
-h_fd = sim._waveform_fd(30.0, 500.0)            # frequency-domain template
-h_t = np.fft.irfft(h_fd, n=sim.n_samples)        # time-domain
-plt.figure(figsize=(7.5, 2.2))
-plt.plot(t, h_t, color="C3", lw=0.8)
-plt.xlim(1.9, 2.05); plt.xlabel("time [s]"); plt.ylabel("strain (noiseless)")
-plt.title("PhenomA template — chirp, merger, ringdown")
-plt.tight_layout(); plt.show()
+plt.figure(figsize=(7.5, 2.6))
+for mc, dl, c in [(22, 600, "C0"), (40, 600, "C1"), (30, 350, "C2")]:
+    h = np.fft.irfft(sim._waveform_fd(mc, dl), n=sim.n_samples)
+    plt.plot(t, whiten(h, sim), color=c, lw=0.9, label=fr"$M_c={mc},\ d_L={dl}$")
+plt.xlim(1.85, 2.02); plt.xlabel("time [s]"); plt.ylabel("whitened strain")
+plt.legend(fontsize=8); plt.title("noiseless templates"); plt.tight_layout(); plt.show()
 
 # %% [markdown]
-# ### 1.1 — The hand-built summary statistic
-#
-# A raw 8192-sample time series is too big to feed directly into a tiny
-# MLP. We need a low-dimensional summary that retains the information
-# about $(\mathcal{M}_c, d_L)$. The simulator provides one:
-#
-# - a **2-template matched-filter mini-bank**: two reference templates,
-#   one light ($\mathcal{M}_\mathrm{c, ref} = 15\,M_\odot$) and one
-#   heavy ($45\,M_\odot$), both at $d_{L,\mathrm{ref}} = 500$ Mpc;
-# - `sim.summary(x)` returns the two normalised matched-filter responses
-#   $(\rho_\mathrm{lo}, \rho_\mathrm{hi})$. Under pure noise each is
-#   $\mathcal{N}(0, 1)$; under a true signal, the *magnitudes* track
-#   $d_L^{-1}$ and the *ratio* tracks chirp mass.
-#
-# Let's see the summary depend on the parameters.
+# **Signal loudness (SNR) across the prior.** The same `Mc` at the near
+# edge of the prior is a loud, easy detection; at the far edge it is
+# marginal. This range is what makes the inference interesting.
 
 # %%
-rng = np.random.default_rng(1)
-fig, ax = plt.subplots(figsize=(5.5, 4.5))
-colors = plt.cm.viridis(np.linspace(0.1, 0.9, 5))
-mc_show = np.linspace(sim.mc_low, sim.mc_high, 5)
-for c, mc in zip(colors, mc_show):
-    pts = []
-    for dl in np.linspace(sim.dl_low, sim.dl_high, 4):
-        for _ in range(15):
-            s = sim.summary(sim.simulate(np.array([mc, dl]), rng=rng))
-            pts.append(s)
-    pts = np.array(pts)
-    ax.scatter(pts[:, 0], pts[:, 1], s=8, color=c, alpha=0.6,
-               label=fr"$\mathcal{{M}}_c = {mc:.0f}\,M_\odot$")
-ax.axhline(0, color="0.7", lw=0.5); ax.axvline(0, color="0.7", lw=0.5)
-ax.set_xlabel(r"$\rho_\mathrm{lo}$ (matched to 15 $M_\odot$ template)")
-ax.set_ylabel(r"$\rho_\mathrm{hi}$ (matched to 45 $M_\odot$ template)")
-ax.legend(loc="best", fontsize=8); ax.set_title("Summary statistic across the prior")
-fig.tight_layout(); plt.show()
-
-# %% [markdown]
-# Read this plot. As you sweep $\mathcal{M}_c$ from light to heavy, the
-# cloud of summary points rotates from
-# *(high $\rho_\mathrm{lo}$, low $\rho_\mathrm{hi}$)* to
-# *(low $\rho_\mathrm{lo}$, high $\rho_\mathrm{hi}$)* — the heavier
-# template starts matching the signal better. As you sweep $d_L$ from
-# near to far, the magnitudes shrink toward $(0, 0)$. Two scalars that
-# encode the two parameters: exactly what NPE needs.
+for mc in [25, 32, 40]:
+    snrs = [f"dL={dl}: {sim.optimal_snr(mc, dl):4.1f}" for dl in [300, 600, 1200]]
+    print(f"Mc={mc:>3} Msun   " + "   ".join(snrs))
 
 # %% [markdown]
 # ---
 #
-# ## 2 — Training set
+# ## 3 — From 8192 numbers to 2: a hand-built summary
 #
-# Same recipe as Block 2 of session 1, one dimension up:
-# $\theta \in \mathbb{R}^2$, $s = \text{summary}(x) \in \mathbb{R}^2$.
-
-# %%
-def simulate_dataset(sim, n_pairs, rng):
-    theta = sim.sample_prior(n_pairs, rng=rng)
-    x = sim.simulate(theta, rng=rng)
-    s = sim.summary(x)
-    return (
-        torch.tensor(theta, dtype=torch.float32),
-        torch.tensor(s, dtype=torch.float32),
-    )
-
-
-N_TRAIN, N_VAL = 8000, 800
-rng = np.random.default_rng(SEED)
-theta_tr, s_tr = simulate_dataset(sim, N_TRAIN, rng)
-theta_va, s_va = simulate_dataset(sim, N_VAL, rng)
-print("train:", theta_tr.shape, s_tr.shape)
-print("val:  ", theta_va.shape, s_va.shape)
+# We cannot feed 8192-sample strain into a tiny MLP. We need a **summary
+# statistic**: a few numbers that keep the information about
+# `(Mc, dL)`. The classical gravitational-wave tool is the **matched
+# filter**: correlate the data with a template, weighting each frequency
+# by `1/S_n(f)` so noisy frequencies count less,
+#
+# $$ \langle d \mid g\rangle \;=\; \mathrm{Re}\sum_f \frac{d_f^{*}\, g_f}{S_n(f)}. $$
+#
+# **Which templates?** A single matched filter against a fixed waveform
+# is sharply peaked: it only responds to signals very close to that
+# template (this is why real searches use banks of millions of
+# templates). Instead we use the principled local choice from Lecture 2:
+# linearise the waveform around a **fiducial** `θ₀` and project onto the
+# two **score directions**, the derivatives `∂h/∂Mc` and `∂h/∂dL`. For
+# Gaussian noise these two numbers are the locally-sufficient summary
+# (the Fisher / Taylor picture). Intuitively they measure *"how much
+# heavier than fiducial"* and *"how loud"*. The simulator provides the
+# derivative templates; you build the filter.
 
 # %% [markdown]
-# **Normalisation matters.** $\mathcal{M}_c \in [10, 60]$ and
-# $d_L \in [100, 2000]$ are on very different scales. We z-score both
-# the parameter and summary axes before training; the network output
-# means/log-variances live on the normalised scale and we map back at
-# evaluation time.
+# ### ✏️ EXERCISE 1 — implement the matched-filter summary
+#
+# Implement `matched_filter`, then `my_summary`, using the two score
+# templates and the PSD from the simulator. The simulator also provides
+# a `whitening_matrix()` that rescales the two raw scores so that, under
+# pure noise, the summary is independent `N(0, 1)`. Check that your
+# summary reproduces `sim.summary(x)`.
 
 # %%
-theta_mu, theta_sd = theta_tr.mean(0), theta_tr.std(0)
-s_mu, s_sd = s_tr.mean(0), s_tr.std(0)
-theta_tr_n = (theta_tr - theta_mu) / theta_sd
-theta_va_n = (theta_va - theta_mu) / theta_sd
-s_tr_n = (s_tr - s_mu) / s_sd
-s_va_n = (s_va - s_mu) / s_sd
-print("theta_mu:", theta_mu.numpy(), " theta_sd:", theta_sd.numpy())
-print("s_mu:    ", s_mu.numpy(),     " s_sd:    ", s_sd.numpy())
+g_mc, g_dl = sim.score_templates()      # derivative templates, freq-domain
+psd = sim.psd(sim.freqs)                # noise PSD on the rfft grid
+W = sim.whitening_matrix()              # 2x2, maps raw scores -> whitened summary
+
+
+def matched_filter(x_td, template_fd, psd):
+    # TODO — your code here.
+    # 1. Xf = rfft of the time-domain data x_td
+    # 2. return the real part of sum_f conj(Xf) * template_fd / psd
+    raise NotImplementedError
+
+
+def my_summary(x_td):
+    # TODO — your code here.
+    # 1. raw = [matched_filter(x, g_mc, psd), matched_filter(x, g_dl, psd)]
+    # 2. return W @ raw
+    raise NotImplementedError
+
+
+# %%
+# @title Reference solution { display-mode: "form" }
+def matched_filter(x_td, template_fd, psd):  # noqa: F811
+    Xf = np.fft.rfft(x_td)
+    return float(np.real(np.sum(np.conj(Xf) * template_fd / psd)))
+
+
+def my_summary(x_td):  # noqa: F811
+    raw = np.array([matched_filter(x_td, g_mc, psd),
+                    matched_filter(x_td, g_dl, psd)])
+    return W @ raw
+
+
+x_check = sim.simulate(np.array([30.0, 600.0]), rng=np.random.default_rng(3))
+print("my_summary  :", my_summary(x_check).round(4))
+print("sim.summary :", sim.summary(x_check).round(4))
+
+# %% [markdown]
+# **See the summary carry the parameters.** Below, each point is the
+# summary of one noisy observation. Sweeping `Mc` slides the cloud along
+# one direction; sweeping `dL` (loudness) slides it along the other.
+# Under pure noise the cloud would sit at the origin with unit spread.
+
+# %%
+rng = np.random.default_rng(2)
+fig, axes = plt.subplots(1, 2, figsize=(10, 4))
+# colour by Mc
+for mc, c in zip([22, 30, 38, 44], plt.cm.viridis(np.linspace(0.1, 0.9, 4))):
+    pts = np.array([sim.summary(sim.simulate(np.array([mc, dl]), rng=rng))
+                    for dl in np.linspace(sim.dl_low, sim.dl_high, 6) for _ in range(8)])
+    axes[0].scatter(pts[:, 0], pts[:, 1], s=8, color=c, alpha=0.6, label=fr"$M_c={mc}$")
+# colour by dL
+for dl, c in zip([400, 700, 1100], plt.cm.plasma(np.linspace(0.1, 0.8, 3))):
+    pts = np.array([sim.summary(sim.simulate(np.array([mc, dl]), rng=rng))
+                    for mc in np.linspace(sim.mc_low, sim.mc_high, 6) for _ in range(8)])
+    axes[1].scatter(pts[:, 0], pts[:, 1], s=8, color=c, alpha=0.6, label=fr"$d_L={dl}$")
+for ax, ttl in zip(axes, ["coloured by chirp mass", "coloured by distance"]):
+    ax.axhline(0, color="0.8", lw=0.5); ax.axvline(0, color="0.8", lw=0.5)
+    ax.set_xlabel(r"$s_1$"); ax.set_ylabel(r"$s_2$"); ax.legend(fontsize=8); ax.set_title(ttl)
+fig.tight_layout(); plt.show()
 
 # %% [markdown]
 # ---
 #
-# ## 3 — Gaussian-head NPE (same code as Block 2, wider inputs/outputs)
+# ## 4 — A 2-D Gaussian head with a learned correlation
 #
-# Same model class you wrote in `s1_pytorch_and_npe`, only with two
-# differences:
+# Now the inference head. With two parameters the posterior is a 2-D
+# distribution, and `Mc` and `dL` are **correlated** (a louder, lighter
+# chirp can resemble a quieter, heavier one). A diagonal Gaussian could
+# only produce axis-aligned ellipses; we give the head a **learned
+# correlation coefficient** `ρ` so it can tilt.
 #
-# - input dimension is 2 (the summary statistic),
-# - output dimension is 2 means + 2 log-variances → 4 numbers, treated
-#   as a **diagonal-covariance** 2-D Gaussian.
+# The head outputs five numbers per observation: the two means, the two
+# log-variances (heteroscedastic, as in §1), and `ρ`. We squash `ρ`
+# through `tanh` so it always lies in `(-1, 1)`.
+
+# %% [markdown]
+# ### ✏️ EXERCISE 2 — build the 2-D Gaussian head
 #
-# Diagonal means the network can capture independent uncertainty in
-# $\mathcal{M}_c$ and $d_L$, but cannot represent their correlation.
-# That is a deliberate limitation; see the final section.
+# Fill in `forward` so it returns `(mu, log_var, rho)` with shapes
+# `(batch, 2)`, `(batch, 2)`, `(batch, 1)`, and `ρ = tanh(...)`. The
+# trunk and the three output layers are provided. The loss
+# (`gaussian_nll_2d`, the correlated Gaussian NLL) is given below it;
+# read it but you do not need to derive it.
 
 # %%
 class GaussianHead2D(nn.Module):
-    def __init__(self, in_dim=2, hidden=64, out_dim=2):
+    def __init__(self, in_dim=2, hidden=64):
         super().__init__()
         self.trunk = nn.Sequential(
             nn.Linear(in_dim, hidden), nn.ReLU(),
             nn.Linear(hidden, hidden), nn.ReLU(),
         )
-        self.head_mu = nn.Linear(hidden, out_dim)
-        self.head_logvar = nn.Linear(hidden, out_dim)
+        self.head_mu = nn.Linear(hidden, 2)
+        self.head_logvar = nn.Linear(hidden, 2)
+        self.head_rho = nn.Linear(hidden, 1)
 
     def forward(self, s):
-        h = self.trunk(s)
-        return self.head_mu(h), self.head_logvar(h)
-
-
-def gaussian_nll_2d(theta, mu, log_var):
-    # Diagonal Gaussian NLL, summed over the parameter axis, averaged over batch.
-    var = torch.exp(log_var)
-    return 0.5 * (((theta - mu) ** 2) / var + log_var).sum(dim=-1).mean()
-
-
-# %% [markdown]
-# Same five-step training loop, plus a held-out validation pass.
-
-# %%
-def train(s_tr, theta_tr, s_va, theta_va,
-          n_epochs=120, batch_size=256, lr=1e-3, hidden=64, seed=SEED):
-    torch.manual_seed(seed)
-    model = GaussianHead2D(in_dim=s_tr.shape[1], hidden=hidden,
-                           out_dim=theta_tr.shape[1])
-    opt = optim.Adam(model.parameters(), lr=lr)
-    n = s_tr.shape[0]
-    tr_curve, va_curve = [], []
-    for _ in range(n_epochs):
-        perm = torch.randperm(n)
-        ep = 0.0
-        for i in range(0, n, batch_size):
-            idx = perm[i:i + batch_size]
-            opt.zero_grad()
-            mu, log_var = model(s_tr[idx])
-            loss = gaussian_nll_2d(theta_tr[idx], mu, log_var)
-            loss.backward(); opt.step()
-            ep += loss.item() * idx.numel()
-        tr_curve.append(ep / n)
-        with torch.no_grad():
-            mu_v, lv_v = model(s_va)
-            va_curve.append(gaussian_nll_2d(theta_va, mu_v, lv_v).item())
-    return model, np.array(tr_curve), np.array(va_curve)
-
-
-model, tr_curve, va_curve = train(s_tr_n, theta_tr_n, s_va_n, theta_va_n)
-
-plt.figure(figsize=(5, 3))
-plt.plot(tr_curve, label="train"); plt.plot(va_curve, label="val")
-plt.xlabel("epoch"); plt.ylabel("Gaussian NLL"); plt.legend()
-plt.title("Gaussian-head NPE — training"); plt.tight_layout(); plt.show()
-
-# %% [markdown]
-# ---
-#
-# ## 4 — Evaluate against a grid reference posterior
-#
-# Pick a true $(\mathcal{M}_c, d_L)$, simulate an observation, evaluate
-# both the NPE posterior and the brute-force matched-filter
-# reference posterior, and overlay.
-
-# %%
-theta_true = np.array([35.0, 600.0])
-x_obs = sim.simulate(theta_true, rng=np.random.default_rng(123))
-s_obs = sim.summary(x_obs)
-
-# NPE posterior on a (Mc, dL) grid: evaluate q_phi at s_obs once,
-# then write down the diagonal Gaussian density at every grid point.
-s_obs_n = (torch.tensor(s_obs, dtype=torch.float32) - s_mu) / s_sd
-with torch.no_grad():
-    mu_n, log_var_n = model(s_obs_n.unsqueeze(0))
-mu_n = mu_n.squeeze(0); sigma_n = torch.exp(0.5 * log_var_n.squeeze(0))
-# back to physical scale
-mu_phys = (mu_n * theta_sd + theta_mu).numpy()
-sigma_phys = (sigma_n * theta_sd).numpy()
-print(f"NPE: Mc = {mu_phys[0]:.2f} +- {sigma_phys[0]:.2f},  "
-      f"dL = {mu_phys[1]:.1f} +- {sigma_phys[1]:.1f}")
-
-# Reference posterior (matched-filter likelihood on a grid). Takes a
-# few seconds.
-mc_g, dl_g, post_ref = sim.true_posterior(x_obs, n_mc=70, n_dl=70)
-
-# NPE diagonal-Gaussian density on the same grid:
-MC, DL = np.meshgrid(mc_g, dl_g, indexing="ij")
-post_npe = (1 / (2 * np.pi * sigma_phys[0] * sigma_phys[1])) * np.exp(
-    -0.5 * (((MC - mu_phys[0]) / sigma_phys[0]) ** 2
-            + ((DL - mu_phys[1]) / sigma_phys[1]) ** 2)
-)
-
-fig, ax = plt.subplots(figsize=(5.5, 4.5))
-ax.contour(MC, DL, post_ref, levels=8, colors="C7", linewidths=0.8)
-ax.contour(MC, DL, post_npe, levels=8, colors="C0", linewidths=1.2)
-ax.plot(theta_true[0], theta_true[1], "C3*", ms=12,
-        label=fr"$\theta_\mathrm{{true}}=({theta_true[0]:.0f},\,{theta_true[1]:.0f})$")
-ax.set_xlabel(r"$\mathcal{M}_c\ [M_\odot]$")
-ax.set_ylabel(r"$d_L$ [Mpc]")
-ax.set_title("grid reference (grey) vs. Gaussian-head NPE (blue)")
-ax.legend(loc="upper right", fontsize=9)
-fig.tight_layout(); plt.show()
-
-# %% [markdown]
-# ### ✏️ EXERCISE — amortisation
-#
-# Repeat the above plot for three different $(\mathcal{M}_c, d_L)$
-# truths *without retraining* — the same network produces every
-# posterior. Confirm visually that the NPE Gaussian sits on top of the
-# reference peak in each case.
-
-# %%
-# TODO — your code here.
+        # TODO — your code here.
+        # 1. h = self.trunk(s)
+        # 2. mu = self.head_mu(h); log_var = self.head_logvar(h)
+        # 3. rho = torch.tanh(self.head_rho(h))   # keep rho in (-1, 1)
+        # 4. return mu, log_var, rho
+        raise NotImplementedError
 
 
 # %%
 # @title Reference solution { display-mode: "form" }
-fig, axes = plt.subplots(1, 3, figsize=(13, 4), sharey=True)
-for ax, (mc_t, dl_t) in zip(axes, [(15.0, 300.0), (40.0, 1000.0), (55.0, 1600.0)]):
-    x0 = sim.simulate(np.array([mc_t, dl_t]), rng=np.random.default_rng(int(mc_t * dl_t)))
-    s0 = sim.summary(x0)
-    s0_n = (torch.tensor(s0, dtype=torch.float32) - s_mu) / s_sd
+class GaussianHead2D(nn.Module):  # noqa: F811
+    def __init__(self, in_dim=2, hidden=64):
+        super().__init__()
+        self.trunk = nn.Sequential(
+            nn.Linear(in_dim, hidden), nn.ReLU(),
+            nn.Linear(hidden, hidden), nn.ReLU(),
+        )
+        self.head_mu = nn.Linear(hidden, 2)
+        self.head_logvar = nn.Linear(hidden, 2)
+        self.head_rho = nn.Linear(hidden, 1)
+
+    def forward(self, s):
+        h = self.trunk(s)
+        mu = self.head_mu(h)
+        log_var = self.head_logvar(h)
+        rho = torch.tanh(self.head_rho(h))
+        return mu, log_var, rho
+
+
+def gaussian_nll_2d(theta, mu, log_var, rho):
+    """Negative log-likelihood of a correlated 2-D Gaussian, batch mean.
+
+    With standardised residuals z_i = (theta_i - mu_i) / sigma_i,
+
+        -log N = 1/2 [ (z1^2 - 2 rho z1 z2 + z2^2) / (1 - rho^2)
+                       + log sigma1^2 + log sigma2^2 + log(1 - rho^2) ].
+    """
+    rho = rho.squeeze(-1)
+    z = (theta - mu) / torch.exp(0.5 * log_var)
+    z1, z2 = z[:, 0], z[:, 1]
+    one_minus = 1.0 - rho ** 2
+    quad = (z1 ** 2 - 2.0 * rho * z1 * z2 + z2 ** 2) / one_minus
+    logdet = log_var.sum(dim=-1) + torch.log(one_minus)
+    return 0.5 * (quad + logdet).mean()
+
+
+# %% [markdown]
+# ### Training set and normalisation
+#
+# Simulate `(θ, summary)` pairs. Parameters and summaries live on very
+# different scales, so we z-score both; the network works in normalised
+# units and we map back when we plot. (`ρ` is unchanged by per-axis
+# scaling, so it needs no correction.)
+
+# %%
+def make_dataset(n, rng):
+    theta = sim.sample_prior(n, rng=rng)
+    s = sim.summary(sim.simulate(theta, rng=rng))
+    return (torch.tensor(theta, dtype=torch.float32),
+            torch.tensor(s, dtype=torch.float32))
+
+
+rng = np.random.default_rng(SEED)
+theta_tr, s_tr = make_dataset(8000, rng)
+theta_va, s_va = make_dataset(800, rng)
+
+theta_mu, theta_sd = theta_tr.mean(0), theta_tr.std(0)
+s_mu, s_sd = s_tr.mean(0), s_tr.std(0)
+norm = lambda a, m, sd: (a - m) / sd
+theta_tr_n, theta_va_n = norm(theta_tr, theta_mu, theta_sd), norm(theta_va, theta_mu, theta_sd)
+s_tr_n, s_va_n = norm(s_tr, s_mu, s_sd), norm(s_va, s_mu, s_sd)
+
+# %% [markdown]
+# Train with the same five-step loop, now minimising `gaussian_nll_2d`.
+
+# %%
+torch.manual_seed(SEED)
+model = GaussianHead2D()
+opt = optim.Adam(model.parameters(), lr=1e-3)
+n = s_tr_n.shape[0]
+tr_curve, va_curve = [], []
+for epoch in range(150):
+    perm = torch.randperm(n)
+    for i in range(0, n, 256):
+        idx = perm[i:i + 256]
+        opt.zero_grad()
+        loss = gaussian_nll_2d(theta_tr_n[idx], *model(s_tr_n[idx]))
+        loss.backward(); opt.step()
     with torch.no_grad():
-        mu_n, lv_n = model(s0_n.unsqueeze(0))
-    mu_p = (mu_n.squeeze(0) * theta_sd + theta_mu).numpy()
-    sg_p = (torch.exp(0.5 * lv_n.squeeze(0)) * theta_sd).numpy()
-    mc_g0, dl_g0, post_ref0 = sim.true_posterior(x0, n_mc=60, n_dl=60)
-    MC0, DL0 = np.meshgrid(mc_g0, dl_g0, indexing="ij")
-    post_npe0 = (1 / (2 * np.pi * sg_p[0] * sg_p[1])) * np.exp(
-        -0.5 * (((MC0 - mu_p[0]) / sg_p[0]) ** 2
-                + ((DL0 - mu_p[1]) / sg_p[1]) ** 2))
-    ax.contour(MC0, DL0, post_ref0, levels=6, colors="C7", linewidths=0.8)
-    ax.contour(MC0, DL0, post_npe0, levels=6, colors="C0", linewidths=1.2)
-    ax.plot(mc_t, dl_t, "C3*", ms=10)
-    ax.set_xlabel(r"$\mathcal{M}_c\ [M_\odot]$")
-    ax.set_title(f"truth = ({mc_t:.0f}, {dl_t:.0f})")
-axes[0].set_ylabel(r"$d_L$ [Mpc]")
-fig.tight_layout(); plt.show()
+        tr_curve.append(gaussian_nll_2d(theta_tr_n, *model(s_tr_n)).item())
+        va_curve.append(gaussian_nll_2d(theta_va_n, *model(s_va_n)).item())
+
+plt.figure(figsize=(5, 3))
+plt.plot(tr_curve, label="train"); plt.plot(va_curve, label="val")
+plt.xlabel("epoch"); plt.ylabel("2-D Gaussian NLL"); plt.legend()
+plt.title("training"); plt.tight_layout(); plt.show()
 
 # %% [markdown]
 # ---
 #
-# ## 5 — Where the Gaussian head will hurt
+# ## 5 — Validate against the exact reference posterior
 #
-# Look closely at the reference contours in the previous plot. The
-# grid posterior is **banana-shaped**: a louder, lighter chirp can look
-# similar to a quieter, heavier one because both depend on the same
-# matched-filter amplitude. There is a real $\mathcal{M}_c$–$d_L$
-# degeneracy in the data.
+# Because the summary is a *linear* function of the data, the posterior
+# given the summary, `p(θ | s)`, is available analytically on a grid
+# (`sim.true_posterior_summary`). This is the **best possible** posterior
+# given the same two summaries, so any gap is purely our Gaussian
+# approximation, not lost information.
 #
-# Your diagonal-Gaussian $q_\phi$ cannot represent that correlation;
-# it can only stretch axes-aligned ellipses. So at moderate-to-low SNR
-# it will visibly *over-cover* one direction and *under-cover* another.
-# That is not a bug in NPE — it is the inevitable consequence of
-# choosing too restrictive a density family.
-#
-# **This is the failure that motivates Lecture 3 and Session 2.** Pick
-# a low-SNR truth (large $d_L$, light $\mathcal{M}_c$) and look at the
-# tilt of the reference posterior compared with your NPE ellipse:
+# We evaluate the trained head and the reference at a loud observation
+# and overlay them, plus the 1-D marginals.
 
 # %%
-theta_low = np.array([15.0, 1700.0])
-x_low = sim.simulate(theta_low, rng=np.random.default_rng(42))
-s_low = sim.summary(x_low)
-s_low_n = (torch.tensor(s_low, dtype=torch.float32) - s_mu) / s_sd
-with torch.no_grad():
-    mu_l, lv_l = model(s_low_n.unsqueeze(0))
-mu_lp = (mu_l.squeeze(0) * theta_sd + theta_mu).numpy()
-sg_lp = (torch.exp(0.5 * lv_l.squeeze(0)) * theta_sd).numpy()
-mc_g2, dl_g2, post_ref2 = sim.true_posterior(x_low, n_mc=80, n_dl=80)
-MC2, DL2 = np.meshgrid(mc_g2, dl_g2, indexing="ij")
-post_npe2 = (1 / (2 * np.pi * sg_lp[0] * sg_lp[1])) * np.exp(
-    -0.5 * (((MC2 - mu_lp[0]) / sg_lp[0]) ** 2
-            + ((DL2 - mu_lp[1]) / sg_lp[1]) ** 2))
+def npe_gaussian_params(model, s_obs):
+    s_n = norm(torch.tensor(s_obs, dtype=torch.float32), s_mu, s_sd)
+    with torch.no_grad():
+        mu, lv, rho = model(s_n.unsqueeze(0))
+    mu = (mu.squeeze(0) * theta_sd + theta_mu).numpy()
+    sig = (torch.exp(0.5 * lv.squeeze(0)) * theta_sd).numpy()
+    return mu, sig, float(rho.squeeze())
 
-fig, ax = plt.subplots(figsize=(5.5, 4.5))
-ax.contour(MC2, DL2, post_ref2, levels=10, colors="C7", linewidths=0.8)
-ax.contour(MC2, DL2, post_npe2, levels=10, colors="C0", linewidths=1.2)
-ax.plot(*theta_low, "C3*", ms=12, label="truth")
-ax.set_xlabel(r"$\mathcal{M}_c\ [M_\odot]$"); ax.set_ylabel(r"$d_L$ [Mpc]")
-ax.set_title("Low-SNR truth — banana posterior vs axis-aligned ellipse")
-ax.legend(loc="upper right", fontsize=9)
-fig.tight_layout(); plt.show()
+
+def gaussian2d_grid(mc_g, dl_g, mu, sig, rho):
+    MC, DL = np.meshgrid(mc_g, dl_g, indexing="ij")
+    z1 = (MC - mu[0]) / sig[0]; z2 = (DL - mu[1]) / sig[1]
+    q = (z1 ** 2 - 2 * rho * z1 * z2 + z2 ** 2) / (1 - rho ** 2)
+    return np.exp(-0.5 * q)
+
+
+def show_posterior(theta_t, seed, title):
+    x = sim.simulate(np.array(theta_t), rng=np.random.default_rng(seed))
+    s_obs = sim.summary(x)
+    mc_g, dl_g, p_ref = sim.true_posterior_summary(s_obs, n_mc=120, n_dl=120)
+    mu, sig, rho = npe_gaussian_params(model, s_obs)
+    p_npe = gaussian2d_grid(mc_g, dl_g, mu, sig, rho)
+
+    fig = plt.figure(figsize=(10, 4))
+    ax = fig.add_subplot(1, 2, 1)
+    ax.contour(*np.meshgrid(mc_g, dl_g, indexing="ij"), p_ref, levels=6,
+               colors="k", linewidths=0.8)
+    ax.contour(*np.meshgrid(mc_g, dl_g, indexing="ij"), p_npe, levels=6,
+               colors="C0", linewidths=1.2)
+    ax.plot(*theta_t, "C3*", ms=13)
+    ax.set_xlabel(r"$M_c\ [M_\odot]$"); ax.set_ylabel(r"$d_L$ [Mpc]")
+    ax.set_title(f"{title}\nblack = exact, blue = NPE  (rho={rho:+.2f})")
+    # marginals
+    axm = fig.add_subplot(2, 2, 2)
+    pm = p_ref.sum(1); pm = pm / (pm.sum() * (mc_g[1] - mc_g[0]))
+    axm.plot(mc_g, pm, "k-", lw=1.2)
+    axm.plot(mc_g, np.exp(-0.5 * ((mc_g - mu[0]) / sig[0]) ** 2) / (sig[0] * np.sqrt(2 * np.pi)),
+             "C0--", lw=1.2)
+    axm.set_xlabel(r"$M_c$"); axm.set_title("marginal $M_c$", fontsize=9); axm.set_yticks([])
+    axd = fig.add_subplot(2, 2, 4)
+    pd = p_ref.sum(0); pd = pd / (pd.sum() * (dl_g[1] - dl_g[0]))
+    axd.plot(dl_g, pd, "k-", lw=1.2)
+    axd.plot(dl_g, np.exp(-0.5 * ((dl_g - mu[1]) / sig[1]) ** 2) / (sig[1] * np.sqrt(2 * np.pi)),
+             "C0--", lw=1.2)
+    axd.set_xlabel(r"$d_L$"); axd.set_title("marginal $d_L$", fontsize=9); axd.set_yticks([])
+    fig.tight_layout(); plt.show()
+
+
+show_posterior((38.0, 500.0), seed=7, title="loud signal (SNR ~ 23)")
 
 # %% [markdown]
-# Hold on to this notebook. In Session 2 we replace `GaussianHead2D`
-# with a normalising flow and watch the blue contour bend into the
-# grey banana.
+# The blue NPE contours sit on the black reference, **tilt and all**: the
+# learned correlation `ρ` lets the Gaussian follow the diagonal
+# degeneracy, and the 1-D marginals line up. The single trained network
+# does this for *any* observation in one forward pass (amortised): no
+# per-event refitting.
+#
+# ### ✏️ EXERCISE 3 — find where the Gaussian starts to strain
+#
+# Re-run `show_posterior` for fainter signals (push `dL` toward the far
+# edge of the prior, e.g. `(40, 1000)` or `(25, 1050)`). At low SNR the
+# exact posterior stops being a clean tilted ellipse and starts to
+# **curve** (a banana). The correlated Gaussian captures the tilt but not
+# the curvature. Where does the mismatch first become visible?
+
+# %%
+# TODO — your code here, e.g.:
+# show_posterior((40.0, 1000.0), seed=11, title="faint signal")
+
+
+# %%
+# @title Reference solution { display-mode: "form" }
+show_posterior((40.0, 1000.0), seed=11, title="faint signal (SNR ~ 12)")
+
+# %% [markdown]
+# ---
+#
+# ## 6 — Preview: a normalising flow (for fun)
+#
+# A **normalising flow** is a far more flexible `q_φ(θ|x)`: instead of a
+# Gaussian shape it learns to bend a simple distribution into whatever
+# the posterior actually looks like, curvature and all. It is the
+# centrepiece of the next session. As a teaser, here is one trained on
+# the *same* `(θ, summary)` pairs using the `sbi` library, in a few
+# lines. (Optional: the install is heavy and may ask for a runtime
+# restart. Skip if you are short on time.)
+
+# %%
+# @title Optional flow preview (installs sbi) { display-mode: "form" }
+try:
+    import subprocess, sys
+    subprocess.run([sys.executable, "-m", "pip", "install", "-q", "sbi"], check=True)
+    from sbi.inference import SNPE
+    from sbi.utils import BoxUniform
+
+    prior = BoxUniform(low=torch.tensor([sim.mc_low, sim.dl_low]),
+                       high=torch.tensor([sim.mc_high, sim.dl_high]))
+    inference = SNPE(prior=prior)
+    inference.append_simulations(theta_tr, s_tr)     # (theta, summary) pairs
+    inference.train()
+    flow_posterior = inference.build_posterior()
+
+    theta_t = (40.0, 1000.0)
+    x = sim.simulate(np.array(theta_t), rng=np.random.default_rng(11))
+    s_obs = sim.summary(x)
+    samples = flow_posterior.sample((3000,), x=torch.tensor(s_obs, dtype=torch.float32)).numpy()
+
+    mc_g, dl_g, p_ref = sim.true_posterior_summary(s_obs, n_mc=120, n_dl=120)
+    plt.figure(figsize=(5.5, 4.5))
+    plt.contour(*np.meshgrid(mc_g, dl_g, indexing="ij"), p_ref, levels=6,
+                colors="k", linewidths=0.8)
+    plt.scatter(samples[:, 0], samples[:, 1], s=3, alpha=0.15, color="C2")
+    plt.plot(*theta_t, "C3*", ms=13)
+    plt.xlabel(r"$M_c\ [M_\odot]$"); plt.ylabel(r"$d_L$ [Mpc]")
+    plt.title("flow samples (green) vs exact posterior (black)")
+    plt.xlim(sim.mc_low, sim.mc_high); plt.ylim(sim.dl_low, sim.dl_high)
+    plt.tight_layout(); plt.show()
+except Exception as e:
+    print("Flow preview skipped:", type(e).__name__, e)
+    print("This is optional — the session does not depend on it.")
+
+# %% [markdown]
+# The flow samples fill the curved reference posterior, including the
+# bend a single Gaussian cannot follow. That flexibility, plus learned
+# summary networks and calibration diagnostics, is what the next session
+# is about.
+#
+# ## Where this lands you
+#
+# - You fixed the Session-1 cliffhanger: a width that depends on `x`.
+# - You turned an 8192-sample time series into a 2-number summary by
+#   hand, via matched filtering against the score directions.
+# - You built a 2-D Gaussian head with a learned correlation and used it
+#   as an amortised posterior estimator on a realistic GW problem,
+#   validated against the exact reference posterior.
+# - You saw the one shape it still cannot make (curvature), and the flow
+#   that can.
