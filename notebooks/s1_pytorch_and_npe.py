@@ -400,11 +400,11 @@ axes[0].plot(xv, fit_cos_kx(k=12), "C3--", lw=1.5, label="default MLP")
 axes[0].set_title(r"$\cos(12x)$ — 32 hidden, 2 layers, 2k steps"); axes[0].legend(fontsize=8)
 # (b) wider + deeper + longer
 axes[1].plot(xv, np.cos(12 * xv), "k-", lw=1.2, label="truth")
-axes[1].plot(xv, fit_cos_kx(k=12, hidden=256, n_layers=4, n_steps=8000), "C2--", lw=1.5, label="wider/deeper")
-axes[1].set_title("256 hidden, 4 layers, 8k steps"); axes[1].legend(fontsize=8)
+axes[1].plot(xv, fit_cos_kx(k=12, hidden=256, n_layers=4, n_steps=1000), "C2--", lw=1.5, label="wider/deeper")
+axes[1].set_title("256 hidden, 4 layers, 1k steps"); axes[1].legend(fontsize=8)
 # (c) push higher still — spectral bias returns
 axes[2].plot(xv, np.cos(20 * xv), "k-", lw=1.2, label="truth")
-axes[2].plot(xv, fit_cos_kx(k=20, hidden=256, n_layers=4, n_steps=8000), "C1--", lw=1.5, label=r"$\cos(20x)$")
+axes[2].plot(xv, fit_cos_kx(k=20, hidden=256, n_layers=4, n_steps=1000), "C1--", lw=1.5, label=r"$\cos(20x)$")
 axes[2].set_title("same big MLP, even higher frequency"); axes[2].legend(fontsize=8)
 fig.tight_layout(); plt.show()
 
