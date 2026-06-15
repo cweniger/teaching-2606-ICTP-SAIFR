@@ -552,39 +552,178 @@ plt.tight_layout(); plt.show()
 # the cleanest validation we can give NPE without resorting to flows.
 
 # %% [markdown]
-# ### ✏️ EXERCISE 2.C — amortisation
+# ### ✏️ EXERCISE 2.C — evaluate outside the training domain
 #
-# The same trained network produces a posterior for *any* `x_obs` —
-# this is what is meant by **amortised** inference: training is
-# expensive, evaluation is one forward pass. Pick three different true
-# `θ` values, simulate a fresh `x_obs` for each, and overlay all three
-# Gaussian-head posteriors on the same axes (with the analytic
-# references for comparison).
+# The network was only ever shown `x_obs` values that the prior could
+# plausibly produce: the maximum noise-free range is
+# `r(π/4) = v₀²/g ≈ 10.2 m`, and with the summary noise of
+# `σ/√n_balls ≈ 0.1 m` essentially every training `x` lies in
+# `[0.5, 10.3]`. What does the network do when you feed it an
+# `x_obs` that lives well outside this range?
+#
+# Try `x_obs = 14.0` (impossible — nothing in the prior could
+# produce this) and also `x_obs = -1.0` (negative range). Evaluate
+# `q_φ(θ | x_obs)` and compare to the reference posterior on the
+# grid. The reference is allowed to look weird at the boundary; the
+# point is that the network *will not warn you* — it returns a
+# perfectly confident Gaussian for any input you give it.
+#
+# *Take-away.* Amortised inference is only trustworthy on `x_obs`
+# values that look like the simulator's outputs. Out-of-distribution
+# detection is a real concern in practice and not something the
+# Gaussian head provides for free.
 
 # %%
 # TODO — your code here.
+# Pick two OOD x_obs values, evaluate q_phi, plot alongside the
+# reference posterior.
 
 
 # %%
 # @title Reference solution { display-mode: "form" }
-fig, ax = plt.subplots(figsize=(5.5, 3))
-for theta_t, col in zip([0.30, 0.55, 0.72], ["C0", "C2", "C3"]):
+fig, axes = plt.subplots(1, 2, figsize=(10, 3), sharey=True)
+for ax, x_ood in zip(axes, [14.0, -1.0]):
+    with torch.no_grad():
+        mu_o, lv_o = model(torch.tensor([[x_ood]], dtype=torch.float32))
+        mu_o = mu_o.item(); sg_o = float(torch.exp(0.5 * lv_o).item())
+    q = (1 / (sg_o * np.sqrt(2 * np.pi))) * np.exp(
+        -0.5 * ((theta_grid - mu_o) / sg_o) ** 2
+    )
+    _, p_ref = sim.true_posterior(x_ood, n_balls=N_BALLS, theta_grid=theta_grid)
+    ax.plot(theta_grid, p_ref, "k-", lw=1.2, label="reference")
+    ax.plot(theta_grid, q, "C0--", lw=1.5,
+            label=fr"$q_\phi$: $\mathcal{{N}}({mu_o:.2f},\,{sg_o:.2f}^2)$")
+    ax.set_xlabel(r"$\theta$")
+    ax.set_title(f"x_obs = {x_ood} (out of distribution)")
+    ax.legend(fontsize=8)
+axes[0].set_ylabel("density")
+fig.tight_layout(); plt.show()
+
+# %% [markdown]
+# Notice that the network confidently outputs *some* Gaussian for
+# both inputs, even though no realistic `θ` could have produced
+# either observation. The width is roughly the typical training-time
+# width; the mean is wherever the network's extrapolation lands. The
+# reference posterior, by contrast, piles up at the closest possible
+# boundary and is essentially zero everywhere.
+#
+# ### ✏️ EXERCISE 2.D — make the width `x`-independent
+#
+# Here is the more interesting failure mode: what if we hobble the
+# *density family* and ask the network to use a single, learned
+# variance that does **not** depend on `x`?
+#
+# For the ball-throw with prior `(0.05, π/4)`, the noise-free range
+# `r(θ) = (v₀²/g) sin(2θ)` flattens near `θ → π/4` — so a fixed
+# observation noise translates into a *wide* posterior near the
+# prior edge and a *tight* posterior near `θ = 0.05`. The width
+# genuinely depends on `x_obs`. A homoscedastic model is forced to
+# pick the average; it will be visibly overconfident on some
+# observations and visibly underconfident on others.
+#
+# Implement `GaussianHeadHomo` below by making `log_var` a *single
+# learned scalar* (use `nn.Parameter`) instead of a function of `x`.
+# Re-use the same training loop and compare against the
+# heteroscedastic baseline at two well-separated `x_obs`.
+
+# %%
+class GaussianHeadHomo(nn.Module):
+    """Same trunk as GaussianHead but with a single, x-independent log-variance."""
+
+    def __init__(self, in_dim=1, hidden=64):
+        super().__init__()
+        self.trunk = nn.Sequential(
+            nn.Linear(in_dim, hidden), nn.ReLU(),
+            nn.Linear(hidden, hidden), nn.ReLU(),
+        )
+        self.head_mu = nn.Linear(hidden, 1)
+        # TODO — your code here.
+        # Add a single learnable log-variance parameter (hint: nn.Parameter(torch.zeros(1))).
+        # In forward(), return mu of shape (batch, 1) and log_var broadcast to (batch, 1).
+        raise NotImplementedError("implement GaussianHeadHomo")
+
+    def forward(self, x):
+        raise NotImplementedError("implement GaussianHeadHomo.forward")
+
+
+# %%
+# @title Reference solution { display-mode: "form" }
+class GaussianHeadHomo(nn.Module):  # noqa: F811
+    def __init__(self, in_dim=1, hidden=64):
+        super().__init__()
+        self.trunk = nn.Sequential(
+            nn.Linear(in_dim, hidden), nn.ReLU(),
+            nn.Linear(hidden, hidden), nn.ReLU(),
+        )
+        self.head_mu = nn.Linear(hidden, 1)
+        self.log_var_const = nn.Parameter(torch.zeros(1))
+
+    def forward(self, x):
+        h = self.trunk(x)
+        mu = self.head_mu(h)
+        log_var = self.log_var_const.expand_as(mu)
+        return mu, log_var
+
+
+def train_homo(x_tr, theta_tr, x_va, theta_va,
+               n_epochs=80, batch_size=256, lr=1e-3, hidden=64, seed=SEED):
+    torch.manual_seed(seed)
+    m = GaussianHeadHomo(in_dim=x_tr.shape[1], hidden=hidden)
+    opt = optim.Adam(m.parameters(), lr=lr)
+    n = x_tr.shape[0]
+    for _ in range(n_epochs):
+        perm = torch.randperm(n)
+        for i in range(0, n, batch_size):
+            idx = perm[i:i + batch_size]
+            opt.zero_grad()
+            mu, lv = m(x_tr[idx])
+            loss = gaussian_nll(theta_tr[idx], mu, lv)
+            loss.backward(); opt.step()
+    return m
+
+
+model_homo = train_homo(x_tr, theta_tr, x_va, theta_va)
+
+# Pick two x_obs from opposite ends of the range: tight (small θ)
+# and wide (θ near π/4).
+fig, axes = plt.subplots(1, 2, figsize=(10, 3), sharey=True)
+for ax, theta_t in zip(axes, [0.15, 0.70]):
     xo = float(sim.simulate_summary(np.array([theta_t]), n_balls=N_BALLS,
                                     rng=np.random.default_rng(int(1000 * theta_t)))[0])
     with torch.no_grad():
-        mu_i, log_var_i = model(torch.tensor([[xo]], dtype=torch.float32))
-        mu_i = mu_i.item(); sg_i = float(torch.exp(0.5 * log_var_i).item())
-    q = (1 / (sg_i * np.sqrt(2 * np.pi))) * np.exp(
-        -0.5 * ((theta_grid - mu_i) / sg_i) ** 2
-    )
-    _, ptrue_i = sim.true_posterior(xo, n_balls=N_BALLS, theta_grid=theta_grid)
-    ax.plot(theta_grid, ptrue_i, color=col, lw=1.2, alpha=0.4)
-    ax.plot(theta_grid, q, color=col, lw=1.5, ls="--",
-            label=fr"$\theta_{{\rm true}}={theta_t}$")
-    ax.axvline(theta_t, color=col, lw=0.6, alpha=0.5)
-ax.set_xlabel(r"$\theta$"); ax.set_ylabel("density")
-ax.set_title("amortised Gaussian-head posteriors")
-ax.legend(); fig.tight_layout(); plt.show()
+        mh, lh = model(torch.tensor([[xo]], dtype=torch.float32))      # heteroscedastic
+        mH, lH = model_homo(torch.tensor([[xo]], dtype=torch.float32))  # homoscedastic
+    mh, sh = mh.item(), float(torch.exp(0.5 * lh).item())
+    mH, sH = mH.item(), float(torch.exp(0.5 * lH).item())
+    g = lambda m_, s_: (1 / (s_ * np.sqrt(2 * np.pi))) * np.exp(-0.5 * ((theta_grid - m_) / s_) ** 2)
+    _, p_ref = sim.true_posterior(xo, n_balls=N_BALLS, theta_grid=theta_grid)
+    ax.plot(theta_grid, p_ref, "k-", lw=1.2, label="reference")
+    ax.plot(theta_grid, g(mh, sh), "C0--", lw=1.5, label=fr"heteroscedastic ($\sigma={sh:.3f}$)")
+    ax.plot(theta_grid, g(mH, sH), "C3--", lw=1.5, label=fr"homoscedastic ($\sigma={sH:.3f}$)")
+    ax.axvline(theta_t, color="0.5", lw=0.6)
+    ax.set_xlabel(r"$\theta$"); ax.set_title(fr"$\theta_{{\rm true}} = {theta_t}$")
+    ax.legend(fontsize=8)
+axes[0].set_ylabel("density")
+fig.tight_layout(); plt.show()
+
+# %% [markdown]
+# Read the two panels.
+#
+# - At `θ_true ≈ 0.15`, the reference posterior is *narrow*. The
+#   heteroscedastic model matches it; the homoscedastic one is too
+#   wide — it has learned the population-average variance.
+# - At `θ_true ≈ 0.70` (near the prior edge), the reference posterior
+#   is *wide*. The heteroscedastic model matches; the homoscedastic
+#   one is now too narrow — overconfident in exactly the regime where
+#   uncertainty is highest.
+#
+# The mean predictions can still be fine in both cases. The model is
+# failing on *width*, not location. This is the lesson Block 2 hangs
+# on: the choice of density family matters, and even a "small"
+# restriction (force `σ²` to be a scalar) destroys calibration where
+# it matters most. Lecture 3 generalises this — flows, FM, diffusion
+# all relax the family in more interesting ways than just letting
+# `σ²(x)` move.
 
 # %% [markdown]
 # ### 2.7 — Prior dependence
