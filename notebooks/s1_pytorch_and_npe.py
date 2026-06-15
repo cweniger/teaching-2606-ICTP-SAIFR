@@ -184,6 +184,34 @@ plt.show()
 #
 # Forgetting step 1 silently *adds* gradients across iterations and is
 # the most common PyTorch bug.
+#
+# **What `.grad` actually is.** Each `nn.Parameter` carries a `.grad`
+# attribute — a tensor of the same shape, initially `None`. Three
+# rules to internalise:
+#
+# - `loss.backward()` *adds* the freshly computed gradient into
+#   `.grad` for every parameter on the computation graph. It does not
+#   overwrite.
+# - `opt.zero_grad()` walks every parameter the optimizer owns and
+#   resets its `.grad` to zero.
+# - `opt.step()` reads `.grad` and applies the update rule (Adam,
+#   SGD, etc.).
+#
+# Why does `backward()` accumulate rather than overwrite? Because it
+# lets you sum gradients from multiple losses or simulate a larger
+# effective batch by calling `backward()` a few times before
+# stepping. In a normal training loop you want exactly one fresh
+# gradient per step, so the explicit `zero_grad()` is mandatory.
+#
+# You can inspect `.grad` directly. After the loop above, the first
+# linear layer's weight has a populated gradient buffer; if we call
+# `zero_grad()` it returns to zero.
+
+# %%
+W0 = model.net[0].weight
+print("after training, .grad norm:", float(W0.grad.norm()))
+opt.zero_grad()
+print("after zero_grad,  .grad norm:", float(W0.grad.norm()))
 
 # %% [markdown]
 # ### ✏️ EXERCISE 1.A — your turn
