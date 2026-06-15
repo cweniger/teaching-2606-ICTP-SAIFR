@@ -163,14 +163,19 @@ fig.tight_layout(); plt.show()
 # **The five steps, and the one bug.** `zero_grad → forward → loss →
 # backward → step`. Each `nn.Parameter` carries a `.grad` buffer;
 # `backward()` *adds* into it (it does not overwrite), `zero_grad()`
-# resets it, `step()` reads it and updates. Forgetting step 1 silently
+# clears it, `step()` reads it and updates. Forgetting step 1 silently
 # accumulates gradients across iterations and is the most common
 # PyTorch bug. You can watch the buffer fill and empty:
+#
+# (One subtlety: by default `zero_grad()` frees the buffer entirely,
+# setting `.grad` back to `None` rather than to a tensor of zeros,
+# because that is faster. We pass `set_to_none=False` here just so we
+# can read off a literal zero norm.)
 
 # %%
 W0 = model.net[0].weight
-print("after backward, .grad norm:", float(W0.grad.norm()))
-opt.zero_grad()
+print("after backward,  .grad norm:", float(W0.grad.norm()))
+opt.zero_grad(set_to_none=False)        # zero the buffer in place so we can see it
 print("after zero_grad, .grad norm:", float(W0.grad.norm()))
 
 # %% [markdown]
