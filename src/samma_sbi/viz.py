@@ -11,6 +11,37 @@ import numpy as np
 from matplotlib.patches import Arc
 
 
+def credible_levels(density, masses=(0.95, 0.68)):
+    """Iso-density contour levels enclosing given probability mass.
+
+    Given a 2-D ``density`` sampled on a *regular* grid, return the
+    iso-density levels that bound the smallest regions containing each of
+    ``masses`` of the total probability: the highest-density credible
+    regions. Feed the result to ``matplotlib``'s ``contour(levels=...)``
+    so that each contour means "the 68% / 95% credible region" rather
+    than an arbitrary iso-density value (which is what ``levels=6`` gives
+    you, and why those contours look random).
+
+    The density need not be normalised; only relative values matter, so
+    the grid spacing cancels.
+
+    Parameters
+    ----------
+    density : 2-D array of non-negative density values on a regular grid.
+    masses  : probability masses to enclose, e.g. ``(0.95, 0.68)``.
+
+    Returns
+    -------
+    Sorted (increasing) list of levels, ready for ``contour(levels=...)``.
+    """
+    flat = np.sort(np.asarray(density, dtype=float).ravel())[::-1]  # descending
+    csum = np.cumsum(flat)
+    csum /= csum[-1]                                                # cumulative mass
+    n = flat.size
+    levels = [float(flat[min(int(np.searchsorted(csum, m)), n - 1)]) for m in masses]
+    return sorted(set(levels))
+
+
 def plot_cannon_throw(
     theta: float,
     v0: float = 10.0,
@@ -134,4 +165,4 @@ def plot_cannon_throw(
     return ax
 
 
-__all__ = ["plot_cannon_throw"]
+__all__ = ["plot_cannon_throw", "credible_levels"]

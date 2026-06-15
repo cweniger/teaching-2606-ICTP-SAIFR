@@ -39,6 +39,7 @@ import torch.optim as optim
 from tqdm.auto import trange   # progress bars; tqdm.auto picks the right style for Colab
 
 from samma_sbi.simulators import BallThrow, GWChirp
+from samma_sbi.viz import credible_levels   # 68% / 95% contour levels from a density grid
 
 SEED = 0
 torch.manual_seed(SEED)
@@ -465,13 +466,14 @@ def show_posterior(theta_t, seed, title):
 
     fig = plt.figure(figsize=(10, 4))
     ax = fig.add_subplot(1, 2, 1)
-    ax.contour(*np.meshgrid(mc_g, dl_g, indexing="ij"), p_ref, levels=6,
-               colors="k", linewidths=0.8)
-    ax.contour(*np.meshgrid(mc_g, dl_g, indexing="ij"), p_npe, levels=6,
-               colors="C0", linewidths=1.2)
+    # contour the 68% and 95% credible regions, not arbitrary iso-density lines
+    ax.contour(*np.meshgrid(mc_g, dl_g, indexing="ij"), p_ref,
+               levels=credible_levels(p_ref), colors="k", linewidths=0.8)
+    ax.contour(*np.meshgrid(mc_g, dl_g, indexing="ij"), p_npe,
+               levels=credible_levels(p_npe), colors="C0", linewidths=1.2)
     ax.plot(*theta_t, "C3*", ms=13)
     ax.set_xlabel(r"$M_c\ [M_\odot]$"); ax.set_ylabel(r"$d_L$ [Mpc]")
-    ax.set_title(f"{title}\nblack = exact, blue = NPE  (rho={rho:+.2f})")
+    ax.set_title(f"{title}\nblack = exact, blue = NPE  (68% / 95%, rho={rho:+.2f})")
     # marginals
     axm = fig.add_subplot(2, 2, 2)
     pm = p_ref.sum(1); pm = pm / (pm.sum() * (mc_g[1] - mc_g[0]))
@@ -549,8 +551,8 @@ try:
 
     mc_g, dl_g, p_ref = sim.true_posterior_summary(s_obs, n_mc=120, n_dl=120)
     plt.figure(figsize=(5.5, 4.5))
-    plt.contour(*np.meshgrid(mc_g, dl_g, indexing="ij"), p_ref, levels=6,
-                colors="k", linewidths=0.8)
+    plt.contour(*np.meshgrid(mc_g, dl_g, indexing="ij"), p_ref,
+                levels=credible_levels(p_ref), colors="k", linewidths=0.8)
     plt.scatter(samples[:, 0], samples[:, 1], s=3, alpha=0.15, color="C2")
     plt.plot(*theta_t, "C3*", ms=13)
     plt.xlabel(r"$M_c\ [M_\odot]$"); plt.ylabel(r"$d_L$ [Mpc]")
