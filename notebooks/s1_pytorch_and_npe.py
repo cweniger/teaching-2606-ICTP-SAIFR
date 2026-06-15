@@ -1,31 +1,31 @@
 # %% [markdown]
 # [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/cweniger/teaching-2606-ICTP-SAIFR/blob/main/notebooks/s1_pytorch_and_npe.ipynb)
 #
-# # Session 1 — PyTorch crash + Gaussian-head NPE
+# # Session 1 — Train and dissect an MLP, then build your first amortised posterior
 #
-# **Hands-on session 1 (after Lecture 2). Runs on a laptop CPU.**
+# **Hands-on session 1 (after Lecture 2). Runs on a laptop CPU. ~60 min.**
 #
-# Two blocks:
+# In the lectures you *watched* MLPs train. Here you run the training
+# loop yourself, then take the trained network apart to see what it
+# learned. Two blocks:
 #
-# 1. **PyTorch crash (~30 min).** Tensors, `autograd`, `nn.Module`,
-#    `torch.optim`, the canonical training loop. We end with an MLP that
-#    fits `sin(x)` so that you have run a real training loop *yourself*
-#    before any SBI machinery appears.
-# 2. **Gaussian-head NPE on the ball-throw (~45 min).** Build the
-#    simplest neural posterior estimator from scratch using the
-#    primitives from Block 1: a small MLP whose output is the mean and
-#    log-variance of a Gaussian `q_φ(θ | x)`, trained on
-#    `(θ_i, x_i)` pairs from the simulator. Validate against the
-#    analytic reference posterior; then change the prior and watch the
-#    posterior follow it.
+# 1. **Train and dissect an MLP (~38 min).** The PyTorch training loop
+#    from the Lecture 2b slides, run by your own hand on a 1D toy.
+#    Then look inside: the learned hidden features (the "learnable
+#    basis" from the slides), the effect of the learning rate,
+#    overfitting made visible, and spectral bias.
+# 2. **Your first amortised posterior (~22 min).** Rebuild the
+#    homoscedastic Gaussian band from Lecture 2a,
+#    `q_φ(θ|x) = N(μ_θ(x), σ_θ²)`, in PyTorch. Train it on the
+#    ball-throw simulator and validate against the *exact* analytic
+#    posterior. You end on a cliffhanger: the single shared width is
+#    visibly wrong near the edge of the prior, which is exactly what
+#    Session 2 fixes.
 #
-# Block 3 (your APP-flavoured example of choice) lives in a separate
-# notebook (`s1_app_<choice>.ipynb`).
-#
-# **Why this order.** Until you have written `loss.backward()` and
-# `optimizer.step()` with your own hands, the lecture description of NPE
-# is a mystery. After Block 1, NPE in Block 2 is just *fit a parametrised
-# distribution by minimising NLL*, which you have now done.
+# **Session 2 (the GW example)** picks up from that cliffhanger: a
+# width that depends on `x` (heteroscedastic), a real
+# gravitational-wave simulator, and the normalising flows that finally
+# capture the awkward posterior shapes.
 
 # %%
 # Always reinstall to pick up the latest from main — pip would otherwise
@@ -47,68 +47,55 @@ torch.manual_seed(SEED)
 np.random.seed(SEED)
 
 # %% [markdown]
+# **Notation bridge.** The Lecture 2 slides and the PyTorch code use
+# different names for the same things. Keep this table handy:
+#
+# | On the slides | In the code |
+# |---|---|
+# | parameters `φ` (all weights/biases) | `model.parameters()` |
+# | loss `E(φ)` | `loss` |
+# | learning rate `η` | `lr` |
+# | mean curve `μ_θ(x)` | the network output `mu` |
+# | noise width `σ_θ` | a learned scalar (Block 2) |
+# | gradient step `φ ← φ − η ∇E` | `opt.step()` |
+
+# %% [markdown]
 # ---
 #
-# ## Block 1 — PyTorch crash
+# ## Block 1 — Train and dissect an MLP
 #
-# Skip this block only if you have already trained a network in PyTorch
-# yourself. Reading tutorials does not count.
+# ### 1.1 — Tensors and autograd
 #
-# ### 1.1 — Tensors
-#
-# A `torch.Tensor` is a multi-dim array with two extra properties: it can
-# live on a GPU, and it can carry gradient information. Otherwise it
-# behaves almost exactly like a numpy array.
+# A `torch.Tensor` behaves almost exactly like a numpy array, with one
+# extra power: if you set `requires_grad=True`, PyTorch records every
+# operation you do to it and can compute derivatives automatically.
+# That mechanism (autograd) is the whole reason we use PyTorch instead
+# of numpy.
 
 # %%
 a = torch.tensor([1.0, 2.0, 3.0])
 b = torch.arange(3, dtype=torch.float32)
-print("a =", a)
-print("b =", b)
-print("a + b =", a + b)
-print("a.shape =", a.shape, "  a.dtype =", a.dtype)
+print("a + b      =", a + b)            # elementwise, like numpy
+print("a.shape    =", a.shape, " a.dtype =", a.dtype)
 
-# %% [markdown]
-# **Broadcasting.** Same rules as numpy: dimensions of size 1 stretch to
-# match. This is how a batch of inputs flows through a single weight
-# matrix without writing a `for` loop.
-
-# %%
-W = torch.randn(4, 3)        # 4 outputs, 3 inputs
-x_batch = torch.randn(8, 3)  # batch of 8 inputs
-# Matrix-multiply each row of x_batch by W^T
-y_batch = x_batch @ W.T      # shape (8, 4)
-print("y_batch.shape =", y_batch.shape)
-
-# %% [markdown]
-# **GPU vs CPU.** We do not need a GPU for any of today's exercises, but
-# the pattern is worth seeing once.
-
-# %%
-device = "cuda" if torch.cuda.is_available() else "cpu"
-print("Running on:", device)
-a_on_device = a.to(device)
-# Computations between tensors must happen on the same device.
-
-# %% [markdown]
-# ### 1.2 — Autograd in one line
-#
-# Set `requires_grad=True` on the tensors you want to optimise. PyTorch
-# records every operation, and `loss.backward()` populates `.grad` for
-# all of them.
-
-# %%
+# Autograd in one line: define y(x), call .backward(), read x.grad.
 x = torch.tensor(2.0, requires_grad=True)
 y = x ** 3 + 2 * x
 y.backward()
-print("dy/dx at x=2:", x.grad.item(), "  (expected: 3*4 + 2 = 14)")
+print("dy/dx at x=2:", x.grad.item(), "  (expected 3*4 + 2 = 14)")
 
 # %% [markdown]
-# ### 1.3 — `nn.Module`
+# That `.backward()` call is the *exact* same mechanism that will
+# compute the gradient of the loss with respect to every weight in a
+# network. Nothing more magic happens at scale; there are just more
+# tensors carrying `.grad`.
 #
-# A `Module` bundles parameters with a `forward` method. Parameters
-# defined as `nn.Parameter` (or wrapped inside `nn.Linear`, `nn.Conv2d`,
-# etc.) are auto-registered and show up in `model.parameters()`.
+# ### 1.2 — An MLP as an `nn.Module`
+#
+# On the Lecture 2b slides you saw the math-to-code mirror for a small
+# network. Here is that network. An `nn.Module` bundles parameters with
+# a `forward` method; everything wrapped in `nn.Linear` is
+# auto-registered and shows up in `model.parameters()`.
 
 # %%
 class TinyMLP(nn.Module):
@@ -131,10 +118,11 @@ print(model)
 print("Trainable parameters:", sum(p.numel() for p in model.parameters()))
 
 # %% [markdown]
-# ### 1.4 — The canonical training loop
+# ### 1.3 — The training loop
 #
-# Goal: fit `f(x) = sin(x)` on `x ∈ [-π, π]` with the MLP above. This is
-# the pattern you will reuse for every neural network in this school.
+# Goal: fit `f(x) = sin(x)` on `x ∈ [-π, π]`. This five-step loop is the
+# skeleton of every training run in the school; you saw it on the
+# slides, now run it.
 
 # %%
 # Data
@@ -150,11 +138,11 @@ opt = optim.Adam(model.parameters(), lr=1e-3)
 # Training loop
 losses = []
 for step in range(2000):
-    opt.zero_grad()              # 1. clear old gradients
-    y_pred = model(x_train)      # 2. forward pass
-    loss = loss_fn(y_pred, y_train)  # 3. compute loss
-    loss.backward()              # 4. backward pass: fill .grad
-    opt.step()                   # 5. optimizer step: update params
+    opt.zero_grad()                  # 1. clear gradient buffers
+    y_pred = model(x_train)          # 2. forward pass
+    loss = loss_fn(y_pred, y_train)  # 3. compute the loss E(φ)
+    loss.backward()                  # 4. backward pass: fill every .grad
+    opt.step()                       # 5. gradient step: φ ← φ − η ∇E
     losses.append(loss.item())
 
 print(f"Final training loss: {losses[-1]:.2e}")
@@ -169,60 +157,69 @@ with torch.no_grad():
 ax_fit.plot(x_train.numpy().ravel(), y_train.numpy().ravel(), "k-", lw=1.5, label="truth")
 ax_fit.plot(x_train.numpy().ravel(), y_fit, "C0--", lw=1.5, label="MLP fit")
 ax_fit.set_xlabel("x"); ax_fit.set_ylabel("y"); ax_fit.legend(); ax_fit.set_title(r"$y=\sin(x)$ fit")
-fig.tight_layout()
-plt.show()
+fig.tight_layout(); plt.show()
 
 # %% [markdown]
-# **Five steps to memorise.** Every training loop in this school has the
-# same skeleton:
-#
-# 1. `opt.zero_grad()` — clear gradient buffers.
-# 2. forward pass — compute predictions.
-# 3. compute the loss.
-# 4. `loss.backward()` — populate `.grad`.
-# 5. `opt.step()` — take a gradient step.
-#
-# Forgetting step 1 silently *adds* gradients across iterations and is
-# the most common PyTorch bug.
-#
-# **What `.grad` actually is.** Each `nn.Parameter` carries a `.grad`
-# attribute — a tensor of the same shape, initially `None`. Three
-# rules to internalise:
-#
-# - `loss.backward()` *adds* the freshly computed gradient into
-#   `.grad` for every parameter on the computation graph. It does not
-#   overwrite.
-# - `opt.zero_grad()` walks every parameter the optimizer owns and
-#   resets its `.grad` to zero.
-# - `opt.step()` reads `.grad` and applies the update rule (Adam,
-#   SGD, etc.).
-#
-# Why does `backward()` accumulate rather than overwrite? Because it
-# lets you sum gradients from multiple losses or simulate a larger
-# effective batch by calling `backward()` a few times before
-# stepping. In a normal training loop you want exactly one fresh
-# gradient per step, so the explicit `zero_grad()` is mandatory.
-#
-# You can inspect `.grad` directly. After the loop above, the first
-# linear layer's weight has a populated gradient buffer; if we call
-# `zero_grad()` it returns to zero.
+# **The five steps, and the one bug.** `zero_grad → forward → loss →
+# backward → step`. Each `nn.Parameter` carries a `.grad` buffer;
+# `backward()` *adds* into it (it does not overwrite), `zero_grad()`
+# resets it, `step()` reads it and updates. Forgetting step 1 silently
+# accumulates gradients across iterations and is the most common
+# PyTorch bug. You can watch the buffer fill and empty:
 
 # %%
 W0 = model.net[0].weight
-print("after training, .grad norm:", float(W0.grad.norm()))
+print("after backward, .grad norm:", float(W0.grad.norm()))
 opt.zero_grad()
-print("after zero_grad,  .grad norm:", float(W0.grad.norm()))
+print("after zero_grad, .grad norm:", float(W0.grad.norm()))
 
 # %% [markdown]
+# ### 1.4 — Look inside: the learned hidden features
+#
+# On the slides, a one-hidden-layer network was described as a
+# *learnable basis*: the output is a weighted sum of `H` simple
+# functions `g(v_j·x + b_j)`, one per hidden unit, whose shapes the
+# network learns. Our 1D toy lets us *see* those basis functions
+# directly. Below we plot a handful of the last hidden layer's
+# activations as functions of `x`, next to the network output they sum
+# to.
+
+# %%
+with torch.no_grad():
+    xg = torch.linspace(-np.pi, np.pi, 400).unsqueeze(1)
+    h = xg
+    for layer in model.net[:-1]:     # everything except the final Linear
+        h = layer(h)
+    feats = h.numpy()                # (400, hidden) last-hidden activations
+    y_out = model(xg).numpy().ravel()
+xg = xg.numpy().ravel()
+
+fig, (axL, axR) = plt.subplots(1, 2, figsize=(10, 3.4))
+step = max(1, feats.shape[1] // 8)
+for j in range(0, feats.shape[1], step):
+    axL.plot(xg, feats[:, j], lw=1)
+axL.set_xlabel("x"); axL.set_title(r"a few learned hidden features $g(v_j x + b_j)$")
+axR.plot(xg, np.sin(xg), "k-", lw=1.5, label="truth")
+axR.plot(xg, y_out, "C0--", lw=1.5, label="MLP output")
+axR.set_xlabel("x"); axR.legend(); axR.set_title("output = weighted sum of those features")
+fig.tight_layout(); plt.show()
+
+# %% [markdown]
+# Each hidden feature is a piecewise-linear ReLU "kink". The network
+# learned *where* to put each kink and *how strongly* to weight it, so
+# that their sum traces `sin(x)`. That is the entire content of "a
+# neural network is a learnable basis": no kink alone looks like a
+# sine, but a few dozen of them combine into one.
+#
 # ### ✏️ EXERCISE 1.A — your turn
 #
-# Replace `sin(x)` with `cos(2x)`, retrain, and plot. You should not
-# need to change anything other than the target.
+# Change the target from `sin(x)` to `cos(2x)`, retrain, and plot. You
+# should not need to change anything except the target.
 
 # %%
 # TODO — your code here.
-# Hint: change y_train, re-instantiate the model and optimizer, run the
-# same five-step loop.
+# Hint: set a new y target, re-instantiate the model and optimizer, run
+# the same five-step loop.
 
 
 # %%
@@ -244,34 +241,134 @@ with torch.no_grad():
     plt.tight_layout(); plt.show()
 
 # %% [markdown]
-# ### ✏️ EXERCISE 1.B — break it, then fix it
+# ### A reusable training helper
 #
-# Now push the target frequency up: try fitting `cos(k * x)` with
-# `k = 4`, then `k = 8`, then `k = 12`. At some point the same
-# 32-hidden-unit MLP, trained for the same 2000 steps with the same
-# learning rate, will visibly fail — the fit will look like a smooth
-# under-resolved approximation of the truth.
+# To experiment quickly we wrap the same five steps into two small
+# helpers: `build_mlp` makes a plain `Sequential` MLP (same thing as
+# `TinyMLP`, written inline), and `train_regression` runs the loop and
+# returns the loss history.
+
+# %%
+def build_mlp(hidden=32, n_layers=2, in_dim=1, out_dim=1):
+    layers = [nn.Linear(in_dim, hidden), nn.ReLU()]
+    for _ in range(n_layers - 1):
+        layers += [nn.Linear(hidden, hidden), nn.ReLU()]
+    layers += [nn.Linear(hidden, out_dim)]
+    return nn.Sequential(*layers)
+
+
+def train_regression(model, x, y, n_steps=2000, lr=1e-3):
+    opt = optim.Adam(model.parameters(), lr=lr)
+    losses = []
+    for _ in range(n_steps):
+        opt.zero_grad()
+        loss = nn.functional.mse_loss(model(x), y)
+        loss.backward(); opt.step()
+        losses.append(loss.item())
+    return losses
+
+# %% [markdown]
+# ### ✏️ EXERCISE 1.B — the learning rate is the most important knob
 #
-# That failure is real and is called *spectral bias*: vanilla MLPs
-# fit low-frequency targets much more easily than high-frequency ones.
+# The learning rate `η` (`lr`) sets how big each gradient step is. Too
+# small and training crawls; too large and it overshoots and may
+# diverge. Train the `sin(x)` fit with `lr ∈ {1e-4, 1e-3, 1e-2, 1e-1}`
+# and plot the four loss curves on the same (log-scale) axes. Which one
+# converges fastest? Which one blows up or oscillates?
 #
-# Once you have found a `k` where the default network clearly breaks,
-# try to recover the fit by turning the obvious knobs:
+# This is the step-size / curvature picture from the Lecture 2b slides,
+# now under your control.
+
+# %%
+# TODO — your code here.
+# Hint: for each lr, build a fresh MLP (seed it first for a fair
+# comparison) and call train_regression; collect the loss lists.
+
+
+# %%
+# @title Reference solution { display-mode: "form" }
+plt.figure(figsize=(5.5, 3.2))
+for lr in [1e-4, 1e-3, 1e-2, 1e-1]:
+    torch.manual_seed(0)                 # same init for a fair comparison
+    m = build_mlp(hidden=32, n_layers=2)
+    curve = train_regression(m, x_train, y_train, n_steps=1500, lr=lr)
+    plt.semilogy(curve, label=f"lr = {lr:g}")
+plt.xlabel("step"); plt.ylabel("MSE loss"); plt.legend(fontsize=8)
+plt.title("effect of the learning rate"); plt.tight_layout(); plt.show()
+
+# %% [markdown]
+# Typical reading: `1e-3` is the sweet spot here; `1e-4` is correct but
+# slow; `1e-2` is faster but noisier; `1e-1` is too large and the loss
+# jumps around or rises. There is no universal best value: it depends
+# on the problem and the optimizer. Adam (what we use) is more
+# forgiving than plain SGD, which is why it is the default.
 #
-# - more hidden units (`hidden = 128`, `256`),
-# - more layers (add a third or fourth `Linear → ReLU` block),
-# - more training steps (5000, 10000),
-# - different learning rate (`lr = 3e-3`, `1e-4`).
+# ### 1.5 — Overfitting made visible
 #
-# Which knob helps most? Which one is fighting the spectral bias and
-# which one just smooths over poor optimisation? Keep the answer in
-# mind; we will see the same trade-offs reappear when we choose
-# architectures for `q_φ(θ | x)`.
+# Lecture 2a drew the U-shaped validation curve; Lecture 2b-extra
+# motivated early stopping. Here it is on real code. We fit a *big*
+# network to a *small, noisy* training set and watch the validation
+# loss (measured on a dense, clean grid) turn upward even as the
+# training loss keeps falling.
+
+# %%
+torch.manual_seed(0)
+n_small = 15
+x_small = torch.linspace(-np.pi, np.pi, n_small).unsqueeze(1)
+y_small = torch.sin(x_small) + 0.1 * torch.randn_like(x_small)   # noisy labels
+x_dense = torch.linspace(-np.pi, np.pi, 400).unsqueeze(1)        # clean validation
+y_dense = torch.sin(x_dense)
+
+big = build_mlp(hidden=128, n_layers=3)
+opt = optim.Adam(big.parameters(), lr=1e-3)
+tr_curve, va_curve, steps = [], [], []
+for s in range(6000):
+    opt.zero_grad()
+    l = nn.functional.mse_loss(big(x_small), y_small)
+    l.backward(); opt.step()
+    if s % 25 == 0:
+        with torch.no_grad():
+            tr_curve.append(l.item())
+            va_curve.append(nn.functional.mse_loss(big(x_dense), y_dense).item())
+            steps.append(s)
+
+fig, (axc, axf) = plt.subplots(1, 2, figsize=(10, 3.4))
+axc.semilogy(steps, tr_curve, label="train (15 noisy points)")
+axc.semilogy(steps, va_curve, label="val (clean grid)")
+axc.set_xlabel("step"); axc.set_ylabel("MSE"); axc.legend(fontsize=8)
+axc.set_title("training keeps falling; validation turns up")
+with torch.no_grad():
+    axf.plot(x_dense.numpy().ravel(), y_dense.numpy().ravel(), "k-", lw=1.5, label="truth")
+    axf.plot(x_dense.numpy().ravel(), big(x_dense).numpy().ravel(), "C3--", lw=1.5, label="overfit MLP")
+axf.plot(x_small.numpy().ravel(), y_small.numpy().ravel(), "ko", ms=4, label="training points")
+axf.set_xlabel("x"); axf.legend(fontsize=8); axf.set_title("the fit wiggles through the noise")
+fig.tight_layout(); plt.show()
+
+# %% [markdown]
+# The network has enough capacity to thread every noisy training point,
+# so the training loss goes to near zero, but in doing so it invents
+# oscillations that are not in the truth: the validation loss rises.
+# *Early stopping* means: keep the model from the step where validation
+# was lowest, not the final one. **Try it:** drop `n_small` to 8, or
+# raise `hidden` to 256, and watch the gap grow.
+#
+# ### ✏️ EXERCISE 1.C — break it with frequency (spectral bias)
+#
+# Now a different failure. Push the target frequency up: fit `cos(k·x)`
+# with `k = 4`, then `8`, then `12`. At some point the default
+# 32-unit, 2-layer MLP, trained for the same number of steps, visibly
+# fails: the fit becomes a smooth under-resolved version of the truth.
+#
+# This is *spectral bias* (the Lecture 2b-extra slide): networks fit
+# low-frequency structure long before high-frequency structure. Once
+# you find a `k` that breaks the default network, try to recover it
+# with the obvious knobs (more units, more layers, more steps). Does
+# scaling fix it, or just postpone the failure to higher `k`?
 
 # %%
 # TODO — your code here.
 # 1. Crank k up to a value where the default MLP visibly fails.
-# 2. Try one or two architectural fixes and re-plot.
+# 2. Try one or two scaling fixes and re-plot.
 
 
 # %%
@@ -279,87 +376,64 @@ with torch.no_grad():
 def fit_cos_kx(k, hidden=32, n_layers=2, n_steps=2000, lr=1e-3, seed=0):
     torch.manual_seed(seed)
     y = torch.cos(k * x_train)
-    layers = [nn.Linear(1, hidden), nn.ReLU()]
-    for _ in range(n_layers - 1):
-        layers += [nn.Linear(hidden, hidden), nn.ReLU()]
-    layers += [nn.Linear(hidden, 1)]
-    model = nn.Sequential(*layers)
-    opt = optim.Adam(model.parameters(), lr=lr)
-    for _ in range(n_steps):
-        opt.zero_grad()
-        loss = nn.functional.mse_loss(model(x_train), y)
-        loss.backward(); opt.step()
+    m = build_mlp(hidden=hidden, n_layers=n_layers)
+    train_regression(m, x_train, y, n_steps=n_steps, lr=lr)
     with torch.no_grad():
-        return model(x_train).numpy().ravel(), float(loss)
+        return m(x_train).numpy().ravel()
 
 
 fig, axes = plt.subplots(1, 3, figsize=(13, 3), sharey=True)
 xv = x_train.numpy().ravel()
 # (a) default network on a high frequency — breaks
-y_pred, loss = fit_cos_kx(k=12)
 axes[0].plot(xv, np.cos(12 * xv), "k-", lw=1.2, label="truth")
-axes[0].plot(xv, y_pred, "C3--", lw=1.5, label=f"default MLP (loss {loss:.2g})")
-axes[0].set_title(r"$\cos(12x)$ — 32 hidden, 2 layers, 2k steps")
-axes[0].legend(fontsize=8)
+axes[0].plot(xv, fit_cos_kx(k=12), "C3--", lw=1.5, label="default MLP")
+axes[0].set_title(r"$\cos(12x)$ — 32 hidden, 2 layers, 2k steps"); axes[0].legend(fontsize=8)
 # (b) wider + deeper + longer
-y_pred, loss = fit_cos_kx(k=12, hidden=256, n_layers=4, n_steps=8000)
 axes[1].plot(xv, np.cos(12 * xv), "k-", lw=1.2, label="truth")
-axes[1].plot(xv, y_pred, "C2--", lw=1.5, label=f"wider/deeper (loss {loss:.2g})")
-axes[1].set_title("256 hidden, 4 layers, 8k steps")
-axes[1].legend(fontsize=8)
-# (c) push even further — spectral bias remains visible
-y_pred, loss = fit_cos_kx(k=20, hidden=256, n_layers=4, n_steps=8000)
+axes[1].plot(xv, fit_cos_kx(k=12, hidden=256, n_layers=4, n_steps=8000), "C2--", lw=1.5, label="wider/deeper")
+axes[1].set_title("256 hidden, 4 layers, 8k steps"); axes[1].legend(fontsize=8)
+# (c) push higher still — spectral bias returns
 axes[2].plot(xv, np.cos(20 * xv), "k-", lw=1.2, label="truth")
-axes[2].plot(xv, y_pred, "C1--", lw=1.5, label=f"$\\cos(20x)$ (loss {loss:.2g})")
-axes[2].set_title("same big MLP, even higher frequency")
-axes[2].legend(fontsize=8)
+axes[2].plot(xv, fit_cos_kx(k=20, hidden=256, n_layers=4, n_steps=8000), "C1--", lw=1.5, label=r"$\cos(20x)$")
+axes[2].set_title("same big MLP, even higher frequency"); axes[2].legend(fontsize=8)
 fig.tight_layout(); plt.show()
 
 # %% [markdown]
-# What the three panels show:
+# The default MLP under-fits `cos(12x)`; scaling it up recovers that
+# target; but push to `cos(20x)` and the bigger network gives up too.
+# Scaling does not *remove* spectral bias, it just moves the failure to
+# higher frequencies. Genuinely fixing it needs architectural tricks
+# (Fourier features) that are beyond today.
 #
-# - **(a) default MLP, `cos(12x)`** — clear under-fit. The network
-#   essentially averages out the high-frequency oscillations.
-# - **(b) wider + deeper + longer** — the same target now sits cleanly
-#   inside the fit. Scaling and longer training go a long way against
-#   spectral bias.
-# - **(c) push higher still** — at `cos(20x)`, even the bigger MLP
-#   gives up. Scaling does not *eliminate* spectral bias; it just
-#   pushes the failure to higher frequencies. Properly fixing this in
-#   general needs architectural tricks (Fourier features, sinusoidal
-#   positional encodings) that are beyond Session 1.
+# **You have now seen an MLP from the inside:** the loop that trains
+# it, the learned basis it builds, the learning rate that controls it,
+# and the two ways it fails (overfitting, spectral bias). Everything
+# from here is putting that same machinery to work.
 
 # %% [markdown]
 # ---
 #
-# ## Block 2 — Gaussian-head NPE on the ball-throw
+# ## Block 2 — Your first amortised posterior
 #
-# We now build the simplest neural posterior estimator. Given a
-# simulator that produces pairs `(θ, x)`, we train a network that takes
-# an observation `x` and returns the parameters of a Gaussian over
-# `θ`:
+# We now use an MLP for inference. The setup is exactly Lecture 2a's
+# **Gaussian band**: model the conditional density of the parameter
+# given the data as a Gaussian whose mean is an MLP and whose width is
+# a single shared number,
 #
-# $$ q_\phi(\theta \mid x) = \mathcal{N}\bigl(\theta;\ \mu_\phi(x),\ \sigma_\phi^2(x)\bigr). $$
+# $$ q_\phi(\theta \mid x) = \mathcal{N}\bigl(\theta;\ \mu_\theta(x),\ \sigma_\theta^2\bigr). $$
 #
-# The training loss is the *negative log-likelihood of the Gaussian
-# evaluated at the true `θ_i`*, averaged over the training set:
+# We train it on `(θ, x)` pairs from a simulator by minimising the
+# Gaussian negative log-likelihood. Because the network maps *any* `x`
+# to a posterior in one forward pass, inference is **amortised**: train
+# once, evaluate on as many observations as you like. This is the
+# simplest possible neural posterior estimator (NPE).
 #
-# $$ \mathcal{L}(\phi) = \tfrac{1}{N} \sum_i
-# \tfrac{1}{2} \left[ \tfrac{(\theta_i - \mu_\phi(x_i))^2}{\sigma_\phi^2(x_i)} + \log \sigma_\phi^2(x_i) \right] + \text{const}. $$
+# ### 2.1 — Simulator and summary
 #
-# That is *all* there is to NPE conceptually. The rest of the school is
-# either better choices for the distribution family `q_φ` (flows,
-# diffusion, FM), better inputs (summary networks), or diagnostics.
-#
-# ### 2.1 — Simulator and summary statistic
-#
-# The ball-throw simulator from Lecture 1b. We restrict the prior to
-# `(0.05, π/4)` so that the mapping `θ → r(θ)` is one-to-one — the
-# Gaussian head can plausibly capture this posterior. (We will come back
-# to the wider, bimodal prior in Session 2 when we have flows.)
-#
-# The observation is the **mean** of `n_balls = 10` landings, which is
-# the same summary used in Demo 2 of Lecture 1b.
+# The ball-throw from Lecture 1b. We restrict the prior to `(0.05, π/4)`
+# so the range map `θ → r(θ)` is one-to-one (no bimodality yet). The
+# observation is the **mean** of `n_balls = 10` landings, the summary
+# from Demo 2 of Lecture 1b.
 
 # %%
 N_BALLS = 10
@@ -372,15 +446,10 @@ for t, xi in zip(theta_demo, x_demo):
     print(f"theta = {t:.3f} rad   ->   x_summary = {xi:.3f} m")
 
 # %% [markdown]
-# ### 2.2 — Training set: simulate `(θ, x)` pairs
+# ### 2.2 — Training set
 #
-# Two natural design choices:
-#
-# - **Number of training pairs `N_TRAIN`.** Each pair costs `n_balls`
-#   simulator calls. We use `N_TRAIN = 4000` so the whole training set
-#   fits on a laptop and trains in seconds.
-# - **Train/val split.** A held-out validation set lets us monitor
-#   over-fitting honestly. We use a 90/10 split.
+# We draw `N_TRAIN = 4000` pairs (cheap, trains in seconds on a laptop)
+# and hold out a 10% validation set so we can monitor honest loss.
 
 # %%
 def simulate_dataset(sim, n_pairs, n_balls, rng):
@@ -395,87 +464,82 @@ N_TRAIN, N_VAL = 4000, 400
 rng = np.random.default_rng(SEED)
 theta_tr, x_tr = simulate_dataset(sim, N_TRAIN, N_BALLS, rng)
 theta_va, x_va = simulate_dataset(sim, N_VAL, N_BALLS, rng)
-print("train:", theta_tr.shape, x_tr.shape)
-print("val:  ", theta_va.shape, x_va.shape)
+print("train:", theta_tr.shape, "  val:", theta_va.shape)
 
 # %% [markdown]
-# Quick sanity plot: the (θ, x) joint cloud should trace the noise-free
-# range function plus Gaussian scatter of width `σ / √n_balls`.
+# The joint `(θ, x)` cloud traces the noise-free range curve plus
+# scatter of width `σ/√n_balls`. Reading this cloud column-by-column at
+# a fixed `x` is exactly the conditional density `q(θ|x)` from the
+# Lecture 2a slides.
 
 # %%
-theta_grid = np.linspace(sim.prior_low, sim.prior_high, 200)
+theta_grid = np.linspace(sim.prior_low, sim.prior_high, 1001)
 plt.figure(figsize=(4.5, 3))
 plt.scatter(theta_tr.numpy(), x_tr.numpy(), s=2, alpha=0.3, label="training pairs")
 plt.plot(theta_grid, sim.range_mean(theta_grid), "k-", lw=1.5, label=r"$r(\theta)$")
-plt.xlabel(r"$\theta$ [rad]"); plt.ylabel("x (mean landing)"); plt.legend(); plt.tight_layout(); plt.show()
+plt.xlabel(r"$\theta$ [rad]"); plt.ylabel("x (mean landing)"); plt.legend()
+plt.tight_layout(); plt.show()
 
 # %% [markdown]
-# ### 2.3 — The Gaussian-head model
+# ### ✏️ EXERCISE 2.A — build the Gaussian band
 #
-# A small MLP that takes `x` and outputs two numbers: the mean `μ(x)`
-# and the **log-variance** `log σ²(x)`. We output log-variance (not
-# variance) so the network is free to predict any real number while
-# `σ²` stays positive.
+# The mean `μ_θ(x)` is a small MLP. The width is **homoscedastic**:
+# one single learned number `σ_θ`, shared across every `x` (exactly
+# Lecture 2a). We store it as a learned `log σ²` so it stays positive,
+# via an `nn.Parameter`.
 #
-# ### ✏️ EXERCISE 2.A — implement `GaussianHead.forward`
-#
-# Fill in the `forward` method so that it returns `(mu, log_var)` —
-# both of shape `(batch, 1)`. The body of the network is provided.
+# Fill in `forward` so it returns `(mu, log_var)`, both of shape
+# `(batch, 1)`. The `log_var` is the *same* scalar for every row in the
+# batch, broadcast to the batch shape.
 
 # %%
-class GaussianHead(nn.Module):
+class GaussianBand(nn.Module):
     def __init__(self, in_dim=1, hidden=64):
         super().__init__()
-        self.trunk = nn.Sequential(
-            nn.Linear(in_dim, hidden),
-            nn.ReLU(),
-            nn.Linear(hidden, hidden),
-            nn.ReLU(),
+        self.mu_net = nn.Sequential(
+            nn.Linear(in_dim, hidden), nn.ReLU(),
+            nn.Linear(hidden, hidden), nn.ReLU(),
+            nn.Linear(hidden, 1),
         )
-        self.head_mu = nn.Linear(hidden, 1)
-        self.head_logvar = nn.Linear(hidden, 1)
+        self.log_var = nn.Parameter(torch.zeros(1))  # one shared log-variance
 
     def forward(self, x):
         # TODO — your code here.
-        # 1. run x through self.trunk
-        # 2. apply self.head_mu and self.head_logvar to the trunk output
+        # 1. mu = self.mu_net(x)                 -> shape (batch, 1)
+        # 2. log_var broadcast to mu's shape     -> self.log_var.expand_as(mu)
         # 3. return (mu, log_var)
-        raise NotImplementedError("implement GaussianHead.forward")
+        raise NotImplementedError("implement GaussianBand.forward")
 
 
 # %%
 # @title Reference solution { display-mode: "form" }
-class GaussianHead(nn.Module):  # noqa: F811
+class GaussianBand(nn.Module):  # noqa: F811
     def __init__(self, in_dim=1, hidden=64):
         super().__init__()
-        self.trunk = nn.Sequential(
-            nn.Linear(in_dim, hidden),
-            nn.ReLU(),
-            nn.Linear(hidden, hidden),
-            nn.ReLU(),
+        self.mu_net = nn.Sequential(
+            nn.Linear(in_dim, hidden), nn.ReLU(),
+            nn.Linear(hidden, hidden), nn.ReLU(),
+            nn.Linear(hidden, 1),
         )
-        self.head_mu = nn.Linear(hidden, 1)
-        self.head_logvar = nn.Linear(hidden, 1)
+        self.log_var = nn.Parameter(torch.zeros(1))
 
     def forward(self, x):
-        h = self.trunk(x)
-        mu = self.head_mu(h)
-        log_var = self.head_logvar(h)
+        mu = self.mu_net(x)
+        log_var = self.log_var.expand_as(mu)
         return mu, log_var
 
 
 # %% [markdown]
-# ### 2.4 — Gaussian negative log-likelihood
-#
-# ### ✏️ EXERCISE 2.B — implement `gaussian_nll`
+# ### ✏️ EXERCISE 2.B — the Gaussian negative log-likelihood
 #
 # Implement the per-sample Gaussian NLL,
 #
 # $$ \ell(\theta;\ \mu, \log\sigma^2) =
-# \tfrac{1}{2}\!\left[\tfrac{(\theta-\mu)^2}{\sigma^2} + \log\sigma^2\right] $$
+# \tfrac{1}{2}\!\left[\tfrac{(\theta-\mu)^2}{\sigma^2} + \log\sigma^2\right], $$
 #
-# averaged over the batch. Drop the additive constant `½ log(2π)`; it
-# does not affect the gradient.
+# averaged over the batch. Drop the constant `½ log(2π)`; it has no
+# gradient. This is the loss `E(φ)` from Lecture 2a, with `σ` now
+# learned jointly with the mean.
 
 # %%
 def gaussian_nll(theta, mu, log_var):
@@ -492,347 +556,112 @@ def gaussian_nll(theta, mu, log_var):  # noqa: F811
 
 
 # %% [markdown]
-# ### 2.5 — Train the model
+# ### 2.3 — Train
 #
-# Same five-step loop you wrote in Block 1, now with the Gaussian NLL,
-# mini-batches, and a validation pass.
+# The same five-step loop, now with mini-batches and a validation pass
+# each epoch.
 
 # %%
-def train_gaussian_npe(
-    x_tr, theta_tr, x_va, theta_va,
-    n_epochs=80, batch_size=256, lr=1e-3, hidden=64, seed=SEED,
-):
+def train_band(x_tr, theta_tr, x_va, theta_va,
+               n_epochs=80, batch_size=256, lr=1e-3, hidden=64, seed=SEED):
     torch.manual_seed(seed)
-    model = GaussianHead(in_dim=x_tr.shape[1], hidden=hidden)
+    model = GaussianBand(in_dim=x_tr.shape[1], hidden=hidden)
     opt = optim.Adam(model.parameters(), lr=lr)
-
     n = x_tr.shape[0]
-    train_curve, val_curve = [], []
-    for epoch in range(n_epochs):
-        # shuffle indices for mini-batching
+    tr_curve, va_curve = [], []
+    for _ in range(n_epochs):
         perm = torch.randperm(n)
-        ep_train = 0.0
+        ep = 0.0
         for i in range(0, n, batch_size):
             idx = perm[i:i + batch_size]
             opt.zero_grad()
             mu, log_var = model(x_tr[idx])
             loss = gaussian_nll(theta_tr[idx], mu, log_var)
-            loss.backward()
-            opt.step()
-            ep_train += loss.item() * idx.numel()
-        ep_train /= n
+            loss.backward(); opt.step()
+            ep += loss.item() * idx.numel()
+        tr_curve.append(ep / n)
         with torch.no_grad():
-            mu_v, log_var_v = model(x_va)
-            ep_val = gaussian_nll(theta_va, mu_v, log_var_v).item()
-        train_curve.append(ep_train)
-        val_curve.append(ep_val)
-    return model, np.array(train_curve), np.array(val_curve)
+            mu_v, lv_v = model(x_va)
+            va_curve.append(gaussian_nll(theta_va, mu_v, lv_v).item())
+    return model, np.array(tr_curve), np.array(va_curve)
 
 
-model, tr_curve, va_curve = train_gaussian_npe(
-    x_tr, theta_tr, x_va, theta_va
-)
+model_band, tr_curve, va_curve = train_band(x_tr, theta_tr, x_va, theta_va)
 
 plt.figure(figsize=(5, 3))
-plt.plot(tr_curve, label="train")
-plt.plot(va_curve, label="val")
+plt.plot(tr_curve, label="train"); plt.plot(va_curve, label="val")
 plt.xlabel("epoch"); plt.ylabel("Gaussian NLL"); plt.legend()
-plt.title("Gaussian-head NPE — training"); plt.tight_layout(); plt.show()
+plt.title("Gaussian band — training"); plt.tight_layout(); plt.show()
 
 # %% [markdown]
-# Train and val should both decrease and stay close to each other. If
-# `val` plateaus while `train` keeps falling, you are over-fitting —
-# usually a sign that the network is too large for the dataset.
+# ### 2.4 — Validate, amortise, and meet the cliffhanger
 #
-# ### 2.6 — Posterior at a chosen observation
-#
-# Generate a single `x_obs` from a known `θ_true`, evaluate the
-# Gaussian head, and compare with the analytic reference posterior on a
-# fine grid.
+# The decisive test: this is a 1D problem, so we have the *exact*
+# analytic posterior on a grid (`sim.true_posterior`). We sweep several
+# true `θ` values across the prior, simulate one `x_obs` for each, and
+# overlay the trained band's posterior on the analytic truth. The
+# **same** network produces all of them with no retraining: that is
+# amortisation.
 
 # %%
-theta_true = float(np.array([0.55]))  # somewhere inside the prior
-x_obs = float(sim.simulate_summary(np.array([theta_true]), n_balls=N_BALLS,
-                                   rng=np.random.default_rng(123))[0])
-
-with torch.no_grad():
-    mu, log_var = model(torch.tensor([[x_obs]], dtype=torch.float32))
-    mu, sigma = mu.item(), float(torch.exp(0.5 * log_var).item())
-
-theta_grid = np.linspace(sim.prior_low, sim.prior_high, 1001)
-q_phi = (1 / (sigma * np.sqrt(2 * np.pi))) * np.exp(
-    -0.5 * ((theta_grid - mu) / sigma) ** 2
-)
-_, p_true = sim.true_posterior(x_obs, n_balls=N_BALLS, theta_grid=theta_grid)
-
-plt.figure(figsize=(5.5, 3))
-plt.plot(theta_grid, p_true, "k-", lw=1.5, label="reference posterior")
-plt.plot(theta_grid, q_phi, "C0--", lw=1.5,
-         label=fr"$q_\phi(\theta|x)$: $\mathcal{{N}}({mu:.3f},\,{sigma:.3f}^2)$")
-plt.axvline(theta_true, color="C3", lw=1, label=r"$\theta_{\rm true}$")
-plt.xlabel(r"$\theta$"); plt.ylabel("density"); plt.legend()
-plt.title(f"Gaussian-head NPE at x_obs = {x_obs:.3f}")
-plt.tight_layout(); plt.show()
-
-# %% [markdown]
-# In this regime (one-to-one `r(θ)`, well-inside the prior) the
-# Gaussian head sits almost on top of the analytic posterior. That is
-# the cleanest validation we can give NPE without resorting to flows.
-
-# %% [markdown]
-# ### ✏️ EXERCISE 2.C — evaluate outside the training domain
-#
-# The network was only ever shown `x_obs` values that the prior could
-# plausibly produce: the maximum noise-free range is
-# `r(π/4) = v₀²/g ≈ 10.2 m`, and with the summary noise of
-# `σ/√n_balls ≈ 0.1 m` essentially every training `x` lies in
-# `[0.5, 10.3]`. What does the network do when you feed it an
-# `x_obs` that lives well outside this range?
-#
-# Try `x_obs = 14.0` (impossible — nothing in the prior could
-# produce this) and also `x_obs = -1.0` (negative range). Evaluate
-# `q_φ(θ | x_obs)` and compare to the reference posterior on the
-# grid. The reference is allowed to look weird at the boundary; the
-# point is that the network *will not warn you* — it returns a
-# perfectly confident Gaussian for any input you give it.
-#
-# *Take-away.* Amortised inference is only trustworthy on `x_obs`
-# values that look like the simulator's outputs. Out-of-distribution
-# detection is a real concern in practice and not something the
-# Gaussian head provides for free.
-
-# %%
-# TODO — your code here.
-# Pick two OOD x_obs values, evaluate q_phi, plot alongside the
-# reference posterior.
-
-
-# %%
-# @title Reference solution { display-mode: "form" }
-fig, axes = plt.subplots(1, 2, figsize=(10, 3), sharey=True)
-for ax, x_ood in zip(axes, [14.0, -1.0]):
+def band_curve(model, x_obs, grid):
     with torch.no_grad():
-        mu_o, lv_o = model(torch.tensor([[x_ood]], dtype=torch.float32))
-        mu_o = mu_o.item(); sg_o = float(torch.exp(0.5 * lv_o).item())
-    q = (1 / (sg_o * np.sqrt(2 * np.pi))) * np.exp(
-        -0.5 * ((theta_grid - mu_o) / sg_o) ** 2
-    )
-    _, p_ref = sim.true_posterior(x_ood, n_balls=N_BALLS, theta_grid=theta_grid)
-    ax.plot(theta_grid, p_ref, "k-", lw=1.2, label="reference")
-    ax.plot(theta_grid, q, "C0--", lw=1.5,
-            label=fr"$q_\phi$: $\mathcal{{N}}({mu_o:.2f},\,{sg_o:.2f}^2)$")
-    ax.set_xlabel(r"$\theta$")
-    ax.set_title(f"x_obs = {x_ood} (out of distribution)")
-    ax.legend(fontsize=8)
-axes[0].set_ylabel("density")
-fig.tight_layout(); plt.show()
-
-# %% [markdown]
-# Notice that the network confidently outputs *some* Gaussian for
-# both inputs, even though no realistic `θ` could have produced
-# either observation. The width is roughly the typical training-time
-# width; the mean is wherever the network's extrapolation lands. The
-# reference posterior, by contrast, piles up at the closest possible
-# boundary and is essentially zero everywhere.
-#
-# ### ✏️ EXERCISE 2.D — make the width `x`-independent
-#
-# Here is the more interesting failure mode: what if we hobble the
-# *density family* and ask the network to use a single, learned
-# variance that does **not** depend on `x`?
-#
-# For the ball-throw with prior `(0.05, π/4)`, the noise-free range
-# `r(θ) = (v₀²/g) sin(2θ)` flattens near `θ → π/4` — so a fixed
-# observation noise translates into a *wide* posterior near the
-# prior edge and a *tight* posterior near `θ = 0.05`. The width
-# genuinely depends on `x_obs`. A homoscedastic model is forced to
-# pick the average; it will be visibly overconfident on some
-# observations and visibly underconfident on others.
-#
-# Implement `GaussianHeadHomo` below by making `log_var` a *single
-# learned scalar* (use `nn.Parameter`) instead of a function of `x`.
-# Re-use the same training loop and compare against the
-# heteroscedastic baseline at two well-separated `x_obs`.
-
-# %%
-class GaussianHeadHomo(nn.Module):
-    """Same trunk as GaussianHead but with a single, x-independent log-variance."""
-
-    def __init__(self, in_dim=1, hidden=64):
-        super().__init__()
-        self.trunk = nn.Sequential(
-            nn.Linear(in_dim, hidden), nn.ReLU(),
-            nn.Linear(hidden, hidden), nn.ReLU(),
-        )
-        self.head_mu = nn.Linear(hidden, 1)
-        # TODO — your code here.
-        # Add a single learnable log-variance parameter (hint: nn.Parameter(torch.zeros(1))).
-        # In forward(), return mu of shape (batch, 1) and log_var broadcast to (batch, 1).
-        raise NotImplementedError("implement GaussianHeadHomo")
-
-    def forward(self, x):
-        raise NotImplementedError("implement GaussianHeadHomo.forward")
+        mu, log_var = model(torch.tensor([[x_obs]], dtype=torch.float32))
+    mu = mu.item(); sg = float(torch.exp(0.5 * log_var).item())
+    dens = (1 / (sg * np.sqrt(2 * np.pi))) * np.exp(-0.5 * ((grid - mu) / sg) ** 2)
+    return dens, mu, sg
 
 
-# %%
-# @title Reference solution { display-mode: "form" }
-class GaussianHeadHomo(nn.Module):  # noqa: F811
-    def __init__(self, in_dim=1, hidden=64):
-        super().__init__()
-        self.trunk = nn.Sequential(
-            nn.Linear(in_dim, hidden), nn.ReLU(),
-            nn.Linear(hidden, hidden), nn.ReLU(),
-        )
-        self.head_mu = nn.Linear(hidden, 1)
-        self.log_var_const = nn.Parameter(torch.zeros(1))
-
-    def forward(self, x):
-        h = self.trunk(x)
-        mu = self.head_mu(h)
-        log_var = self.log_var_const.expand_as(mu)
-        return mu, log_var
-
-
-def train_homo(x_tr, theta_tr, x_va, theta_va,
-               n_epochs=80, batch_size=256, lr=1e-3, hidden=64, seed=SEED):
-    torch.manual_seed(seed)
-    m = GaussianHeadHomo(in_dim=x_tr.shape[1], hidden=hidden)
-    opt = optim.Adam(m.parameters(), lr=lr)
-    n = x_tr.shape[0]
-    for _ in range(n_epochs):
-        perm = torch.randperm(n)
-        for i in range(0, n, batch_size):
-            idx = perm[i:i + batch_size]
-            opt.zero_grad()
-            mu, lv = m(x_tr[idx])
-            loss = gaussian_nll(theta_tr[idx], mu, lv)
-            loss.backward(); opt.step()
-    return m
-
-
-model_homo = train_homo(x_tr, theta_tr, x_va, theta_va)
-
-# Pick two x_obs from opposite ends of the range: tight (small θ)
-# and wide (θ near π/4).
-fig, axes = plt.subplots(1, 2, figsize=(10, 3), sharey=True)
-for ax, theta_t in zip(axes, [0.15, 0.70]):
-    xo = float(sim.simulate_summary(np.array([theta_t]), n_balls=N_BALLS,
-                                    rng=np.random.default_rng(int(1000 * theta_t)))[0])
-    with torch.no_grad():
-        mh, lh = model(torch.tensor([[xo]], dtype=torch.float32))      # heteroscedastic
-        mH, lH = model_homo(torch.tensor([[xo]], dtype=torch.float32))  # homoscedastic
-    mh, sh = mh.item(), float(torch.exp(0.5 * lh).item())
-    mH, sH = mH.item(), float(torch.exp(0.5 * lH).item())
-    g = lambda m_, s_: (1 / (s_ * np.sqrt(2 * np.pi))) * np.exp(-0.5 * ((theta_grid - m_) / s_) ** 2)
-    _, p_ref = sim.true_posterior(xo, n_balls=N_BALLS, theta_grid=theta_grid)
-    ax.plot(theta_grid, p_ref, "k-", lw=1.2, label="reference")
-    ax.plot(theta_grid, g(mh, sh), "C0--", lw=1.5, label=fr"heteroscedastic ($\sigma={sh:.3f}$)")
-    ax.plot(theta_grid, g(mH, sH), "C3--", lw=1.5, label=fr"homoscedastic ($\sigma={sH:.3f}$)")
-    ax.axvline(theta_t, color="0.5", lw=0.6)
+theta_trues = [0.15, 0.45, 0.70]
+fig, axes = plt.subplots(1, 3, figsize=(13, 3.2), sharey=True)
+for ax, theta_t in zip(axes, theta_trues):
+    x_obs = float(sim.simulate_summary(np.array([theta_t]), n_balls=N_BALLS,
+                                       rng=np.random.default_rng(int(1000 * theta_t)))[0])
+    q, mu, sg = band_curve(model_band, x_obs, theta_grid)
+    _, p_true = sim.true_posterior(x_obs, n_balls=N_BALLS, theta_grid=theta_grid)
+    ax.plot(theta_grid, p_true, "k-", lw=1.5, label="exact posterior")
+    ax.plot(theta_grid, q, "C0--", lw=1.5, label="Gaussian band")
+    ax.axvline(theta_t, color="C3", lw=1)
     ax.set_xlabel(r"$\theta$"); ax.set_title(fr"$\theta_{{\rm true}} = {theta_t}$")
     ax.legend(fontsize=8)
 axes[0].set_ylabel("density")
+fig.suptitle("one trained network, three observations (amortised)")
 fig.tight_layout(); plt.show()
 
 # %% [markdown]
-# Read the two panels.
+# **Read the three panels.** The *mean* is excellent everywhere: the
+# network has learned to predict `θ` from `x` across the whole prior,
+# in one forward pass. The *width* is the interesting part. It is a
+# single shared number, so it cannot be right everywhere:
 #
-# - At `θ_true ≈ 0.15`, the reference posterior is *narrow*. The
-#   heteroscedastic model matches it; the homoscedastic one is too
-#   wide — it has learned the population-average variance.
-# - At `θ_true ≈ 0.70` (near the prior edge), the reference posterior
-#   is *wide*. The heteroscedastic model matches; the homoscedastic
-#   one is now too narrow — overconfident in exactly the regime where
-#   uncertainty is highest.
+# - near `θ = 0.15` the true posterior is **narrow** (the range curve
+#   is steep, so a small `x` error pins `θ` tightly), but the band is
+#   too wide;
+# - near `θ = 0.70` the true posterior is **wide** (the range curve
+#   flattens toward `π/4`, so the same `x` error allows a broad range
+#   of `θ`), but the band is too narrow, i.e. overconfident exactly
+#   where you should be least sure.
 #
-# The mean predictions can still be fine in both cases. The model is
-# failing on *width*, not location. This is the lesson Block 2 hangs
-# on: the choice of density family matters, and even a "small"
-# restriction (force `σ²` to be a scalar) destroys calibration where
-# it matters most. Lecture 3 generalises this — flows, FM, diffusion
-# all relax the family in more interesting ways than just letting
-# `σ²(x)` move.
-
-# %% [markdown]
-# ### 2.7 — Prior dependence
-#
-# A subtle point that is easy to miss: **the NPE posterior is
-# prior-conditional**, in a way the rejection-ABC posterior never is.
-# We trained `q_φ` on `(θ, x)` pairs drawn from one specific prior;
-# if you change the prior, the optimum `q_φ` changes too, even at the
-# same `x_obs`.
-#
-# We illustrate this by retraining on a *narrower* prior and comparing
-# the two posteriors at one common `x_obs`.
-
-# %%
-sim_narrow = BallThrow(prior_low=0.40, prior_high=np.pi / 4)
-rng = np.random.default_rng(SEED + 1)
-theta_tr_n, x_tr_n = simulate_dataset(sim_narrow, N_TRAIN, N_BALLS, rng)
-theta_va_n, x_va_n = simulate_dataset(sim_narrow, N_VAL, N_BALLS, rng)
-
-model_n, _, _ = train_gaussian_npe(
-    x_tr_n, theta_tr_n, x_va_n, theta_va_n
-)
-
-# Pick an x_obs that is plausible under *both* priors.
-x_obs2 = float(sim.simulate_summary(np.array([0.55]), n_balls=N_BALLS,
-                                    rng=np.random.default_rng(7))[0])
-
-def gaussian_curve(model, x_obs, grid):
-    with torch.no_grad():
-        mu, log_var = model(torch.tensor([[x_obs]], dtype=torch.float32))
-        mu = mu.item(); sg = float(torch.exp(0.5 * log_var).item())
-    return (1 / (sg * np.sqrt(2 * np.pi))) * np.exp(
-        -0.5 * ((grid - mu) / sg) ** 2
-    ), mu, sg
-
-
-q_wide, mu_w, sg_w = gaussian_curve(model, x_obs2, theta_grid)
-q_narr, mu_n, sg_n = gaussian_curve(model_n, x_obs2, theta_grid)
-
-plt.figure(figsize=(6, 3.2))
-plt.axvspan(sim.prior_low, sim.prior_high, color="C0", alpha=0.08,
-            label="wide prior")
-plt.axvspan(sim_narrow.prior_low, sim_narrow.prior_high, color="C3", alpha=0.12,
-            label="narrow prior")
-plt.plot(theta_grid, q_wide, "C0-", lw=1.7,
-         label=fr"wide-prior NPE: $\mathcal{{N}}({mu_w:.3f},\,{sg_w:.3f}^2)$")
-plt.plot(theta_grid, q_narr, "C3-", lw=1.7,
-         label=fr"narrow-prior NPE: $\mathcal{{N}}({mu_n:.3f},\,{sg_n:.3f}^2)$")
-plt.axvline(0.55, color="k", lw=0.8, label=r"$\theta_{\rm true}$")
-plt.xlabel(r"$\theta$"); plt.ylabel("density"); plt.legend(fontsize=8)
-plt.title("Same x_obs, two priors, two NPE posteriors")
-plt.tight_layout(); plt.show()
-
-# %% [markdown]
-# **Read this carefully.** The two networks see *exactly the same*
-# `x_obs`. They produce different posteriors because they have been
-# trained to approximate `p(θ | x)` under different priors. The
-# narrow-prior network has effectively *no* training pairs from the
-# tails of the wide prior, so it has no way to express posterior mass
-# there. Out-of-distribution `x_obs` (say, an `x` that would only ever
-# be produced by `θ < 0.4`) would simply be mis-handled by the
-# narrow-prior network with no warning.
-#
-# This is the practical price of amortisation: **the prior is baked in
-# at training time**.
+# The true posterior width genuinely depends on `x`. A homoscedastic
+# model is mathematically incapable of expressing that. This is the
+# limit of Lecture 2a's Gaussian band, and it is the cliffhanger for
+# Session 2.
 #
 # ---
 #
 # ## Where this lands you
 #
-# - You have written the entire NPE training loop yourself, from the
-#   five-step PyTorch skeleton up to amortised evaluation.
-# - You have a working baseline on a one-parameter problem you can
-#   solve analytically.
-# - You have seen, explicitly, that the NPE posterior depends on the
-#   training-time prior.
+# - You ran the MLP training loop yourself and dissected the network:
+#   its learned basis, its learning rate, and its failure modes.
+# - You rebuilt Lecture 2a's Gaussian band in PyTorch and used it as an
+#   amortised neural posterior estimator on the ball-throw, validated
+#   against the exact posterior.
+# - You found the band's wall: a single shared width cannot track an
+#   `x`-dependent posterior width.
 #
-# **Next:** open `s1_app_<your_choice>.ipynb` and apply the *same*
-# `GaussianHead` + `gaussian_nll` machinery to a real
-# astroparticle-physics-flavoured simulator (gravitational waves,
-# cosmic-ray spectrum, or point sources in images). In Session 2 we
-# revisit your APP result with normalising flows, learned summary
-# networks, and SBC diagnostics — and discover what the Gaussian head
-# was hiding.
+# **Session 2 (the gravitational-wave example)** starts right here. The
+# first upgrade is a width that depends on `x` (a *heteroscedastic*
+# head, `σ_θ(x)`). Then we point the same machinery at a real GW
+# simulator, and finally swap the Gaussian for a normalising flow when
+# even an `x`-dependent Gaussian is not flexible enough for the true
+# posterior shape.
