@@ -1,9 +1,9 @@
 # %% [markdown]
 # [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/cweniger/teaching-2606-ICTP-SAIFR/blob/main/notebooks/s1_pytorch_and_npe.ipynb)
 #
-# # Session 1 — Train and dissect an MLP, then build your first amortised posterior
+# # Session 1A — Train and dissect an MLP, then build your first amortised posterior
 #
-# **Hands-on session 1 (after Lecture 2). Runs on a laptop CPU. ~60 min.**
+# **Hands-on session 1A (after Lecture 2). Runs on a laptop CPU. ~60 min.**
 #
 # In the lectures you *watched* MLPs train. Here you run the training
 # loop yourself, then take the trained network apart to see what it
@@ -20,9 +20,9 @@
 #    ball-throw simulator and validate against the *exact* analytic
 #    posterior. You end on a cliffhanger: the single shared width is
 #    visibly wrong near the edge of the prior, which is exactly what
-#    Session 2 fixes.
+#    Session 1B fixes.
 #
-# **Session 2 (the GW example)** picks up from that cliffhanger: a
+# **Session 1B (the GW example)** picks up from that cliffhanger: a
 # width that depends on `x` (heteroscedastic), a real
 # gravitational-wave simulator, and the normalising flows that finally
 # capture the awkward posterior shapes.
@@ -657,7 +657,7 @@ fig.tight_layout(); plt.show()
 # The true posterior width genuinely depends on `x`. A homoscedastic
 # model is mathematically incapable of expressing that. This is the
 # limit of Lecture 2a's Gaussian band, and it is the cliffhanger for
-# Session 2.
+# Session 1B.
 #
 # ---
 #
@@ -671,7 +671,7 @@ fig.tight_layout(); plt.show()
 # - You found the band's wall: a single shared width cannot track an
 #   `x`-dependent posterior width.
 #
-# **Session 2 (the gravitational-wave example)** starts right here. The
+# **Session 1B (the gravitational-wave example)** starts right here. The
 # first upgrade is a width that depends on `x` (a *heteroscedastic*
 # head, `σ_θ(x)`). Then we point the same machinery at a real GW
 # simulator, and finally swap the Gaussian for a normalising flow when

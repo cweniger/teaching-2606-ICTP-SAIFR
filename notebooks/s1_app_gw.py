@@ -1,9 +1,9 @@
 # %% [markdown]
 # [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/cweniger/teaching-2606-ICTP-SAIFR/blob/main/notebooks/s1_app_gw.ipynb)
 #
-# # Session 2 — A real(istic) inference problem: a gravitational-wave chirp
+# # Session 1B — A real(istic) inference problem: a gravitational-wave chirp
 #
-# **Hands-on session 2 (after Lecture 2/3). Runs on a laptop CPU. ~60 min.**
+# **Hands-on session 1B (after Lecture 2). Runs on a laptop CPU. ~60 min.**
 #
 # Session 1 ended on a cliffhanger. The Gaussian *band* you built,
 # `q_φ(θ|x) = N(μ_θ(x), σ_θ²)`, predicted the mean beautifully but used a
@@ -48,10 +48,10 @@ np.random.seed(SEED)
 # %% [markdown]
 # ---
 #
-# ## 1 — Close the Session-1 cliffhanger: let the width depend on `x`
+# ## 1 — Close the Session-1A cliffhanger: let the width depend on `x`
 #
 # Before the gravitational waves, a two-minute fix of the band. The only
-# change from Session 1 is that the log-variance is now a **second
+# change from Session 1A is that the log-variance is now a **second
 # output of the network**, `log σ²_θ(x)`, instead of one shared
 # `nn.Parameter`. That is the whole idea of a **heteroscedastic** head.
 # We show it on the same ball-throw, at the same two observations where
@@ -59,7 +59,7 @@ np.random.seed(SEED)
 
 # %%
 def gaussian_nll(theta, mu, log_var):
-    """1-D Gaussian NLL, averaged over the batch (from Session 1)."""
+    """1-D Gaussian NLL, averaged over the batch (from Session 1A)."""
     return 0.5 * (((theta - mu) ** 2) / torch.exp(log_var) + log_var).mean()
 
 
@@ -80,7 +80,7 @@ class HeteroBand1D(nn.Module):
         return self.head_mu(h), self.head_logvar(h)
 
 
-# Train on the ball-throw (same setup as Session 1, prior (0.05, pi/4)).
+# Train on the ball-throw (same setup as Session 1A, prior (0.05, pi/4)).
 N_BALLS = 10
 sim_bt = BallThrow(prior_low=0.05, prior_high=np.pi / 4)
 rng = np.random.default_rng(SEED)
@@ -125,7 +125,7 @@ fig.tight_layout(); plt.show()
 # %% [markdown]
 # The band is now **narrow** near `θ = 0.15` and **wide** near
 # `θ = 0.70`, matching the exact posterior at both. Letting `σ` be a
-# network output, not a constant, fixed the Session-1 cliffhanger. Keep
+# network output, not a constant, fixed the Session-1A cliffhanger. Keep
 # this idea; we use it again immediately, in 2-D.
 #
 # ---
