@@ -573,7 +573,7 @@ def gaussian_nll(theta, mu, log_var):  # noqa: F811
 
 # %%
 def train_band(x_tr, theta_tr, x_va, theta_va,
-               n_epochs=80, batch_size=256, lr=1e-3, hidden=64, seed=SEED):
+               n_epochs=400, batch_size=256, lr=2e-3, hidden=64, seed=SEED):
     torch.manual_seed(seed)
     model = GaussianBand(in_dim=x_tr.shape[1], hidden=hidden)
     opt = optim.Adam(model.parameters(), lr=lr)
