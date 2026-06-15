@@ -216,6 +216,92 @@ with torch.no_grad():
     plt.tight_layout(); plt.show()
 
 # %% [markdown]
+# ### ✏️ EXERCISE 1.B — break it, then fix it
+#
+# Now push the target frequency up: try fitting `cos(k * x)` with
+# `k = 4`, then `k = 8`, then `k = 12`. At some point the same
+# 32-hidden-unit MLP, trained for the same 2000 steps with the same
+# learning rate, will visibly fail — the fit will look like a smooth
+# under-resolved approximation of the truth.
+#
+# That failure is real and is called *spectral bias*: vanilla MLPs
+# fit low-frequency targets much more easily than high-frequency ones.
+#
+# Once you have found a `k` where the default network clearly breaks,
+# try to recover the fit by turning the obvious knobs:
+#
+# - more hidden units (`hidden = 128`, `256`),
+# - more layers (add a third or fourth `Linear → ReLU` block),
+# - more training steps (5000, 10000),
+# - different learning rate (`lr = 3e-3`, `1e-4`).
+#
+# Which knob helps most? Which one is fighting the spectral bias and
+# which one just smooths over poor optimisation? Keep the answer in
+# mind; we will see the same trade-offs reappear when we choose
+# architectures for `q_φ(θ | x)`.
+
+# %%
+# TODO — your code here.
+# 1. Crank k up to a value where the default MLP visibly fails.
+# 2. Try one or two architectural fixes and re-plot.
+
+
+# %%
+# @title Reference solution { display-mode: "form" }
+def fit_cos_kx(k, hidden=32, n_layers=2, n_steps=2000, lr=1e-3, seed=0):
+    torch.manual_seed(seed)
+    y = torch.cos(k * x_train)
+    layers = [nn.Linear(1, hidden), nn.ReLU()]
+    for _ in range(n_layers - 1):
+        layers += [nn.Linear(hidden, hidden), nn.ReLU()]
+    layers += [nn.Linear(hidden, 1)]
+    model = nn.Sequential(*layers)
+    opt = optim.Adam(model.parameters(), lr=lr)
+    for _ in range(n_steps):
+        opt.zero_grad()
+        loss = nn.functional.mse_loss(model(x_train), y)
+        loss.backward(); opt.step()
+    with torch.no_grad():
+        return model(x_train).numpy().ravel(), float(loss)
+
+
+fig, axes = plt.subplots(1, 3, figsize=(13, 3), sharey=True)
+xv = x_train.numpy().ravel()
+# (a) default network on a high frequency — breaks
+y_pred, loss = fit_cos_kx(k=12)
+axes[0].plot(xv, np.cos(12 * xv), "k-", lw=1.2, label="truth")
+axes[0].plot(xv, y_pred, "C3--", lw=1.5, label=f"default MLP (loss {loss:.2g})")
+axes[0].set_title(r"$\cos(12x)$ — 32 hidden, 2 layers, 2k steps")
+axes[0].legend(fontsize=8)
+# (b) wider + deeper + longer
+y_pred, loss = fit_cos_kx(k=12, hidden=256, n_layers=4, n_steps=8000)
+axes[1].plot(xv, np.cos(12 * xv), "k-", lw=1.2, label="truth")
+axes[1].plot(xv, y_pred, "C2--", lw=1.5, label=f"wider/deeper (loss {loss:.2g})")
+axes[1].set_title("256 hidden, 4 layers, 8k steps")
+axes[1].legend(fontsize=8)
+# (c) push even further — spectral bias remains visible
+y_pred, loss = fit_cos_kx(k=20, hidden=256, n_layers=4, n_steps=8000)
+axes[2].plot(xv, np.cos(20 * xv), "k-", lw=1.2, label="truth")
+axes[2].plot(xv, y_pred, "C1--", lw=1.5, label=f"$\\cos(20x)$ (loss {loss:.2g})")
+axes[2].set_title("same big MLP, even higher frequency")
+axes[2].legend(fontsize=8)
+fig.tight_layout(); plt.show()
+
+# %% [markdown]
+# What the three panels show:
+#
+# - **(a) default MLP, `cos(12x)`** — clear under-fit. The network
+#   essentially averages out the high-frequency oscillations.
+# - **(b) wider + deeper + longer** — the same target now sits cleanly
+#   inside the fit. Scaling and longer training go a long way against
+#   spectral bias.
+# - **(c) push higher still** — at `cos(20x)`, even the bigger MLP
+#   gives up. Scaling does not *eliminate* spectral bias; it just
+#   pushes the failure to higher frequencies. Properly fixing this in
+#   general needs architectural tricks (Fourier features, sinusoidal
+#   positional encodings) that are beyond Session 1.
+
+# %% [markdown]
 # ---
 #
 # ## Block 2 — Gaussian-head NPE on the ball-throw
