@@ -645,8 +645,9 @@
       <input type="range" id="dsurf-depth-slider" min="1" max="5" step="1" value="1" style="width:80px;"></label>
     <label>Width = <span id="dsurf-width-val">8</span>
       <input type="range" id="dsurf-width-slider" min="0" max="7" step="1" value="3" style="width:80px;"></label>
+    <div style="flex-basis:100%; height:0;"></div>
     <label>&eta; = <span id="dsurf-lr-val">0.010</span>
-      <input type="range" id="dsurf-lr-slider" min="-4" max="-1" step="0.1" value="-2" style="width:80px;"></label>
+      <input type="range" id="dsurf-lr-slider" min="-4" max="0" step="0.1" value="-2" style="width:140px;"></label>
     <button id="dsurf-train-btn" style="font-weight:600;">&#9654; Train</button>
     <button id="dsurf-reset-btn">&#8634; Reset</button>
     <span id="dsurf-epoch-label" style="color:#7f8c8d; font-size:0.9em;"></span>
@@ -1077,7 +1078,7 @@ function targetField(type, x1, x2) {
     var ep=[]; for(var i=0;i<lossHist.length;i++) ep.push(i);
     Plotly.react('surf-loss-plot',[
       {x:ep,y:lossHist,mode:'lines',line:{width:2,color:'#e74c3c'},name:'MSE'}
-    ],{xaxis:{title:'Step',range:[0,Math.max(epoch,10)]},yaxis:{title:'MSE (mean over all data)'},margin:{t:5,r:10,b:35,l:50},paper_bgcolor:'rgba(0,0,0,0)',plot_bgcolor:'rgba(0,0,0,0)',font:{size:12},showlegend:false},{displayModeBar:false});
+    ],{xaxis:{title:'Step',range:[0,Math.max(epoch,10)]},yaxis:{title:'MSE (mean over all data)',type:'log'},margin:{t:5,r:10,b:35,l:50},paper_bgcolor:'rgba(0,0,0,0)',plot_bgcolor:'rgba(0,0,0,0)',font:{size:12},showlegend:false},{displayModeBar:false});
     if(epoch<5000)animId=setTimeout(trainLoop,100);
   }
   document.getElementById('surf-train-btn').addEventListener('click',function(){if(animId){clearTimeout(animId);animId=null;return;}trainLoop();});
@@ -1124,22 +1125,24 @@ function targetField(type, x1, x2) {
       {x:px,y:py,mode:'markers',marker:{size:6,color:pc,colorscale:INFERNO,cmin:0,cmax:1,showscale:false,line:{width:1,color:'#fff'}},hoverinfo:'skip'}
     ],{xaxis:{title:'x₁',range:[-2,2]},yaxis:{title:'x₂',range:[-2,2],scaleanchor:'x'},margin:{t:5,r:10,b:35,l:45},paper_bgcolor:'rgba(0,0,0,0)',plot_bgcolor:'rgba(0,0,0,0)',font:{size:12},showlegend:false},{displayModeBar:false});
   }
+  var BATCH=64, STEPS_PER_FRAME=12;
   function trainStep(){
-    // Full-batch gradient descent: average the gradient over ALL training points.
+    // Mini-batch SGD: one gradient step on BATCH random points (mean gradient, step size = lr).
     var lr=Math.pow(10,parseFloat(document.getElementById('dsurf-lr-slider').value));
-    var N=data.X.length, perLr=lr/N, tl=0;
-    for(var i=0;i<N;i++){var p=net.forward(data.X[i]);var r=p-data.T[i];tl+=0.5*r*r;net.backward(data.T[i],perLr);}
-    lossHist.push(tl/N); epoch++;
-    document.getElementById('dsurf-epoch-label').textContent='Step '+epoch;
+    var N=data.X.length, perLr=lr/BATCH, rng=createRNG(epoch), bl=0;
+    for(var b=0;b<BATCH;b++){var i=Math.floor(rng()*N);var p=net.forward(data.X[i]);var r=p-data.T[i];bl+=0.5*r*r;net.backward(data.T[i],perLr);}
+    lossHist.push(bl/BATCH); epoch++;
   }
   function trainLoop(){
-    trainStep();
-    if(epoch%3===0) renderSurf();
+    // Several SGD updates per render — compute is cheap, the redraw is the bottleneck.
+    for(var s=0;s<STEPS_PER_FRAME;s++) trainStep();
+    renderSurf();
+    document.getElementById('dsurf-epoch-label').textContent='Update '+epoch;
     var ep=[]; for(var i=0;i<lossHist.length;i++) ep.push(i);
     Plotly.react('dsurf-loss-plot',[
-      {x:ep,y:lossHist,mode:'lines',line:{width:2,color:'#e74c3c'},name:'MSE'}
-    ],{xaxis:{title:'Step',range:[0,Math.max(epoch,10)]},yaxis:{title:'MSE (mean over all data)'},margin:{t:5,r:10,b:35,l:50},paper_bgcolor:'rgba(0,0,0,0)',plot_bgcolor:'rgba(0,0,0,0)',font:{size:12},showlegend:false},{displayModeBar:false});
-    if(epoch<5000)animId=setTimeout(trainLoop,100);
+      {x:ep,y:lossHist,mode:'lines',line:{width:1.5,color:'#e74c3c'},name:'Mini-batch MSE'}
+    ],{xaxis:{title:'Update',range:[0,Math.max(epoch,10)]},yaxis:{title:'Mini-batch MSE',type:'log'},margin:{t:5,r:10,b:35,l:50},paper_bgcolor:'rgba(0,0,0,0)',plot_bgcolor:'rgba(0,0,0,0)',font:{size:12},showlegend:false},{displayModeBar:false});
+    if(epoch<20000)animId=setTimeout(trainLoop,30);
   }
   document.getElementById('dsurf-train-btn').addEventListener('click',function(){if(animId){clearTimeout(animId);animId=null;return;}trainLoop();});
   document.getElementById('dsurf-reset-btn').addEventListener('click',reset);
