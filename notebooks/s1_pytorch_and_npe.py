@@ -39,6 +39,7 @@ import matplotlib.pyplot as plt
 import torch
 import torch.nn as nn
 import torch.optim as optim
+from tqdm.auto import trange   # progress bars; tqdm.auto picks the right style for Colab
 
 from samma_sbi.simulators import BallThrow
 
@@ -262,14 +263,19 @@ def build_mlp(hidden=32, n_layers=2, in_dim=1, out_dim=1):
     return nn.Sequential(*layers)
 
 
-def train_regression(model, x, y, n_steps=2000, lr=1e-3):
+def train_regression(model, x, y, n_steps=2000, lr=1e-3, progress=False, desc=""):
     opt = optim.Adam(model.parameters(), lr=lr)
     losses = []
-    for _ in range(n_steps):
+    # Show a live progress bar with the running loss only when asked, so the
+    # quick cells stay clean and the slow ones give feedback.
+    iterator = trange(n_steps, desc=desc, leave=False) if progress else range(n_steps)
+    for step in iterator:
         opt.zero_grad()
         loss = nn.functional.mse_loss(model(x), y)
         loss.backward(); opt.step()
         losses.append(loss.item())
+        if progress and step % 50 == 0:
+            iterator.set_postfix(loss=f"{losses[-1]:.2e}")
     return losses
 
 # %% [markdown]
@@ -327,7 +333,7 @@ y_dense = torch.sin(x_dense)
 big = build_mlp(hidden=128, n_layers=3)
 opt = optim.Adam(big.parameters(), lr=1e-3)
 tr_curve, va_curve, steps = [], [], []
-for s in range(6000):
+for s in trange(6000, desc="overfitting", leave=False):
     opt.zero_grad()
     l = nn.functional.mse_loss(big(x_small), y_small)
     l.backward(); opt.step()
@@ -382,7 +388,8 @@ def fit_cos_kx(k, hidden=32, n_layers=2, n_steps=2000, lr=1e-3, seed=0):
     torch.manual_seed(seed)
     y = torch.cos(k * x_train)
     m = build_mlp(hidden=hidden, n_layers=n_layers)
-    train_regression(m, x_train, y, n_steps=n_steps, lr=lr)
+    train_regression(m, x_train, y, n_steps=n_steps, lr=lr,
+                     progress=True, desc=f"cos({k}x), {n_layers}L x {hidden}")
     with torch.no_grad():
         return m(x_train).numpy().ravel()
 
@@ -574,7 +581,8 @@ def train_band(x_tr, theta_tr, x_va, theta_va,
     opt = optim.Adam(model.parameters(), lr=lr)
     n = x_tr.shape[0]
     tr_curve, va_curve = [], []
-    for _ in range(n_epochs):
+    bar = trange(n_epochs, desc="train band", leave=False)
+    for _ in bar:
         perm = torch.randperm(n)
         ep = 0.0
         for i in range(0, n, batch_size):
@@ -588,6 +596,7 @@ def train_band(x_tr, theta_tr, x_va, theta_va,
         with torch.no_grad():
             mu_v, lv_v = model(x_va)
             va_curve.append(gaussian_nll(theta_va, mu_v, lv_v).item())
+        bar.set_postfix(train=f"{tr_curve[-1]:.3f}", val=f"{va_curve[-1]:.3f}")
     return model, np.array(tr_curve), np.array(va_curve)
 
 
