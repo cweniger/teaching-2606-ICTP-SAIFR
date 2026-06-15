@@ -35,6 +35,7 @@ import matplotlib.pyplot as plt
 import torch
 import torch.nn as nn
 import torch.optim as optim
+from tqdm.auto import trange   # progress bars; tqdm.auto picks the right style for Colab
 
 from samma_sbi.simulators import BallThrow, GWChirp
 
@@ -88,14 +89,17 @@ x_bt = torch.tensor(x_bt, dtype=torch.float32).unsqueeze(1)
 
 model_bt = HeteroBand1D()
 opt = optim.Adam(model_bt.parameters(), lr=1e-3)
-for _ in range(120):
+bar = trange(120, desc="train band (ball-throw)", leave=False)
+for _ in bar:
     perm = torch.randperm(x_bt.shape[0])
+    last = 0.0
     for i in range(0, x_bt.shape[0], 256):
         idx = perm[i:i + 256]
         opt.zero_grad()
-        mu, lv = model_bt(x_bt[idx])
-        gaussian_nll(theta_bt[idx], mu, lv).backward()
-        opt.step()
+        loss = gaussian_nll(theta_bt[idx], *model_bt(x_bt[idx]))
+        loss.backward(); opt.step()
+        last = loss.item()
+    bar.set_postfix(loss=f"{last:.3f}")
 
 theta_grid_bt = np.linspace(sim_bt.prior_low, sim_bt.prior_high, 600)
 fig, axes = plt.subplots(1, 2, figsize=(9, 3.2), sharey=True)
@@ -378,7 +382,7 @@ def gaussian_nll_2d(theta, mu, log_var, rho):
 # %%
 def make_dataset(n, rng):
     theta = sim.sample_prior(n, rng=rng)
-    s = sim.summary(sim.simulate(theta, rng=rng))
+    s = sim.summary(sim.simulate(theta, rng=rng, progress=True))
     return (torch.tensor(theta, dtype=torch.float32),
             torch.tensor(s, dtype=torch.float32))
 
@@ -402,7 +406,8 @@ model = GaussianHead2D()
 opt = optim.Adam(model.parameters(), lr=1e-3)
 n = s_tr_n.shape[0]
 tr_curve, va_curve = [], []
-for epoch in range(150):
+bar = trange(150, desc="train 2-D head", leave=False)
+for epoch in bar:
     perm = torch.randperm(n)
     for i in range(0, n, 256):
         idx = perm[i:i + 256]
@@ -412,6 +417,7 @@ for epoch in range(150):
     with torch.no_grad():
         tr_curve.append(gaussian_nll_2d(theta_tr_n, *model(s_tr_n)).item())
         va_curve.append(gaussian_nll_2d(theta_va_n, *model(s_va_n)).item())
+    bar.set_postfix(train=f"{tr_curve[-1]:.3f}", val=f"{va_curve[-1]:.3f}")
 
 plt.figure(figsize=(5, 3))
 plt.plot(tr_curve, label="train"); plt.plot(va_curve, label="val")

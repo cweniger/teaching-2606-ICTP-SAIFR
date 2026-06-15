@@ -406,10 +406,12 @@ class GWChirp:
         self,
         theta: np.ndarray,
         rng: np.random.Generator | None = None,
+        progress: bool = False,
     ) -> np.ndarray:
         """Simulate strain time series for a batch of (Mc, dL) parameters.
 
         theta : array of shape (N, 2) or (2,).
+        progress : show a tqdm bar over the batch (useful for large datasets).
         Returns array of shape (N, n_samples) or (n_samples,).
         """
         rng = np.random.default_rng() if rng is None else rng
@@ -417,7 +419,11 @@ class GWChirp:
         single = theta.ndim == 1
         theta = np.atleast_2d(theta)
         out = np.empty((theta.shape[0], self.n_samples), dtype=float)
-        for i in range(theta.shape[0]):
+        iterator = range(theta.shape[0])
+        if progress:
+            from tqdm.auto import tqdm
+            iterator = tqdm(iterator, desc="simulating", leave=False)
+        for i in iterator:
             h_fd = self._waveform_fd(float(theta[i, 0]), float(theta[i, 1]))
             n_fd = self._draw_noise_fd(rng)
             out[i] = np.fft.irfft(h_fd + n_fd, n=self.n_samples)

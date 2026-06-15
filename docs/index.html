@@ -104,10 +104,11 @@
   }
   .lecture-card .pdf-link:hover { text-decoration: underline; }
   .lecture-card .colab-link {
-    display: inline-flex;
+    display: flex;
+    width: fit-content;
     align-items: center;
     gap: 8px;
-    margin-top: 12px;
+    margin-top: 10px;
     font-size: 0.85em;
     color: #3498db;
     pointer-events: auto;
@@ -247,13 +248,13 @@
          href="https://colab.research.google.com/github/cweniger/teaching-2606-ICTP-SAIFR/blob/main/notebooks/s1_pytorch_and_npe.ipynb"
          target="_blank">
         <img src="https://colab.research.google.com/assets/colab-badge.svg" alt="Open In Colab">
-        <span>Hands-on session 1 &mdash; train &amp; dissect an MLP, then build your first amortised posterior</span>
+        <span>Session 1 &mdash; train &amp; dissect an MLP</span>
       </a>
       <a class="colab-link"
          href="https://colab.research.google.com/github/cweniger/teaching-2606-ICTP-SAIFR/blob/main/notebooks/s1_app_gw.ipynb"
          target="_blank">
         <img src="https://colab.research.google.com/assets/colab-badge.svg" alt="Open In Colab">
-        <span>Hands-on session 2 &mdash; gravitational-wave chirp: matched-filter summary, 2-D Gaussian NPE, flow preview</span>
+        <span>Session 2 &mdash; gravitational-wave NPE</span>
       </a>
     </li>
     <li>
@@ -274,47 +275,6 @@
           <span class="tag">Adam</span>
           <span class="tag">Double descent</span>
           <span class="tag">Spectral bias</span>
-        </div>
-      </a>
-    </li>
-    <li>
-      <a class="lecture-card" href="lecture3.html">
-        <div class="number">Lecture 3</div>
-        <div class="title">Inference Heads and Parameter Models</div>
-        <div class="description">
-          From q<sub>&phi;</sub>(&theta;&thinsp;|&thinsp;<em>x</em>) to a production-grade posterior. NPE, NRE, NLE and
-          when each shines. Normalising flows in depth (change of variables, coupling layers,
-          conditional flows), flow matching and diffusion as visual side-companions, and
-          DINGO as the loud production example.
-        </div>
-        <div class="topics">
-          <span class="tag">NPE / NRE / NLE</span>
-          <span class="tag">Normalising flows</span>
-          <span class="tag">Coupling layers</span>
-          <span class="tag">Flow matching</span>
-          <span class="tag">Diffusion</span>
-          <span class="tag">DINGO</span>
-        </div>
-      </a>
-    </li>
-    <li>
-      <a class="lecture-card" href="lecture4.html">
-        <div class="number">Lecture 4</div>
-        <div class="title">Embedding Networks and Data Compression</div>
-        <div class="description">
-          From raw observation <em>x</em> to a learned feature s<sub>&psi;</sub>(<em>x</em>) that
-          feeds the inference head. Convolutions, channels, pooling, and architectures
-          (LeNet, ResNet) as the building blocks of summary networks. The block that lets
-          NPE swallow images, time series, and high-dimensional data without hand-crafted
-          summaries.
-        </div>
-        <div class="topics">
-          <span class="tag">CNNs</span>
-          <span class="tag">Channels &amp; kernels</span>
-          <span class="tag">Pooling</span>
-          <span class="tag">ResNet</span>
-          <span class="tag">Summary networks</span>
-          <span class="tag">Embeddings</span>
         </div>
       </a>
     </li>
