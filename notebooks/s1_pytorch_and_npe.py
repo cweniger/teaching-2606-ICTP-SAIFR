@@ -28,15 +28,16 @@
 # capture the awkward posterior shapes.
 
 # %%
-# On Colab this installs samma_sbi fresh from GitHub; run locally it does
-# nothing (assumes the package is already on your path). --force-reinstall
-# is needed because pip would otherwise short-circuit on a same-version
-# install even when git HEAD moved; --no-deps skips numpy/scipy/matplotlib
-# (Colab ships them). If you re-run this after a push, also restart the
-# runtime (Runtime ▸ Restart) so the new code is re-imported.
+# On Colab this installs samma_sbi from GitHub; run locally it does nothing
+# (assumes the package is already on your path). We sparse-clone only src/
+# instead of `pip install git+...`, which would drag down the whole ~300 MB
+# lecture site (PDFs, figures) just to install a few KB of code. --no-deps
+# skips numpy/scipy/matplotlib/torch (Colab ships them).
 import sys
 if "google.colab" in sys.modules:
-    !pip install -q --upgrade --force-reinstall --no-deps git+https://github.com/cweniger/teaching-2606-ICTP-SAIFR.git  # noqa: E501
+    !git clone -q --depth 1 --filter=blob:none --sparse https://github.com/cweniger/teaching-2606-ICTP-SAIFR.git  # noqa: E501
+    !git -C teaching-2606-ICTP-SAIFR sparse-checkout set src
+    !pip install -q --no-deps ./teaching-2606-ICTP-SAIFR
 
 # %%
 import numpy as np
