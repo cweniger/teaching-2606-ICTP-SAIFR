@@ -363,22 +363,24 @@
   <h2>Demo 2 &mdash; what just happened</h2>
   <ul style="font-size:1.0em; line-height:1.7;">
     <li class="fragment">Variance of the summary scales as \(\sigma^2/n_\mathrm{balls}\). The effective acceptance radius \(\varepsilon_\mathrm{eff}\) shrinks at fixed \(M/N\).</li>
-    <li class="fragment">At the same simulator budget (counting each ball as one call), <strong>a well-chosen summary buys orders of magnitude</strong> in sample efficiency.</li>
+    <li class="fragment">At the same simulator budget, <strong>a well-chosen summary 
+      is critical for ABC to gain optimal precision.</strong></li>
   </ul>
   <div class="box box-orange fragment" style="margin-top:10px;">
     <strong>Open question (the one that does not go away).</strong>
     Here we chose the summary by hand: "take the mean." Easy, because the simulator is one-dimensional and we know what is informative.
-    <p style="margin:6px 0 0 0;">When \(x\) is a 256&times;256 image, a waveform, a sky map, a graph &mdash; <em>which</em> function of \(x\) should we condition on? Hand-engineered summaries are difficult to obtain; that's how classical SBI died in practice.</p>
+    <p style="margin:6px 0 0 0;">When \(x\) is a 256&times;256 image, a waveform, a sky map, a graph &mdash; <em>which</em> function of \(x\) should we condition on? Hand-engineered summaries are difficult to obtain.
+      </p>
   </div>
-  <p style="font-size:0.85em; color:#7f8c8d; margin-top:6px;">Fearnhead &amp; Prangle 2012 (semi-automatic summaries); Joyce &amp; Marjoram 2008 (sufficiency in ABC); Chen et al. 2023 (review of neural summaries).</p>
 </section>
 
 <!-- ============================================================ -->
 <!-- 10 — DEMO 3: KDE IN (theta, x)-SPACE                         -->
 <!-- ============================================================ -->
 <section>
-  <h2>Demo 3 &mdash; KDE in \((\theta, x)\)-space</h2>
-  <div class="ctrl-row">
+  <h2>Demo 3 &mdash; Kernel density estimation (KDE) parameter-data space</h2>
+  Taking the $\epsilon \to 0$ limit can be done using interpolation in joined $(\theta, x)$-space.
+  <div class="ctrl-row" style="margin-top: 30px;">
     <label><input type="range" id="d3-n" min="100" max="3000" step="50" value="800" style="width:130px; vertical-align:middle;">
       &nbsp;\(N\) = <span id="d3-n-val" style="display:inline-block; min-width:2.6em;">800</span></label>
     <label><input type="range" id="d3-h" min="0.3" max="3.0" step="0.05" value="1.0" style="width:120px; vertical-align:middle;">
@@ -595,7 +597,10 @@ function trajectory(theta, nPts) {
   }
 
   function sampleVnoise() {
-    // resample v and the measurement noise; recompute x_obs at current theta_true
+    // resample v and the measurement noise; recompute x_obs at the angle
+    // currently on the slider (so the red ✕ matches what was just fired).
+    const slider = document.getElementById('cannon-th');
+    if (slider) theta_true = parseFloat(slider.value);
     v_true = V_MEAN + V_STD*gaussN(rng);
     eps    = NOISE_STD*gaussN(rng);
     x_obs  = (v_true*v_true/GVAL)*Math.sin(2*theta_true) + eps;
