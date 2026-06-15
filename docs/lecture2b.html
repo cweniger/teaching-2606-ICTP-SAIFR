@@ -449,12 +449,6 @@
         <option value="spiral">Spiral</option>
       </select>
     </label>
-    <label>Activation:
-      <select id="surf-act" style="padding:2px 6px; font-size:1em;">
-        <option value="relu" selected>ReLU</option>
-        <option value="sigmoid">Sigmoid</option>
-      </select>
-    </label>
     <label>Width = <span id="surf-width-val">8</span>
       <input type="range" id="surf-width-slider" min="0" max="7" step="1" value="3" style="width:80px;"></label>
     <label>&eta; = <span id="surf-lr-val">0.010</span>
@@ -633,12 +627,6 @@
         <option value="blob">Blob</option>
         <option value="moons">Moons</option>
         <option value="spiral" selected>Spiral</option>
-      </select>
-    </label>
-    <label>Activation:
-      <select id="dsurf-act" style="padding:2px 6px; font-size:1em;">
-        <option value="relu" selected>ReLU</option>
-        <option value="sigmoid">Sigmoid</option>
       </select>
     </label>
     <label>Layers = <span id="dsurf-depth-val">1</span>
@@ -1041,7 +1029,7 @@ function targetField(type, x1, x2) {
 // DEMO: MLP 2D regression trainer (1 hidden layer, MSE loss). IDs: surf-*
 (function() {
   var net=null, data=null, lossHist=[], batchLossHist=[], epoch=0, animId=null;
-  function buildNet(){var w=Math.pow(2,parseInt(document.getElementById('surf-width-slider').value));var act=document.getElementById('surf-act').value;return new MLPReg([2,w,1],act);}
+  function buildNet(){var w=Math.pow(2,parseInt(document.getElementById('surf-width-slider').value));return new MLPReg([2,w,1],'relu');}
   function genData(type){
     var rng=createRNG(303), X=[], T=[];
     for(var i=0;i<1000;i++){var x1=-2+4*rng(), x2=-2+4*rng(); X.push([x1,x2]); T.push(targetField(type,x1,x2)+0.04*boxMuller(rng));}
@@ -1086,7 +1074,6 @@ function targetField(type, x1, x2) {
   document.getElementById('surf-width-slider').addEventListener('input',function(){document.getElementById('surf-width-val').textContent=Math.pow(2,parseInt(this.value));});
   document.getElementById('surf-lr-slider').addEventListener('input',function(){document.getElementById('surf-lr-val').textContent=Math.pow(10,parseFloat(this.value)).toFixed(3);});
   document.getElementById('surf-target').addEventListener('change',reset);
-  document.getElementById('surf-act').addEventListener('change',reset);
   Reveal.on('slidechanged',function(e){
     if(e.currentSlide&&e.currentSlide.querySelector('#surf-plot')) reset();
     else if(animId){clearTimeout(animId);animId=null;}
@@ -1095,13 +1082,12 @@ function targetField(type, x1, x2) {
 
 // DEMO: MLP 2D regression trainer with depth slider (1-3 hidden layers, MSE). IDs: dsurf-*
 (function() {
-  var net=null, data=null, lossHist=[], batchLossHist=[], epoch=0, animId=null;
+  var net=null, data=null, lossHist=[], batchLossHist=[], epoch=0, animId=null, lastRenderT=0;
   function buildNet(){
     var w=Math.pow(2,parseInt(document.getElementById('dsurf-width-slider').value));
     var d=parseInt(document.getElementById('dsurf-depth-slider').value);
-    var act=document.getElementById('dsurf-act').value;
     var sizes=[2]; for(var l=0;l<d;l++) sizes.push(w); sizes.push(1);
-    return new MLPReg(sizes,act);
+    return new MLPReg(sizes,'relu');
   }
   function genData(type){
     var rng=createRNG(303), X=[], T=[];
@@ -1111,7 +1097,7 @@ function targetField(type, x1, x2) {
   function reset(){
     if(animId){clearTimeout(animId);animId=null;}
     data=genData(document.getElementById('dsurf-target').value);
-    net=buildNet(); lossHist=[]; batchLossHist=[]; epoch=0;
+    net=buildNet(); lossHist=[]; batchLossHist=[]; epoch=0; lastRenderT=0;
     document.getElementById('dsurf-epoch-label').textContent='';
     renderSurf();
   }
@@ -1136,13 +1122,15 @@ function targetField(type, x1, x2) {
   function trainLoop(){
     // Several SGD updates per render — compute is cheap, the redraw is the bottleneck.
     for(var s=0;s<STEPS_PER_FRAME;s++) trainStep();
-    renderSurf();
+    var nowT=performance.now();
+    if(nowT-lastRenderT>=200){renderSurf();lastRenderT=nowT;}   // throttle heatmap to <=5 fps
     document.getElementById('dsurf-epoch-label').textContent='Update '+epoch;
     var ep=[]; for(var i=0;i<lossHist.length;i++) ep.push(i);
     Plotly.react('dsurf-loss-plot',[
       {x:ep,y:lossHist,mode:'lines',line:{width:1.5,color:'#e74c3c'},name:'Mini-batch MSE'}
     ],{xaxis:{title:'Update',range:[0,Math.max(epoch,10)]},yaxis:{title:'Mini-batch MSE',type:'log'},margin:{t:5,r:10,b:35,l:50},paper_bgcolor:'rgba(0,0,0,0)',plot_bgcolor:'rgba(0,0,0,0)',font:{size:12},showlegend:false},{displayModeBar:false});
     if(epoch<20000)animId=setTimeout(trainLoop,30);
+    else{renderSurf();animId=null;}   // final full-state frame
   }
   document.getElementById('dsurf-train-btn').addEventListener('click',function(){if(animId){clearTimeout(animId);animId=null;return;}trainLoop();});
   document.getElementById('dsurf-reset-btn').addEventListener('click',reset);
@@ -1150,7 +1138,6 @@ function targetField(type, x1, x2) {
   document.getElementById('dsurf-width-slider').addEventListener('input',function(){document.getElementById('dsurf-width-val').textContent=Math.pow(2,parseInt(this.value));});
   document.getElementById('dsurf-lr-slider').addEventListener('input',function(){document.getElementById('dsurf-lr-val').textContent=Math.pow(10,parseFloat(this.value)).toFixed(3);});
   document.getElementById('dsurf-target').addEventListener('change',reset);
-  document.getElementById('dsurf-act').addEventListener('change',reset);
   document.getElementById('dsurf-depth-slider').addEventListener('change',reset);
   Reveal.on('slidechanged',function(e){
     if(e.currentSlide&&e.currentSlide.querySelector('#dsurf-plot')) reset();
