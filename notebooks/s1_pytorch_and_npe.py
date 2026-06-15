@@ -28,10 +28,15 @@
 # capture the awkward posterior shapes.
 
 # %%
-# Always reinstall to pick up the latest from main — pip would otherwise
-# short-circuit on an already-installed version, even when git HEAD has
-# changed. --no-deps skips numpy/scipy/matplotlib (Colab ships them).
-# !pip install -q --upgrade --force-reinstall --no-deps git+https://github.com/cweniger/teaching-2606-ICTP-SAIFR.git  # noqa: E501
+# On Colab this installs samma_sbi fresh from GitHub; run locally it does
+# nothing (assumes the package is already on your path). --force-reinstall
+# is needed because pip would otherwise short-circuit on a same-version
+# install even when git HEAD moved; --no-deps skips numpy/scipy/matplotlib
+# (Colab ships them). If you re-run this after a push, also restart the
+# runtime (Runtime ▸ Restart) so the new code is re-imported.
+import sys
+if "google.colab" in sys.modules:
+    !pip install -q --upgrade --force-reinstall --no-deps git+https://github.com/cweniger/teaching-2606-ICTP-SAIFR.git  # noqa: E501
 
 # %%
 import numpy as np
