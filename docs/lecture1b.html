@@ -1264,7 +1264,7 @@ function trajectory(theta, nPts) {
   document.getElementById('lbi1-xobs').addEventListener('input', function() {
     mcmcSamples = []; mcmcKey = '';
     document.getElementById('lbi1-status').textContent =
-      'x_obs changed — MCMC chain invalidated; press ▶ to re-run.';
+      'x_obs changed — press ▶ to re-run MCMC.';
     draw();
   });
   document.getElementById('lbi1-run').onclick = function() {
