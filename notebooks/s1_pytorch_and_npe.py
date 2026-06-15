@@ -186,7 +186,7 @@ plt.show()
 # the most common PyTorch bug.
 
 # %% [markdown]
-# ### Exercise 1.A — your turn
+# ### <span style="color:#c0392b;">Exercise 1.A — your turn</span>
 #
 # Replace `sin(x)` with `cos(2x)`, retrain, and plot. You should not
 # need to change anything other than the target.
@@ -303,9 +303,10 @@ plt.xlabel(r"$\theta$ [rad]"); plt.ylabel("x (mean landing)"); plt.legend(); plt
 # variance) so the network is free to predict any real number while
 # `σ²` stays positive.
 #
-# **Exercise 2.A.** Fill in the `forward` so that it returns
-# `(mu, log_var)` — both of shape `(batch, 1)`. The body of the network
-# is provided.
+# ### <span style="color:#c0392b;">Exercise 2.A — implement `GaussianHead.forward`</span>
+#
+# Fill in the `forward` method so that it returns `(mu, log_var)` —
+# both of shape `(batch, 1)`. The body of the network is provided.
 
 # %%
 class GaussianHead(nn.Module):
@@ -352,7 +353,9 @@ class GaussianHead(nn.Module):  # noqa: F811
 # %% [markdown]
 # ### 2.4 — Gaussian negative log-likelihood
 #
-# **Exercise 2.B.** Implement the per-sample Gaussian NLL,
+# ### <span style="color:#c0392b;">Exercise 2.B — implement `gaussian_nll`</span>
+#
+# Implement the per-sample Gaussian NLL,
 #
 # $$ \ell(\theta;\ \mu, \log\sigma^2) =
 # \tfrac{1}{2}\!\left[\tfrac{(\theta-\mu)^2}{\sigma^2} + \log\sigma^2\right] $$
@@ -463,7 +466,7 @@ plt.tight_layout(); plt.show()
 # the cleanest validation we can give NPE without resorting to flows.
 
 # %% [markdown]
-# ### Exercise 2.C — amortisation
+# ### <span style="color:#c0392b;">Exercise 2.C — amortisation</span>
 #
 # The same trained network produces a posterior for *any* `x_obs` —
 # this is what is meant by **amortised** inference: training is
