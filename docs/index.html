@@ -274,14 +274,14 @@
       </p>
     </li>
     <li>
-      <a class="lecture-card optional" href="lecture2b-extra.html">
-        <div class="number">Companion to Lecture 2b <span class="optional-badge">Optional</span></div>
+      <a class="lecture-card" href="lecture3a.html">
+        <div class="number">Lecture 3a</div>
         <div class="title">Making Deep Learning Work in Practice</div>
         <div class="description">
-          A self-contained, orthogonal deep-dive into actually training deep networks: backpropagation,
-          vanishing/exploding gradients and initialisation, normalisation, momentum and Adam, learning-rate
-          schedules, and why overparameterised models still generalise (double descent, spectral bias).
-          Not part of the core SBI thread &mdash; dip in for the training mechanics behind Lecture 2b.
+          The training mechanics behind the MLP of Lecture 2b: making training work (early stopping,
+          momentum, Adam, learning-rate schedules), making gradients flow (backpropagation, activations,
+          initialisation, normalisation), and why overparameterised models still generalise
+          (double descent, spectral bias).
         </div>
         <div class="topics">
           <span class="tag">Backpropagation</span>
@@ -291,6 +291,26 @@
           <span class="tag">Adam</span>
           <span class="tag">Double descent</span>
           <span class="tag">Spectral bias</span>
+        </div>
+      </a>
+    </li>
+    <li>
+      <a class="lecture-card" href="lecture3b.html">
+        <div class="number">Lecture 3b</div>
+        <div class="title">Inference Heads and Parameter Models</div>
+        <div class="description">
+          The anatomy of the SBI pipeline (simulator, inference loss, embedding); why minimising the
+          NLL on simulated pairs recovers the posterior (neural posterior estimation); and the simplest
+          inference head &mdash; the Gaussian head &mdash; together with where it breaks. Flows and
+          continuous-time heads follow in Lecture 4.
+        </div>
+        <div class="topics">
+          <span class="tag">SBI pipeline</span>
+          <span class="tag">NPE / NRE / NLE</span>
+          <span class="tag">NLL minimisation</span>
+          <span class="tag">Amortised inference</span>
+          <span class="tag">Gaussian head</span>
+          <span class="tag">Heteroscedastic noise</span>
         </div>
       </a>
     </li>
