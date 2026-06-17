@@ -374,8 +374,8 @@
 <section>
   <h2>The Gaussian-head network &mdash; the simplest inference head</h2>
   <div style="display:flex; gap:22px; align-items:flex-start; margin-top:10px;">
-    <div style="flex:1.1;">
-      <p><strong>Density family.</strong></p>
+    <div style="flex:1.0; font-size:0.85em">
+      <p><strong>Density family</strong></p>
       <p style="text-align:center; font-size:1.05em;">
         \( q_\phi(\boldsymbol\theta\mid x) \;=\; \mathcal{N}\!\bigl(\boldsymbol\theta\,\big|\,\boldsymbol\mu_\phi(x), \boldsymbol\Sigma_\phi(x)\bigr) \)
       </p>
@@ -386,7 +386,7 @@
       </p>
       <p>For diagonal \(\Sigma\): \(\;\tfrac{1}{2}\bigl((\theta-\mu)/\sigma\bigr)^2 + \log\sigma\). Constant \(\Sigma\) reduces to MSE, the linear-regression case from Lec 2.</p>
     </div>
-    <div style="flex:1;">
+    <div style="flex:1; font-size:0.85em;">
       <pre style="background:#2c3e50; color:#ecf0f1; padding:14px 16px; border-radius:8px; font-size:0.78em; line-height:1.55;"><code><span style="color:#7f8c8d;">// Train q_phi(theta|x) on simulator pairs (theta_n, x_n)</span>
 for step = 1, 2, ... :
     sample mini-batch B of pairs
