@@ -97,6 +97,201 @@
   </div>
 </section>
 
+
+<!-- ============================================================ -->
+<!-- SECTION: BEYOND SGD                                          -->
+<!-- ============================================================ -->
+
+<!-- SLIDE 11: Section Divider -->
+<section>
+  <div style="display:flex; align-items:center; justify-content:center; height:100%;">
+    <div style="text-align:center;">
+      <div style="width:200px; height:4px; background:linear-gradient(90deg,#e67e22,#27ae60); margin:0 auto 25px;"></div>
+      <h1 style="font-size:2em; margin:0;">Making Training Work</h1>
+      <p style="font-size:1.1em; color:#7f8c8d; margin-top:15px;">Momentum, Adam, learning rates, and when to stop.</p>
+      <div style="width:200px; height:4px; background:linear-gradient(90deg,#e67e22,#27ae60); margin:25px auto 0;"></div>
+    </div>
+  </div>
+</section>
+
+<!-- SLIDE 16: Early Stopping -->
+<section>
+  <h2>Early Stopping</h2>
+  <p>Monitor <strong>validation loss</strong> during training. Stop when it starts to rise.</p>
+  <div id="overfit-plot" style="width:100%; height:310px; margin-top:8px;"></div>
+  <div class="box fragment" style="text-align:center; padding:10px; margin-top:4px;">
+    The simplest and most effective regularization technique.<br>
+    Save the model at the best validation loss &mdash; everything after that is <strong style="color:#e74c3c;">memorizing noise</strong>.
+  </div>
+</section>
+
+<!-- SLIDE 15: Learning Rate Schedules -->
+<section>
+  <h2>Learning Rate Schedules</h2>
+  <p>Even Adam needs a good learning rate. And the best rate <strong>changes during training</strong>.</p>
+  <div style="display:flex; gap:10px; margin-top:10px;">
+    <div class="box" style="flex:1; text-align:center;">
+      <strong style="color:#2980b9;">Step decay</strong><br>
+      <div id="lr-step-plot" style="height:160px;"></div>
+      <span style="font-size:0.85em;">Drop by factor every \(N\) epochs</span>
+    </div>
+    <div class="box" style="flex:1; text-align:center;">
+      <strong style="color:#e67e22;">Cosine annealing</strong><br>
+      <div id="lr-cosine-plot" style="height:160px;"></div>
+      <span style="font-size:0.85em;">Smooth decrease following cosine</span>
+    </div>
+    <div class="box" style="flex:1; text-align:center;">
+      <strong style="color:#27ae60;">Warmup + decay</strong><br>
+      <div id="lr-warmup-plot" style="height:160px;"></div>
+      <span style="font-size:0.85em;">Ramp up, then decrease</span>
+    </div>
+  </div>
+  <p class="fragment" style="text-align:center; margin-top:8px; font-size:0.9em;">
+    <strong>Warmup</strong> prevents early instability; <strong>decay</strong> allows fine-grained convergence.
+  </p>
+  <p style="font-size:0.75em; color:#7f8c8d; text-align:center; margin-top:6px;">
+    Learning rate scheduling is good practice but fine-tuning &mdash; it helps achieve convergent, low-noise results in the final stages of training.
+  </p>
+</section>
+
+
+<!-- SLIDE 12: Momentum -->
+<section>
+  <h2>SGD with Momentum</h2>
+  <p>SGD is noisy due to mini-batch sampling. Idea: smooth the gradients using an <strong>exponential moving average</strong> (EMA, defined next).</p>
+  <div class="box" style="text-align:center; font-size:1.05em; padding:12px; margin-top:8px;">
+    \[\mathbf{m} \leftarrow \beta\,\mathbf{m} + (1-\beta)\,\nabla E \qquad \mathbf{w} \leftarrow \mathbf{w} - \eta\,\mathbf{m}\]
+    <span style="font-size:0.85em; color:#7f8c8d;">\(\beta\): smoothing factor (typical 0.9) &nbsp;|&nbsp; \(\eta\): learning rate &nbsp;|&nbsp; \(\mathbf{m}\): EMA of gradients</span>
+  </div>
+  <div style="display:flex; gap:12px; margin-top:15px;">
+    <div class="box" style="flex:1; text-align:center; border-left:4px solid #e74c3c;">
+      <strong style="color:#e74c3c;">SGD without momentum</strong><br>
+      <span style="font-size:0.9em;">Zig-zags across the valley.<br>Slow convergence along the long axis.</span>
+    </div>
+    <div class="box" style="flex:1; text-align:center; border-left:4px solid #27ae60;">
+      <strong style="color:#27ae60;">SGD with momentum</strong><br>
+      <span style="font-size:0.9em;">Velocity accumulates along consistent direction.<br>Noise gets damped.</span>
+    </div>
+  </div>
+</section>
+
+<!-- SLIDE 12b: EMA intuition -->
+<section>
+<section>
+  <h2>Exponential Moving Average (EMA)</h2>
+  <p style="font-size:0.9em;">Both SGD with momentum and Adam (see next slides) use EMAs. Core idea: <strong>smooth a noisy signal</strong> by blending each new value with the running average.</p>
+  <div class="box" style="text-align:center; font-size:1.05em; padding:10px; margin:6px 0;">
+    \[m_0 = 0, \qquad m_t = \beta\,m_{t-1} + (1-\beta)\,g_t\]
+    <span style="font-size:0.75em; color:#7f8c8d;">\(t\): step counter. &nbsp; Higher \(\beta\) &rarr; more smoothing, but more lag. &nbsp; Effective window &asymp; \(1/(1-\beta)\) steps.</span>
+  </div>
+  <div style="display:flex; gap:8px; align-items:center; font-size:0.82em; margin-top:4px;">
+    <label>β = <span id="ema-beta-val">0.90</span>
+      <input type="range" id="ema-beta" min="0" max="0.99" step="0.01" value="0.9" style="width:120px;">
+    </label>
+    <span style="color:#7f8c8d;" id="ema-window-label">Window &asymp; 10 steps</span>
+    <label style="margin-left:16px;"><input type="checkbox" id="ema-bias-corr"> Bias correction: \(\hat{m}_t = m_t / (1-\beta^t)\)</label>
+  </div>
+  <div id="ema-plot" style="height:300px; margin-top:4px;"></div>
+</section>
+<section style="font-size:0.50em;">
+  <h2>EMA &mdash; Details</h2>
+  <ul style="line-height:1.8;">
+    <li><strong>What it does:</strong> the EMA replaces each noisy gradient \(g_t\) with a smoothed estimate \(m_t = \beta\,m_{t-1} + (1-\beta)\,g_t\). This is a weighted average of all past gradients, where recent gradients carry more weight. The effective averaging window is \(\approx 1/(1-\beta)\) steps.</li>
+<li><strong>Bias correction:</strong> since \(m_0 = 0\), early values of \(m_t\) are biased towards zero (the EMA hasn't "warmed up" yet). Dividing by \((1-\beta^t)\) corrects this: \(\hat{m}_t = m_t/(1-\beta^t)\). The correction is large for small \(t\) and vanishes as \(t \to \infty\).</li>
+    <li><strong>Where EMA appears:</strong>
+      <ul>
+        <li><em>SGD with momentum:</em> EMA of gradients \(\to\) smoother update direction.</li>
+        <li><em>Adam, first moment:</em> EMA of gradients (with bias correction) \(\to\) adaptive mean.</li>
+        <li><em>Adam, second moment:</em> EMA of squared gradients \(\to\) per-parameter step-size scaling.</li>
+      </ul>
+    </li>
+  </ul>
+</section>
+</section>
+
+<!-- SLIDE 13: Adam Optimizer -->
+<section>
+<section>
+  <h2>Adam Optimizer</h2>
+  <p>SGD with momentum smooths gradients. <strong>Adam</strong> additionally adapts the step size per parameter.</p>
+  <div class="box" style="font-size:0.95em; padding:12px; margin-top:8px;">
+    <table style="width:100%; border-collapse:collapse;">
+      <tr><td style="padding:4px 0;">First moment (momentum):</td><td>\(\mathbf{m} \leftarrow \beta_1\,\mathbf{m} + (1-\beta_1)\,\nabla E\)</td></tr>
+      <tr><td style="padding:4px 0;">Second moment (curvature):</td><td>\(\mathbf{v} \leftarrow \beta_2\,\mathbf{v} + (1-\beta_2)\,(\nabla E)^2\)</td></tr>
+      <tr><td style="padding:4px 0;">Bias correction:</td><td>\(\hat{\mathbf{m}} = \mathbf{m}/(1-\beta_1^t), \quad \hat{\mathbf{v}} = \mathbf{v}/(1-\beta_2^t)\)</td></tr>
+      <tr><td style="padding:4px 0;"><strong>Update:</strong></td><td>\(\mathbf{w} \leftarrow \mathbf{w} - \eta\,\hat{\mathbf{m}}\,/\,(\sqrt{\hat{\mathbf{v}}}+\epsilon)\)</td></tr>
+    </table>
+    <span style="font-size:0.72em; color:#7f8c8d;">All operations (square, division, sqrt) are element-wise, i.e.&nbsp;per parameter.</span>
+  </div>
+  <ul style="font-size:0.85em; margin-top:10px;">
+    <li><strong>\(\hat{\mathbf{m}}\)</strong>: EMA of gradients &mdash; smooths noise, gives a reliable update direction.</li>
+    <li><strong>\(\hat{\mathbf{v}}\)</strong>: EMA of squared gradients &mdash; rescales each parameter so that steep directions get smaller steps and flat directions get larger ones.</li>
+  </ul>
+  <div style="display:flex; gap:12px; margin-top:10px;">
+    <div class="box fragment" style="flex:1; text-align:center; padding:8px;">
+      <strong>Defaults:</strong> \(\beta_1{=}0.9,\; \beta_2{=}0.999,\; \epsilon{=}10^{-8}\)
+    </div>
+    <div class="box fragment" style="flex:1; text-align:center; padding:8px;">
+      Adam is the <strong style="color:#e74c3c;">default optimizer</strong><br>in modern deep learning.
+    </div>
+  </div>
+</section>
+<section style="font-size:0.50em;">
+  <h2>Adam &mdash; Details</h2>
+  <ul style="line-height:1.8;">
+    <li><strong>First moment \(\hat{\mathbf{m}}\):</strong> EMA of gradients with bias correction. Identical to SGD with momentum &mdash; smooths out mini-batch noise to give a more stable update direction.</li>
+    <li><strong>Second moment \(\hat{\mathbf{v}}\):</strong> EMA of squared gradients. Tracks \(\mathbb{E}[g^2]\) per parameter. Near a minimum where \(\mathbb{E}[g] \approx 0\), we have \(\mathbb{E}[g^2] \approx \text{Var}(g)\), which relates to curvature: steep directions produce large gradients, flat directions produce small ones. Dividing by \(\sqrt{\hat{\mathbf{v}}}\) means parameters move relatively faster in flat directions (small \(g^2\)) and slower in steep directions (large \(g^2\)), leading to a more balanced evolution across all parameters.</li>
+    <li><strong>Caveat:</strong> away from the minimum, \(\mathbb{E}[g^2]\) mixes curvature with the signal (squared mean gradient), so the curvature interpretation is less clean. The per-parameter rescaling still helps empirically.</li>
+    <li><strong>The update \(\hat{\mathbf{m}}/\sqrt{\hat{\mathbf{v}}}\):</strong> can be seen as a diagonal approximation to natural gradient descent &mdash; each parameter gets its own effective learning rate \(\eta / (\sqrt{\hat{v}_i} + \epsilon)\).</li>
+  </ul>
+</section>
+</section>
+
+<!-- SLIDE 14: DEMO Adam Optimizer with real mini-batch regression -->
+<section>
+<section>
+  <h2>Demo: Adam Optimizer</h2>
+  <p style="font-size:0.82em; margin:2px 0;">Polynomial regression on noisy sine data. Model: \(\hat y = w_1\,x + w_2\,x^3\). Mini-batch gradient descent.</p>
+  <div style="display:flex; gap:6px; align-items:center; margin-top:4px; font-size:0.78em; flex-wrap:wrap;">
+    <label>η=<span id="adam-lr-val">0.050</span>
+      <input type="range" id="adam-lr" min="-3" max="0" step="0.1" value="-1.3" style="width:70px;">
+    </label>
+    <label>β₁=<span id="adam-b1-val">0.90</span>
+      <input type="range" id="adam-b1" min="0" max="0.99" step="0.01" value="0.9" style="width:60px;">
+    </label>
+    <label>β₂=<span id="adam-b2-val">0.999</span>
+      <input type="range" id="adam-b2" min="0" max="0.999" step="0.001" value="0.999" style="width:60px;">
+    </label>
+    <label>B=<span id="adam-B-val">64</span>
+      <input type="range" id="adam-B" min="0" max="8" step="1" value="6" style="width:60px;">
+    </label>
+    <button id="adam-run-btn" style="padding:4px 14px; cursor:pointer; border-radius:4px; border:2px solid #27ae60; background:#eafaf1;">&#9654; Run</button>
+    <button id="adam-reset-btn" style="padding:4px 14px; cursor:pointer; border-radius:4px; border:2px solid #e74c3c; background:#fdedec;">&#8634; Reset</button>
+    <span id="adam-step-label" style="color:#7f8c8d;"></span>
+  </div>
+  <div style="display:flex; gap:10px; margin-top:2px;">
+    <div id="adam-contour-plot" style="flex:1; height:295px;"></div>
+    <div id="adam-loss-plot" style="flex:0 0 320px; height:295px;"></div>
+  </div>
+  <div style="display:flex; align-items:center; gap:8px; margin-top:4px;">
+    <button id="adam-next-btn" style="padding:3px 12px; cursor:pointer; border-radius:4px; border:2px solid #2980b9; background:#ebf5fb; font-size:0.8em;">Next &rarr;</button>
+    <span id="adam-narr-text" class="box" style="flex:1; padding:5px 10px; font-size:0.82em;"></span>
+  </div>
+</section>
+<section style="font-size:0.50em;">
+  <h2>Adam Demo &mdash; Details</h2>
+  <ul style="line-height:1.8;">
+    <li><strong>Task:</strong> polynomial regression \(\hat{y} = w_1\,x + w_2\,x^3\) on 500 noisy samples from \(y = \sin(\pi x)\) with \(\sigma = 0.2\), \(x \in [-1,1]\).</li>
+    <li><strong>Loss surface:</strong> the contour plot shows \(\sqrt{\text{MSE}(w_1, w_2)}\). Because the model is linear in \(w_1, w_2\), the true loss is a quadratic bowl. The green star marks the analytic optimum. Contour levels are at \(\sqrt{L} = 1, 2, \ldots, 10\).</li>
+    <li><strong>Left panel:</strong> optimizer trajectory in \((w_1, w_2)\) space, starting from the origin. The red dot is the current position.</li>
+    <li><strong>Right panel:</strong> mini-batch loss (evaluated on the sampled batch at each step) vs.&nbsp;step number.</li>
+    <li><strong>Sliders:</strong> \(\eta\) is the learning rate (log scale), \(\beta_1\) controls the first moment (momentum), \(\beta_2\) controls the second moment (adaptive scaling), and \(B\) is the mini-batch size (powers of 2).</li>
+    <li><strong>Presets (Next button):</strong> cycles through four configurations &mdash; (1) vanilla SGD (\(\beta_1{=}\beta_2{=}0\)), (2) SGD + momentum (\(\beta_1{=}0.9\)), (3) RMSprop-like (\(\beta_2{=}0.999\)), (4) full Adam (\(\beta_1{=}0.9, \beta_2{=}0.999\)).</li>
+    <li><strong>What to observe:</strong> vanilla SGD is noisy and slow. Momentum smooths the trajectory. The second moment adapts step sizes to the loss geometry. Full Adam combines both for fast, stable convergence.</li>
+  </ul>
+</section>
+</section>
+
 <!-- ============================================================ -->
 <!-- SECTION 1: BACKPROPAGATION                                   -->
 <!-- ============================================================ -->
@@ -318,6 +513,8 @@
   .bp2-node.nontensor.bwd { border-style:dashed; }
   .bp2-hl { background:#fff3cd !important; }
 </style>
+
+
 
 <!-- Section Divider: Gradient Flows -->
 <section>
@@ -615,198 +812,6 @@
 </section>
 </section>
 
-<!-- ============================================================ -->
-<!-- SECTION: BEYOND SGD                                          -->
-<!-- ============================================================ -->
-
-<!-- SLIDE 11: Section Divider -->
-<section>
-  <div style="display:flex; align-items:center; justify-content:center; height:100%;">
-    <div style="text-align:center;">
-      <div style="width:200px; height:4px; background:linear-gradient(90deg,#e67e22,#27ae60); margin:0 auto 25px;"></div>
-      <h1 style="font-size:2em; margin:0;">Making Training Work</h1>
-      <p style="font-size:1.1em; color:#7f8c8d; margin-top:15px;">Momentum, Adam, learning rates, and when to stop.</p>
-      <div style="width:200px; height:4px; background:linear-gradient(90deg,#e67e22,#27ae60); margin:25px auto 0;"></div>
-    </div>
-  </div>
-</section>
-
-<!-- SLIDE 12: Momentum -->
-<section>
-  <h2>SGD with Momentum</h2>
-  <p>SGD is noisy due to mini-batch sampling. Idea: smooth the gradients using an <strong>exponential moving average</strong> (EMA, defined next).</p>
-  <div class="box" style="text-align:center; font-size:1.05em; padding:12px; margin-top:8px;">
-    \[\mathbf{m} \leftarrow \beta\,\mathbf{m} + (1-\beta)\,\nabla E \qquad \mathbf{w} \leftarrow \mathbf{w} - \eta\,\mathbf{m}\]
-    <span style="font-size:0.85em; color:#7f8c8d;">\(\beta\): smoothing factor (typical 0.9) &nbsp;|&nbsp; \(\eta\): learning rate &nbsp;|&nbsp; \(\mathbf{m}\): EMA of gradients</span>
-  </div>
-  <div style="display:flex; gap:12px; margin-top:15px;">
-    <div class="box" style="flex:1; text-align:center; border-left:4px solid #e74c3c;">
-      <strong style="color:#e74c3c;">SGD without momentum</strong><br>
-      <span style="font-size:0.9em;">Zig-zags across the valley.<br>Slow convergence along the long axis.</span>
-    </div>
-    <div class="box" style="flex:1; text-align:center; border-left:4px solid #27ae60;">
-      <strong style="color:#27ae60;">SGD with momentum</strong><br>
-      <span style="font-size:0.9em;">Velocity accumulates along consistent direction.<br>Noise gets damped.</span>
-    </div>
-  </div>
-</section>
-
-<!-- SLIDE 12b: EMA intuition -->
-<section>
-<section>
-  <h2>Exponential Moving Average (EMA)</h2>
-  <p style="font-size:0.9em;">Both SGD with momentum and Adam (see next slides) use EMAs. Core idea: <strong>smooth a noisy signal</strong> by blending each new value with the running average.</p>
-  <div class="box" style="text-align:center; font-size:1.05em; padding:10px; margin:6px 0;">
-    \[m_0 = 0, \qquad m_t = \beta\,m_{t-1} + (1-\beta)\,g_t\]
-    <span style="font-size:0.75em; color:#7f8c8d;">\(t\): step counter. &nbsp; Higher \(\beta\) &rarr; more smoothing, but more lag. &nbsp; Effective window &asymp; \(1/(1-\beta)\) steps.</span>
-  </div>
-  <div style="display:flex; gap:8px; align-items:center; font-size:0.82em; margin-top:4px;">
-    <label>β = <span id="ema-beta-val">0.90</span>
-      <input type="range" id="ema-beta" min="0" max="0.99" step="0.01" value="0.9" style="width:120px;">
-    </label>
-    <span style="color:#7f8c8d;" id="ema-window-label">Window &asymp; 10 steps</span>
-    <label style="margin-left:16px;"><input type="checkbox" id="ema-bias-corr"> Bias correction: \(\hat{m}_t = m_t / (1-\beta^t)\)</label>
-  </div>
-  <div id="ema-plot" style="height:300px; margin-top:4px;"></div>
-</section>
-<section style="font-size:0.50em;">
-  <h2>EMA &mdash; Details</h2>
-  <ul style="line-height:1.8;">
-    <li><strong>What it does:</strong> the EMA replaces each noisy gradient \(g_t\) with a smoothed estimate \(m_t = \beta\,m_{t-1} + (1-\beta)\,g_t\). This is a weighted average of all past gradients, where recent gradients carry more weight. The effective averaging window is \(\approx 1/(1-\beta)\) steps.</li>
-<li><strong>Bias correction:</strong> since \(m_0 = 0\), early values of \(m_t\) are biased towards zero (the EMA hasn't "warmed up" yet). Dividing by \((1-\beta^t)\) corrects this: \(\hat{m}_t = m_t/(1-\beta^t)\). The correction is large for small \(t\) and vanishes as \(t \to \infty\).</li>
-    <li><strong>Where EMA appears:</strong>
-      <ul>
-        <li><em>SGD with momentum:</em> EMA of gradients \(\to\) smoother update direction.</li>
-        <li><em>Adam, first moment:</em> EMA of gradients (with bias correction) \(\to\) adaptive mean.</li>
-        <li><em>Adam, second moment:</em> EMA of squared gradients \(\to\) per-parameter step-size scaling.</li>
-      </ul>
-    </li>
-  </ul>
-</section>
-</section>
-
-<!-- SLIDE 13: Adam Optimizer -->
-<section>
-<section>
-  <h2>Adam Optimizer</h2>
-  <p>SGD with momentum smooths gradients. <strong>Adam</strong> additionally adapts the step size per parameter.</p>
-  <div class="box" style="font-size:0.95em; padding:12px; margin-top:8px;">
-    <table style="width:100%; border-collapse:collapse;">
-      <tr><td style="padding:4px 0;">First moment (momentum):</td><td>\(\mathbf{m} \leftarrow \beta_1\,\mathbf{m} + (1-\beta_1)\,\nabla E\)</td></tr>
-      <tr><td style="padding:4px 0;">Second moment (curvature):</td><td>\(\mathbf{v} \leftarrow \beta_2\,\mathbf{v} + (1-\beta_2)\,(\nabla E)^2\)</td></tr>
-      <tr><td style="padding:4px 0;">Bias correction:</td><td>\(\hat{\mathbf{m}} = \mathbf{m}/(1-\beta_1^t), \quad \hat{\mathbf{v}} = \mathbf{v}/(1-\beta_2^t)\)</td></tr>
-      <tr><td style="padding:4px 0;"><strong>Update:</strong></td><td>\(\mathbf{w} \leftarrow \mathbf{w} - \eta\,\hat{\mathbf{m}}\,/\,(\sqrt{\hat{\mathbf{v}}}+\epsilon)\)</td></tr>
-    </table>
-    <span style="font-size:0.72em; color:#7f8c8d;">All operations (square, division, sqrt) are element-wise, i.e.&nbsp;per parameter.</span>
-  </div>
-  <ul style="font-size:0.85em; margin-top:10px;">
-    <li><strong>\(\hat{\mathbf{m}}\)</strong>: EMA of gradients &mdash; smooths noise, gives a reliable update direction.</li>
-    <li><strong>\(\hat{\mathbf{v}}\)</strong>: EMA of squared gradients &mdash; rescales each parameter so that steep directions get smaller steps and flat directions get larger ones.</li>
-  </ul>
-  <div style="display:flex; gap:12px; margin-top:10px;">
-    <div class="box fragment" style="flex:1; text-align:center; padding:8px;">
-      <strong>Defaults:</strong> \(\beta_1{=}0.9,\; \beta_2{=}0.999,\; \epsilon{=}10^{-8}\)
-    </div>
-    <div class="box fragment" style="flex:1; text-align:center; padding:8px;">
-      Adam is the <strong style="color:#e74c3c;">default optimizer</strong><br>in modern deep learning.
-    </div>
-  </div>
-</section>
-<section style="font-size:0.50em;">
-  <h2>Adam &mdash; Details</h2>
-  <ul style="line-height:1.8;">
-    <li><strong>First moment \(\hat{\mathbf{m}}\):</strong> EMA of gradients with bias correction. Identical to SGD with momentum &mdash; smooths out mini-batch noise to give a more stable update direction.</li>
-    <li><strong>Second moment \(\hat{\mathbf{v}}\):</strong> EMA of squared gradients. Tracks \(\mathbb{E}[g^2]\) per parameter. Near a minimum where \(\mathbb{E}[g] \approx 0\), we have \(\mathbb{E}[g^2] \approx \text{Var}(g)\), which relates to curvature: steep directions produce large gradients, flat directions produce small ones. Dividing by \(\sqrt{\hat{\mathbf{v}}}\) means parameters move relatively faster in flat directions (small \(g^2\)) and slower in steep directions (large \(g^2\)), leading to a more balanced evolution across all parameters.</li>
-    <li><strong>Caveat:</strong> away from the minimum, \(\mathbb{E}[g^2]\) mixes curvature with the signal (squared mean gradient), so the curvature interpretation is less clean. The per-parameter rescaling still helps empirically.</li>
-    <li><strong>The update \(\hat{\mathbf{m}}/\sqrt{\hat{\mathbf{v}}}\):</strong> can be seen as a diagonal approximation to natural gradient descent &mdash; each parameter gets its own effective learning rate \(\eta / (\sqrt{\hat{v}_i} + \epsilon)\).</li>
-  </ul>
-</section>
-</section>
-
-<!-- SLIDE 14: DEMO Adam Optimizer with real mini-batch regression -->
-<section>
-<section>
-  <h2>Demo: Adam Optimizer</h2>
-  <p style="font-size:0.82em; margin:2px 0;">Polynomial regression on noisy sine data. Model: \(\hat y = w_1\,x + w_2\,x^3\). Mini-batch gradient descent.</p>
-  <div style="display:flex; gap:6px; align-items:center; margin-top:4px; font-size:0.78em; flex-wrap:wrap;">
-    <label>η=<span id="adam-lr-val">0.050</span>
-      <input type="range" id="adam-lr" min="-3" max="0" step="0.1" value="-1.3" style="width:70px;">
-    </label>
-    <label>β₁=<span id="adam-b1-val">0.90</span>
-      <input type="range" id="adam-b1" min="0" max="0.99" step="0.01" value="0.9" style="width:60px;">
-    </label>
-    <label>β₂=<span id="adam-b2-val">0.999</span>
-      <input type="range" id="adam-b2" min="0" max="0.999" step="0.001" value="0.999" style="width:60px;">
-    </label>
-    <label>B=<span id="adam-B-val">64</span>
-      <input type="range" id="adam-B" min="0" max="8" step="1" value="6" style="width:60px;">
-    </label>
-    <button id="adam-run-btn" style="padding:4px 14px; cursor:pointer; border-radius:4px; border:2px solid #27ae60; background:#eafaf1;">&#9654; Run</button>
-    <button id="adam-reset-btn" style="padding:4px 14px; cursor:pointer; border-radius:4px; border:2px solid #e74c3c; background:#fdedec;">&#8634; Reset</button>
-    <span id="adam-step-label" style="color:#7f8c8d;"></span>
-  </div>
-  <div style="display:flex; gap:10px; margin-top:2px;">
-    <div id="adam-contour-plot" style="flex:1; height:295px;"></div>
-    <div id="adam-loss-plot" style="flex:0 0 320px; height:295px;"></div>
-  </div>
-  <div style="display:flex; align-items:center; gap:8px; margin-top:4px;">
-    <button id="adam-next-btn" style="padding:3px 12px; cursor:pointer; border-radius:4px; border:2px solid #2980b9; background:#ebf5fb; font-size:0.8em;">Next &rarr;</button>
-    <span id="adam-narr-text" class="box" style="flex:1; padding:5px 10px; font-size:0.82em;"></span>
-  </div>
-</section>
-<section style="font-size:0.50em;">
-  <h2>Adam Demo &mdash; Details</h2>
-  <ul style="line-height:1.8;">
-    <li><strong>Task:</strong> polynomial regression \(\hat{y} = w_1\,x + w_2\,x^3\) on 500 noisy samples from \(y = \sin(\pi x)\) with \(\sigma = 0.2\), \(x \in [-1,1]\).</li>
-    <li><strong>Loss surface:</strong> the contour plot shows \(\sqrt{\text{MSE}(w_1, w_2)}\). Because the model is linear in \(w_1, w_2\), the true loss is a quadratic bowl. The green star marks the analytic optimum. Contour levels are at \(\sqrt{L} = 1, 2, \ldots, 10\).</li>
-    <li><strong>Left panel:</strong> optimizer trajectory in \((w_1, w_2)\) space, starting from the origin. The red dot is the current position.</li>
-    <li><strong>Right panel:</strong> mini-batch loss (evaluated on the sampled batch at each step) vs.&nbsp;step number.</li>
-    <li><strong>Sliders:</strong> \(\eta\) is the learning rate (log scale), \(\beta_1\) controls the first moment (momentum), \(\beta_2\) controls the second moment (adaptive scaling), and \(B\) is the mini-batch size (powers of 2).</li>
-    <li><strong>Presets (Next button):</strong> cycles through four configurations &mdash; (1) vanilla SGD (\(\beta_1{=}\beta_2{=}0\)), (2) SGD + momentum (\(\beta_1{=}0.9\)), (3) RMSprop-like (\(\beta_2{=}0.999\)), (4) full Adam (\(\beta_1{=}0.9, \beta_2{=}0.999\)).</li>
-    <li><strong>What to observe:</strong> vanilla SGD is noisy and slow. Momentum smooths the trajectory. The second moment adapts step sizes to the loss geometry. Full Adam combines both for fast, stable convergence.</li>
-  </ul>
-</section>
-</section>
-
-<!-- SLIDE 15: Learning Rate Schedules -->
-<section>
-  <h2>Learning Rate Schedules</h2>
-  <p>Even Adam needs a good learning rate. And the best rate <strong>changes during training</strong>.</p>
-  <div style="display:flex; gap:10px; margin-top:10px;">
-    <div class="box" style="flex:1; text-align:center;">
-      <strong style="color:#2980b9;">Step decay</strong><br>
-      <div id="lr-step-plot" style="height:160px;"></div>
-      <span style="font-size:0.85em;">Drop by factor every \(N\) epochs</span>
-    </div>
-    <div class="box" style="flex:1; text-align:center;">
-      <strong style="color:#e67e22;">Cosine annealing</strong><br>
-      <div id="lr-cosine-plot" style="height:160px;"></div>
-      <span style="font-size:0.85em;">Smooth decrease following cosine</span>
-    </div>
-    <div class="box" style="flex:1; text-align:center;">
-      <strong style="color:#27ae60;">Warmup + decay</strong><br>
-      <div id="lr-warmup-plot" style="height:160px;"></div>
-      <span style="font-size:0.85em;">Ramp up, then decrease</span>
-    </div>
-  </div>
-  <p class="fragment" style="text-align:center; margin-top:8px; font-size:0.9em;">
-    <strong>Warmup</strong> prevents early instability; <strong>decay</strong> allows fine-grained convergence.
-  </p>
-  <p style="font-size:0.75em; color:#7f8c8d; text-align:center; margin-top:6px;">
-    Learning rate scheduling is good practice but fine-tuning &mdash; it helps achieve convergent, low-noise results in the final stages of training.
-  </p>
-</section>
-
-<!-- SLIDE 16: Early Stopping -->
-<section>
-  <h2>Early Stopping</h2>
-  <p>Monitor <strong>validation loss</strong> during training. Stop when it starts to rise.</p>
-  <div id="overfit-plot" style="width:100%; height:310px; margin-top:8px;"></div>
-  <div class="box fragment" style="text-align:center; padding:10px; margin-top:4px;">
-    The simplest and most effective regularization technique.<br>
-    Save the model at the best validation loss &mdash; everything after that is <strong style="color:#e74c3c;">memorizing noise</strong>.
-  </div>
-</section>
 
 <!-- ============================================================ -->
 <!-- SECTION 3: WHY DEEP LEARNING WORKS                           -->
