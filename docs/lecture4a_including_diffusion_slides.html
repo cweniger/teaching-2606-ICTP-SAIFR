@@ -1,0 +1,1040 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Lecture 4a: Normalising flows and continuous-time heads</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reveal.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/theme/white.css">
+<link rel="stylesheet" href="lib/lecture.css">
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.20.0/dist/tf.min.js"></script>
+<style>
+  /* Lecture 3 additions on top of shared lecture.css */
+  .reveal table { font-size: 0.95em; border-collapse: collapse; margin: 0 auto; }
+  .reveal th, .reveal td { padding: 6px 10px; border-bottom: 1px solid #ecf0f1; text-align: left; vertical-align: top; }
+  .reveal th { background: #f8f9fa; font-weight: 600; color: #2c3e50; }
+  .reveal img.fig { max-width: 100%; max-height: 420px; border-radius: 4px; }
+  .credit { font-size: 0.7em; color: #95a5a6; text-align: center; margin-top: 6px; }
+</style>
+</head>
+<body data-lecture="4a">
+<div class="reveal">
+<div class="slides">
+
+<!-- ============================================================ -->
+<!-- TITLE                                                        -->
+<!-- ============================================================ -->
+<section>
+  <h1 style="font-size:1.5em;">Machine Learning for Astroparticle Physics: <br> A Crash-course in SBI</h1>
+  <h3>Lecture 4a &mdash; Normalising flows &amp; continuous-time heads</h3>
+  <p class="subtitle">Christoph Weniger, University of Amsterdam (GRAPPA)</p>
+  <p class="subtitle" style="color:#95a5a6;">Carried over from Lecture 3 &mdash; to be covered in the next session.</p>
+</section>
+
+<!-- ============================================================ -->
+<!-- IMPORTED FROM old/lecture6.html — Normalising flows block    -->
+<!-- ============================================================ -->
+
+<!-- Section divider -->
+<section>
+  <div style="display:flex; align-items:center; justify-content:center; height:100%;">
+    <div style="text-align:center;">
+      <div style="width:200px; height:4px; background:linear-gradient(90deg,#2980b9,#e74c3c); margin:0 auto 25px;"></div>
+      <h1 style="font-size:2em; margin:0;">Normalising flows</h1>
+      <p style="font-size:1.1em; color:#7f8c8d; margin-top:15px;">A flexible density from invertible maps, via the change-of-variables formula.</p>
+      <div style="width:200px; height:4px; background:linear-gradient(90deg,#2980b9,#e74c3c); margin:25px auto 0;"></div>
+    </div>
+  </div>
+</section>
+
+<!-- Why flows + wishlist -->
+<section>
+  <h2>Why we need flows</h2>
+  <p>
+    Real posteriors in physics are often <strong>multimodal</strong>, <strong>curved</strong>, or <strong>heavy-tailed</strong>. Gaussians can't represent them.
+  </p>
+  <div style="display:flex; gap:14px; margin-top:14px;">
+    <div class="box box-blue" style="flex:1; text-align:center;">
+      <strong>&#9312; Evaluate \(\log q_\phi(\boldsymbol\theta\mid\mathbf{x})\)</strong><br><br>
+      Needed for the NPE loss.
+    </div>
+    <div class="box box-orange" style="flex:1; text-align:center;">
+      <strong>&#9313; Sample \(\boldsymbol\theta \sim q_\phi\)</strong><br><br>
+      Needed for corner plots, downstream analyses.
+    </div>
+    <div class="box box-green" style="flex:1; text-align:center;">
+      <strong>&#9314; Arbitrary shape</strong><br><br>
+      Multimodal, curved, heavy-tailed.
+    </div>
+  </div>
+  <p>
+    MLPs on raw outputs fail &#9312;: nothing forces normalisation.<br>
+    <strong>Normalising flows</strong> satisfy all three by construction, via the change-of-variables formula.
+  </p>
+</section>
+
+<!-- The flow picture: base density warped into a target -->
+<section>
+  <h2>The big picture</h2>
+  <p style="text-align:center; font-size:0.95em; color:#2c3e50; margin-bottom:10px;">
+    A simple base density \(\pi_0(\mathbf{z}_0)\) is pushed through a chain of invertible maps \(f_i\) into a complex target \(\pi_K(\mathbf{z}_K)\).
+  </p>
+  <div style="text-align:center;">
+    <img src="https://lilianweng.github.io/posts/2018-10-13-flow-models/normalizing-flow.png"
+         class="fig" style="max-height:300px; background:#fff; padding:8px;">
+  </div>
+  <p class="credit">
+    Figure: Lilian Weng, &ldquo;Flow-based Deep Generative Models&rdquo; (2018),
+    <a href="https://lilianweng.github.io/posts/2018-10-13-flow-models/" style="color:#2980b9;">lilianweng.github.io</a>,
+    after Weng's adaptation of Rezende &amp; Mohamed (2015), <a href="https://arxiv.org/abs/1505.05770" style="color:#2980b9;">arXiv:1505.05770</a>.
+  </p>
+</section>
+
+<!-- Change of variables -->
+<section>
+  <h2>Change of variables</h2>
+  <p>Normalising flows are based on the change-of-variables formula.</p>
+  <div class="box box-blue" style="text-align:center;">
+    <strong>Univariate case.</strong> If \(z \sim p_Z(z)\) and \(\theta = f(z)\) with \(f\) invertible and differentiable,
+    \[ p_\Theta(\theta) \;=\; p_Z(z)\,\left|\frac{dz}{d\theta}\right| \;=\; p_Z(f^{-1}(\theta))\,\left|\frac{df}{dz}\right|^{-1} \]
+  </div>
+  <div class="box box-purple" style="text-align:center;">
+    <strong>Multivariate case.</strong> For \(\mathbf{z} \in \mathbb{R}^d\), and a mapping \(\boldsymbol\theta = f(\mathbf{z})\),
+    \[ p_\Theta(\boldsymbol\theta) \;=\; p_Z(f^{-1}(\boldsymbol\theta))\;\left|\det \frac{\partial f}{\partial \mathbf{z}}\right|^{-1} \]
+    The Jacobian determinant is the <em>volume rescaling</em>. General \(|\det J|\) costs \(\mathcal{O}(d^3)\).
+  </div>
+</section>
+
+<!-- 1D worked example: warping a Gaussian -->
+<section>
+  <h2>Example: warping a Gaussian</h2>
+  <p></p>The volume compression can be nicely visualised in the univariate case.</p>
+  <div style="display:flex; gap:10px; justify-content:center; align-items:flex-start; margin-top:6px;">
+    <div style="text-align:center;">
+      <canvas id="cv-map" width="280" height="240" style="border:1px solid #bdc3c7; border-radius:4px; background:#fafafa;"></canvas>
+      <div style="font-size:0.95em; color:#2c3e50;">map &nbsp;\(\theta = z + A\sin z\)</div>
+    </div>
+    <div style="text-align:center;">
+      <canvas id="cv-base" width="280" height="240" style="border:1px solid #bdc3c7; border-radius:4px; background:#fafafa;"></canvas>
+      <div style="font-size:0.95em; color:#2c3e50;">base &nbsp;\(\mathcal{N}(0, 1.5^2)\)</div>
+    </div>
+    <div style="text-align:center;">
+      <canvas id="cv-warp" width="280" height="240" style="border:1px solid #bdc3c7; border-radius:4px; background:#fafafa;"></canvas>
+      <div style="font-size:0.95em; color:#2c3e50;">warped &nbsp;\(p_\Theta(\theta) = p_Z(z)/|1+A\cos z|\)</div>
+    </div>
+  </div>
+  <div style="display:flex; gap:14px; align-items:center; justify-content:center; margin-top:14px;">
+    <label style="font-size:0.95em;">parameter &nbsp;\(A\) =
+      <span id="cv-aval" style="font-family:monospace; color:#e67e22; font-weight:600;">0.80</span>
+    </label>
+    <input id="cv-slider" type="range" min="0" max="0.99" step="0.01" value="0.80" style="width:320px; accent-color:#e67e22;">
+    <span id="cv-mono" style="font-size:0.95em; color:#27ae60; font-weight:600;">monotonic &#10003;</span>
+  </div>
+  <p style="text-align:left; margin-top:10px; margin-top:50px; font-size:0.95em; color:#2c3e50;">
+    Base \(\mathcal{N}(0,1.5^2)\) pushed through \(\theta = z + A\sin z\). For \(A < 1\) the map is strictly monotonic, still invertible, but as \(A\to 1\) the derivative near \(z=\pm\pi\) collapses, so density mass piles up there: the warped target becomes <strong>bimodal</strong>.
+  </p>
+</section>
+
+<!-- Stack of invertible maps -->
+<section>
+  <h2></h2>Normalising flow = stack of invertible maps</h2>
+  <div> 
+    <p>to build a normalising flow, we now stack many simple invertible maps to generate a complex one.</p>
+  </div>
+  <div class="box box-purple" style="text-align:center; font-size:1.05em;">
+    \[ \boldsymbol\theta \;=\; f_L \circ f_{L-1} \circ \cdots \circ f_1(\mathbf{z}), \qquad \mathbf{z} \sim \mathcal{N}(0, I_d) \]
+    Each \(f_\ell\) is invertible and differentiable, with parameters \(\phi_\ell\) (possibly conditioned on \(\mathbf{x}\)).
+  </div>
+  <ul style="font-size:0.95em;">
+    <li><strong>Sampling</strong> \(\boldsymbol\theta \sim q_\phi\): draw \(\mathbf{z}\), push forward through the stack.</li>
+    <li><strong>Density evaluation</strong> at a given \(\boldsymbol\theta\): invert the stack, evaluate \(p_Z\), correct with Jacobians.</li>
+    <li>Composition of invertible maps is invertible, deep flows stay a valid density.</li>
+  </ul>
+  <div class="box box-blue" style="text-align:center;">
+    Flexibility grows with depth \(L\), just like MLPs, but every layer preserves the probability axioms.
+  </div>
+</section>
+
+<!-- Log-density by chain of Jacobians -->
+<section>
+  <h2>Log-density by chain of Jacobians</h2>
+  <p>Evaluating the loss function (NLL) is formally straightforward.</p>
+  <div class="box box-blue">
+    Let \(\mathbf{z}_\ell = f_\ell(\mathbf{z}_{\ell-1})\), \(\mathbf{z}_0 = \mathbf{z}\), \(\mathbf{z}_L = \boldsymbol\theta\). Change-of-variables composes:
+    \[ \log q_\phi(\boldsymbol\theta\mid\mathbf{x}) \;=\; \log p_Z(\mathbf{z}_0) \;-\; \sum_{\ell=1}^{L} \log \left| \det \frac{\partial f_\ell}{\partial \mathbf{z}_{\ell-1}} \right| \]
+  </div>
+  <div class="box box-green">
+    <strong>Training is just minibatch SGD:</strong>
+    \[ \mathcal{L}_{\mathrm{NPE}}(\phi) = -\frac{1}{|\mathcal{B}|}\sum_{(\boldsymbol\theta, \mathbf{x})\in\mathcal{B}} \log q_\phi(\boldsymbol\theta\mid\mathbf{x}) \]
+  </div>
+  <p>
+    <strong>Key design constraint:</strong> each \(|\det \partial f_\ell / \partial \mathbf{z}_{\ell-1}|\) must be computationally cheap.
+  </p>
+</section>
+
+<!-- Coupling layers -->
+<section>
+  <h2>Example: Affine coupling layers</h2>
+  A specific type of mapping with cheap log determinant are affine coupling layers.
+  <div class="box box-purple">
+    Idea: For each mapping, split parameters vector in two components \(\mathbf{z} = (\mathbf{z}_A, \mathbf{z}_B)\). 
+    
+    Define the transformation as
+    \[ \mathbf{z}'_A = \mathbf{z}_A, \qquad
+       \mathbf{z}'_B = \mathbf{z}_B \odot \exp\!\big(s_\phi(\mathbf{z}_A)\big) \;+\; t_\phi(\mathbf{z}_A) \]
+    where \(s_\phi, t_\phi\) are arbitrary neural networks (MLPs).
+  </div>
+  <div style="display:flex; gap:14px; margin-top:10px;">
+    <div class="box box-blue" style="flex:1;">
+      <strong>Invertibility</strong><br>
+      \(\mathbf{z}_A\) passes through untouched; \(\mathbf{z}_B\) is scaled-and-shifted given \(\mathbf{z}_A\).
+      Trivially invertible in closed form.
+    </div>
+    <div class="box box-green" style="flex:1;">
+      <strong>Cheap Jacobian</strong><br>
+      \(J\) is triangular &rArr; \(\log|\det J| = \sum_i s_\phi(\mathbf{z}_A)_i\).
+      \(\mathcal{O}(d)\), not \(\mathcal{O}(d^3)\).
+    </div>
+  </div>
+  <p>
+    Then alternate which half is "active" across layer. Stack \(L\) of these &rarr; expressive flow.
+  </p>
+</section>
+
+<!-- Why the coupling Jacobian is cheap: dense vs triangular -->
+<section>
+  <h2>Why the Jacobian is cheap</h2>
+  <div class="box box-green" style="text-align:center;">
+    <strong>Cheap Jacobian.</strong>
+    \(J\) is triangular &rArr; \(\log|\det J| = \sum_i s_\phi(\mathbf{z}_A)_i\), so the cost is \(\mathcal{O}(d)\), not \(\mathcal{O}(d^3)\).
+  </div>
+  <div style="text-align:center; margin-top:6px;">
+  <svg viewBox="0 0 760 360" xmlns="http://www.w3.org/2000/svg" style="max-width:100%; height:auto;" font-family="Inter, sans-serif">
+    <!-- ====================== titles ====================== -->
+    <text x="178" y="38" text-anchor="middle" font-size="17" font-weight="600" fill="#2c3e50">Dense Jacobian</text>
+    <text x="578" y="38" text-anchor="middle" font-size="17" font-weight="600" fill="#2c3e50">Affine-coupling Jacobian</text>
+
+    <!-- ====================== DENSE (left) ====================== -->
+    <!-- every entry nonzero -->
+    <rect x="70" y="60" width="216" height="216" fill="#aed6f1"/>
+    <!-- grid -->
+    <path d="M70 60V276 M106 60V276 M142 60V276 M178 60V276 M214 60V276 M250 60V276 M286 60V276 M70 60H286 M70 96H286 M70 132H286 M70 168H286 M70 204H286 M70 240H286 M70 276H286"
+          stroke="#5499c7" stroke-width="1" fill="none"/>
+    <!-- brackets -->
+    <path d="M64 60 h-10 V276 h10 M292 60 h10 V276 h-10" stroke="#2c3e50" stroke-width="2.5" fill="none"/>
+    <text x="178" y="302" text-anchor="middle" font-size="13" fill="#34495e">every entry nonzero</text>
+    <text x="178" y="322" text-anchor="middle" font-size="13" fill="#c0392b" font-weight="600">det costs \(\mathcal{O}(d^3)\)</text>
+
+    <!-- ====================== COUPLING (right) ====================== -->
+    <!-- top-right zero block -->
+    <rect x="578" y="60" width="108" height="108" fill="#f4f6f7"/>
+    <!-- bottom-left dense block (nonzero, irrelevant to det) -->
+    <rect x="470" y="168" width="108" height="108" fill="#d5dbdb"/>
+    <!-- diagonal cells (set the determinant) -->
+    <rect x="470" y="60"  width="36" height="36" fill="#f5b041"/>
+    <rect x="506" y="96"  width="36" height="36" fill="#f5b041"/>
+    <rect x="542" y="132" width="36" height="36" fill="#f5b041"/>
+    <rect x="578" y="168" width="36" height="36" fill="#f5b041"/>
+    <rect x="614" y="204" width="36" height="36" fill="#f5b041"/>
+    <rect x="650" y="240" width="36" height="36" fill="#f5b041"/>
+    <!-- block annotations -->
+    <text x="632" y="120" text-anchor="middle" font-size="22" fill="#95a5a6" font-weight="600">0</text>
+    <text x="524" y="218" text-anchor="middle" font-size="13" fill="#7f8c8d">&#8800; 0</text>
+    <text x="524" y="234" text-anchor="middle" font-size="10" fill="#95a5a6">(ignored)</text>
+    <!-- grid -->
+    <path d="M470 60V276 M506 60V276 M542 60V276 M578 60V276 M614 60V276 M650 60V276 M686 60V276 M470 60H686 M470 96H686 M470 132H686 M470 168H686 M470 204H686 M470 240H686 M470 276H686"
+          stroke="#aab7b8" stroke-width="1" fill="none"/>
+    <!-- brackets -->
+    <path d="M464 60 h-10 V276 h10 M692 60 h10 V276 h-10" stroke="#2c3e50" stroke-width="2.5" fill="none"/>
+    <text x="578" y="302" text-anchor="middle" font-size="13" fill="#34495e">lower-triangular</text>
+    <text x="578" y="322" text-anchor="middle" font-size="13" fill="#27ae60" font-weight="600">det = &#8719; diagonal = &#8719; exp(s\(_i\)), \(\;\mathcal{O}(d)\)</text>
+  </svg>
+  </div>
+</section>
+
+<!-- Live 2D normalising-flow demo -->
+<section>
+  <h2>Flow pushforward, live 2D demo</h2>
+  <!-- Top row: base -> 3 intermediate stages -> data, with arrows between -->
+  <div style="display:flex; gap:4px; align-items:center; justify-content:center;">
+    <div style="text-align:center;">
+      <div style="font-weight:600; color:#2980b9; font-size:0.78em; margin-bottom:2px;">Base &nbsp;\(z\sim\mathcal{N}(0,I)\)</div>
+      <canvas id="nf-zcanvas" width="158" height="158" style="border:1px solid #bdc3c7; border-radius:4px; background:#fafafa;"></canvas>
+    </div>
+    <div style="font-size:1.5em; color:#bdc3c7; padding-bottom:14px;">&rarr;</div>
+    <div style="text-align:center;">
+      <div style="font-weight:600; color:#8e44ad; font-size:0.78em; margin-bottom:2px;">after &nbsp;\(f_1\)</div>
+      <canvas id="nf-c1" width="158" height="158" style="border:1px solid #bdc3c7; border-radius:4px; background:#fafafa;"></canvas>
+    </div>
+    <div style="font-size:1.5em; color:#bdc3c7; padding-bottom:14px;">&rarr;</div>
+    <div style="text-align:center;">
+      <div style="font-weight:600; color:#8e44ad; font-size:0.78em; margin-bottom:2px;">after &nbsp;\(f_2\)</div>
+      <canvas id="nf-c2" width="158" height="158" style="border:1px solid #bdc3c7; border-radius:4px; background:#fafafa;"></canvas>
+    </div>
+    <div style="font-size:1.5em; color:#bdc3c7; padding-bottom:14px;">&rarr;</div>
+    <div style="text-align:center;">
+      <div style="font-weight:600; color:#8e44ad; font-size:0.78em; margin-bottom:2px;">after &nbsp;\(f_3\)</div>
+      <canvas id="nf-c3" width="158" height="158" style="border:1px solid #bdc3c7; border-radius:4px; background:#fafafa;"></canvas>
+    </div>
+    <div style="font-size:1.5em; color:#bdc3c7; padding-bottom:14px;">&rarr;</div>
+    <div style="text-align:center;">
+      <div style="font-weight:600; color:#e67e22; font-size:0.78em; margin-bottom:2px;">Data &nbsp;\(x=f_\theta(z)\)</div>
+      <canvas id="nf-xcanvas" width="158" height="158" style="border:1px solid #bdc3c7; border-radius:4px; background:#fafafa;"></canvas>
+    </div>
+  </div>
+  <!-- Controls + info, moved below the panels -->
+  <div style="display:flex; gap:18px; align-items:center; justify-content:center; margin-top:12px; font-size:0.85em;">
+    <div class="box box-blue" style="padding:6px 12px; margin:0;">
+      <strong>Flow:</strong> 4 affine coupling layers, MLP(32). &nbsp;
+      <strong>Target:</strong> banana (grey). &nbsp;
+      <strong>Loss:</strong> \(-\mathbb{E}[\log q_\theta(x)]\)
+    </div>
+    <div>
+      <button id="nf-toggle" style="padding:5px 10px; cursor:pointer; font-weight:600;">&#9654; Train</button>
+      <button id="nf-reset"  style="padding:5px 10px; cursor:pointer;">Reset</button>
+    </div>
+    <div style="font-family:monospace;">
+      step: <span id="nf-step">0</span> &nbsp; loss: <span id="nf-loss">&mdash;</span>
+    </div>
+  </div>
+  <p style="text-align:center; margin-top:6px; font-size:0.8em; color:#7f8c8d;">
+    Colours tag fixed \(z\)-points by angle, watch each coupling layer bend the cloud step by step into the banana.
+  </p>
+  <p class="credit" style="margin-top:4px;">Trained live in your browser with TF.js. Each layer: \(x_b = z_b \cdot e^{s(z_a)} + t(z_a)\), swapping \(a\leftrightarrow b\). Exact log-density via \(\log|\det J| = \sum_\ell s_\ell\).</p>
+</section>
+
+<!-- Conditional flows -->
+<section>
+  <h2>Conditional flows, plugging in the data</h2>
+  From modeling densities to modeling conditional densities.
+  <div class="box box-orange">
+    For SBI we want \(q_\phi(\boldsymbol\theta \mid \mathbf{x})\), not just \(q_\phi(\boldsymbol\theta)\).
+    To that end, the scale and shift networks should be data dependent (potentially through an embedding \(T_\phi(\mathbf{x})\)):
+    \[ s_\phi(\mathbf{z}_A) \to s_\phi(\mathbf{z}_A, T_\phi(\mathbf{x})), \qquad t_\phi(\mathbf{z}_A) \to t_\phi(\mathbf{z}_A, T_\phi(\mathbf{x})) \]
+  </div>
+  <div style="margin-top:10px; text-align:left">
+    <strong>Full picture</strong>
+    <ol style="font-size:0.95em;">
+      <li><strong>Embedding</strong> \(T_\phi(\mathbf{x})\) compresses the data (CNN / Transformer / GNN, see Lec 4).</li>
+      <li><strong>Conditional flow</strong> turns \(\mathbf{z}\sim\mathcal{N}(0,I)\) into \(\boldsymbol\theta\), with all coupling-layer parameters depending on \(T_\phi(\mathbf{x})\).</li>
+      <li>Loss: \(-\log q_\phi(\boldsymbol\theta^\star\mid\mathbf{x})\) averaged over simulator pairs.</li>
+    </ol>
+  <p>Every component, embedding and coupling networks \(s, t\), is trained together by backprop.</p>
+  </div>
+</section>
+
+<!-- Other generative models at a glance -->
+<section>
+  <h2>Other generative models, at a glance</h2>
+  <p style="font-size:0.95em; color:#555;">Coupling flows are one choice of conditional head \(q_\phi(\boldsymbol\theta\mid\mathbf{x})\). Others trade exact density for scale or speed:</p>
+  <ul style="font-size:0.92em; line-height:1.5;">
+    <li><strong>Coupling normalising flows</strong> (RealNVP, neural spline) &mdash; continuous \(\boldsymbol\theta\), low&ndash;moderate dim (\(\lesssim 100\)); exact density + fast sampling. <em>(what we used)</em></li>
+    <li><strong>Continuous normalising flows</strong> (neural ODE) &mdash; continuous \(\boldsymbol\theta\), moderate dim; exact density via an ODE, but training/sampling slower.</li>
+    <li><strong>Flow matching</strong> &mdash; continuous \(\boldsymbol\theta\), moderate&ndash;high dim incl. image-shaped; cheap regression training, fast ODE sampling, no exact \(\log q\).</li>
+    <li><strong>Diffusion / score-based</strong> &mdash; continuous \(\boldsymbol\theta\), high dim, image- or field-shaped (maps, spectra); best sample quality, slow sampling.</li>
+    <li><strong>Autoregressive models / Transformers</strong> &mdash; sequential or tokenised \(\boldsymbol\theta\), any dim via factorisation; exact likelihood, but sampling is sequential.</li>
+    <li><strong>Categorical / mixture-density heads</strong> &mdash; discrete or very low-dim \(\boldsymbol\theta\); closed-form conditional, no flow needed.</li>
+  </ul>
+</section>
+
+
+
+<!-- LISA SGWB application -->
+<section>
+  <h2>Application, stochastic GW background with LISA</h2>
+  <div style="display:flex; gap:4px; align-items:flex-start;">
+    <div style="flex:1.35; text-align:center;">
+      <img src="figures/lecture6/fig_saqqara_corner.png" class="fig" style="max-height:470px;">
+      <div style="font-size:0.65em; color:#7f8c8d; margin-top:2px;">
+        Posteriors for stochastic-background amplitude \(\alpha\), tilt \(\gamma\), and two noise parameters \(A\), \(P\). Inset: injected PSD, noise + SGWB + unresolved transients.
+      </div>
+    </div>
+    <div style="flex:1; font-size:0.60em;">
+      <div class="box box-blue" style="padding:8px 10px;">
+        <strong>Problem.</strong> LISA data = instrument noise + a stochastic GW background + <em>hundreds</em> of unresolved transient sources (SMBH mergers). Goal: infer the background parameters.
+      </div>
+      <div class="box box-orange" style="padding:8px 10px;">
+        <strong>Why SBI?</strong> The likelihood over the transient population is intractable. Traditional MCMC either ignores transients (biased, <span style="color:#e67e22;">orange dashed</span>) or has to sample their full parameter space (prohibitively expensive).
+      </div>
+      <div class="box box-green" style="padding:8px 10px;">
+        <strong>Result.</strong> The SBI posterior (<span style="font-weight:600;">orange solid</span>, TMNRE via <em>saqqara</em>) <em>automatically marginalises</em> over the transients and recovers the true injection, matching MCMC (<span style="font-weight:600;">black</span>) on the clean case C1.
+      </div>
+      <div class="box box-purple" style="padding:8px 10px;">
+        <strong>Take-away.</strong> SBI turns a nuisance (the transient population) into something implicit in the simulator, no likelihood engineering needed.
+      </div>
+    </div>
+  </div>
+  <p class="credit" style="margin-top:2px;">Alvey, Bhardwaj, Domcke, Pieroni &amp; Weniger, <a href="https://arxiv.org/abs/2309.07954" style="color:#2980b9;">arXiv:2309.07954</a>, code: <em>saqqara</em>.</p>
+</section>
+
+<!-- Full pipeline revisited -->
+<section>
+  <h2>The full pipeline, revisited</h2>
+  <div style="display:flex; gap:14px; align-items:center;">
+    <div style="flex:1.2; text-align:center;">
+      <img src="figures/lecture6/fig_sbi_pipeline.png" class="fig" style="max-height:420px;">
+    </div>
+    <div style="flex:1;">
+      <div class="box box-green"><strong>Simulator</strong>: physics model, possibly slow.</div>
+      <div class="box box-orange"><strong>Embedding \(T_\phi\)</strong>: CNN / Transformer / GNN, matches the data modality.</div>
+      <div class="box box-purple"><strong>Conditional flow</strong>: coupling layers conditioned on \(T_\phi(\mathbf{x})\).</div>
+      <div class="box box-blue"><strong>Inference loss</strong>: \(-\log q_\phi(\boldsymbol\theta^\star\mid\mathbf{x})\).</div>
+    </div>
+  </div>
+  <div class="box" style="margin-top:8px; text-align:center;">
+    <strong>Amortised:</strong> train once, then inference on any new \(\mathbf{x}_{\text{obs}}\) is a single forward pass + sampling.
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<!-- IMPORTED FROM lecture3.draft.html — Flow matching & diffusion -->
+<!-- ============================================================ -->
+
+<!-- Section divider -->
+<section>
+  <div style="display:flex; align-items:center; justify-content:center; height:100%;">
+    <div style="text-align:center;">
+      <div style="width:200px; height:4px; background:linear-gradient(90deg,#2980b9,#e74c3c); margin:0 auto 25px;"></div>
+      <h1 style="font-size:2em; margin:0;">Continuous-time heads</h1>
+      <p style="font-size:1.1em; color:#7f8c8d; margin-top:15px;">Flow matching and diffusion, two continuous-time pictures sharing one visual anchor, ODE vs SDE.</p>
+      <div style="width:200px; height:4px; background:linear-gradient(90deg,#2980b9,#e74c3c); margin:25px auto 0;"></div>
+    </div>
+  </div>
+</section>
+
+<!-- Continuous-time unified picture -->
+<section>
+  <h2>Continuous-time generative models, one picture</h2>
+  <p>Coupling flows compose <strong>discrete</strong> invertible maps. The next two families take the same idea to continuous time: pull samples through a vector field over \(t\in[0, 1]\).</p>
+  <div style="display:flex; gap:14px; margin-top:6px;">
+    <div style="flex:1; text-align:center;">
+      <div style="font-weight:600; color:#2c3e50;">Flow matching, ODE</div>
+      <div id="fm-traj-plot" style="width:100%; height:300px;"></div>
+      <p style="font-size:0.8em; color:#7f8c8d; margin-top:0;">\(d\theta/dt = v_\phi(\theta, t)\), smooth, deterministic trajectories.</p>
+    </div>
+    <div style="flex:1; text-align:center;">
+      <div style="font-weight:600; color:#2c3e50;">Diffusion, SDE</div>
+      <div id="diff-traj-plot" style="width:100%; height:300px;"></div>
+      <p style="font-size:0.8em; color:#7f8c8d; margin-top:0;">\(d\theta = b_\phi(\theta, t)\,dt + g(t)\,dW_t\), noisy, stochastic paths.</p>
+    </div>
+  </div>
+  <p style="text-align:center; margin-top:6px;">
+    <strong>Both</strong> transport a base \(p_0\) (Gaussian noise) into the target \(p_1\) (posterior) over \(t\in[0,1]\). One uses an ODE, the other an SDE.
+  </p>
+  <button id="ct-replay" style="padding:4px 14px; cursor:pointer; font-weight:600; display:block; margin:6px auto 0;">&#9654; Replay</button>
+</section>
+
+<!-- Flow matching -->
+<section>
+  <h2>Flow matching</h2>
+  <p>Learn a velocity field \(v_\phi(\theta, t)\) such that the ODE
+    \(\;d\theta_t/dt = v_\phi(\theta_t, t)\), \(\theta_0 \sim p_0\), \(\theta_1 \sim p(\theta\mid x)\)
+    transports the base noise to the posterior.</p>
+  <div class="box">
+    <strong>Training, conditional FM objective.</strong>
+    Pick a "probability path" \(p_t(\theta\mid\theta_1)\) (e.g. straight-line \(\theta_t = (1-t)\theta_0 + t\theta_1\)); target velocity \(u_t(\theta\mid\theta_1)\). Regress:
+    \[ \mathcal{L}_{\rm FM}(\phi) = \mathbb{E}_{t,\theta_0,\theta_1}\bigl\| v_\phi(\theta_t, t, x) - u_t(\theta\mid\theta_1)\bigr\|^2 \]
+  </div>
+  <p style="margin-top:8px;"><strong>Sampling.</strong> Draw \(\theta_0\sim p_0\); integrate the learned ODE with any black-box solver (Euler, RK4, adaptive). Typically 10&ndash;50 steps.</p>
+  <p><strong>Density.</strong> Available via instantaneous change-of-variables (Hutchinson trace), rarely cheap. FM is mostly used as a <em>sampler</em>.</p>
+  <p style="margin-top:6px; font-size:0.85em; color:#7f8c8d; text-align:center;">Lipman et al. 2023 (ICLR). SBI: Dax et al. 2023 (DINGO-FM), Wildberger et al. 2023.</p>
+</section>
+
+<!-- Diffusion -->
+<section>
+  <h2>Diffusion / score-based generative models</h2>
+  <p>Define a <strong>forward</strong> SDE that turns data into noise:</p>
+  <p style="text-align:center;">
+    \( d\theta_t = -\tfrac{1}{2}\beta(t)\theta_t\,dt + \sqrt{\beta(t)}\,dW_t, \quad t\in[0, 1] \)
+  </p>
+  <p>Learn the <strong>score</strong> \(s_\phi(\theta, t, x) \approx \nabla_\theta\log p_t(\theta\mid x)\) by denoising:</p>
+  <div class="box" style="text-align:center;">
+    \[ \mathcal{L}_{\rm DSM}(\phi) = \mathbb{E}_{t, \theta_0, x}\bigl\| s_\phi(\theta_t, t, x) - \nabla_\theta\log p_t(\theta_t\mid\theta_0)\bigr\|^2 \]
+  </div>
+  <p style="margin-top:12px;"><strong>Sampling</strong> = integrate the <em>reverse</em> SDE (or its probability-flow ODE) from \(t=1\) (noise) back to \(t=0\) (sample). 50&ndash;500 steps typical.</p>
+  <p><strong>SBI flavour.</strong> Condition the score on \(x\) (or \(T_\phi(x)\)). One trained score net amortises over all observations.</p>
+  <p style="margin-top:6px; color:#7f8c8d; text-align:center;">Sohl-Dickstein et al. 2015; Song &amp; Ermon 2019; Ho et al. (DDPM) 2020; Song et al. (score SDE) 2021. SBI: Geffner et al. 2023, Sharrock et al. 2024.</p>
+</section>
+
+<!-- When to reach for which -->
+<section>
+  <h2>When to reach for which inference head</h2>
+  <table style="margin-top:8px;">
+    <thead>
+      <tr><th></th><th>Coupling flow</th><th>Flow matching</th><th>Diffusion</th></tr>
+    </thead>
+    <tbody>
+      <tr><td><strong>Exact log-density</strong></td><td>yes, cheap</td><td>yes, expensive (trace)</td><td>yes, expensive</td></tr>
+      <tr><td><strong>Sampling cost</strong></td><td>one forward pass</td><td>10&ndash;50 ODE steps</td><td>50&ndash;500 SDE steps</td></tr>
+      <tr><td><strong>Training stability</strong></td><td>good, architecture-constrained</td><td>very good, regression loss</td><td>excellent</td></tr>
+      <tr><td><strong>Scales to very high-D \(\theta\)</strong></td><td>moderate</td><td>good</td><td>excellent</td></tr>
+      <tr><td><strong>Shines when</strong></td><td>medium-D, need fast amortised \(\log q\)</td><td>medium-D, fast amortised sampler</td><td>very high-D (images, fields)</td></tr>
+    </tbody>
+  </table>
+  <div class="box" style="margin-top:14px; text-align:center;">
+    Rule of thumb in 2026: <strong>coupling flow</strong> for typical SBI (parameters \(\lesssim 50\)D). <strong>FM/diffusion</strong> when \(\theta\) itself is image-shaped (e.g. dark-matter maps, lensing source planes) or when you want sample-speed and do not need exact \(\log q\).
+  </div>
+</section>
+
+</div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/plotly.js@2.35.0/dist/plotly.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reveal.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/plugin/math/math.js"></script>
+<script src="lib/lecture-helpers.js"></script>
+<script src="lib/lecture-boot.js"></script>
+<script>
+
+function baseLayout(opts) {
+  return Object.assign({
+    margin:{t:10,r:20,b:40,l:50},
+    paper_bgcolor:'rgba(0,0,0,0)', plot_bgcolor:'rgba(0,0,0,0)',
+    font:{size:13}, legend:{x:0.02, y:0.98}
+  }, opts||{});
+}
+
+// ============================================================
+// Interactive change-of-variables (1D worked example, canvas)
+// ============================================================
+(function(){
+  var SIGMA = 1.5;
+  var ZMIN = -6, ZMAX = 6;
+  var TMIN = -7, TMAX = 7;
+  var PMAX = 0.32;
+
+  function pZ(z){
+    return (1/(SIGMA*Math.sqrt(2*Math.PI))) * Math.exp(-z*z/(2*SIGMA*SIGMA));
+  }
+  var MARGIN = { left: 38, right: 10, top: 10, bottom: 34 };
+  function rect(cv){
+    return { x: MARGIN.left, y: MARGIN.top,
+             w: cv.width  - MARGIN.left - MARGIN.right,
+             h: cv.height - MARGIN.top  - MARGIN.bottom };
+  }
+  function mapXY(r, xmin, xmax, ymin, ymax){
+    return function(x, y){
+      return [ r.x + (x - xmin) / (xmax - xmin) * r.w,
+               r.y + r.h - (y - ymin) / (ymax - ymin) * r.h ];
+    };
+  }
+  function drawAxes(ctx, r, xmin, xmax, ymin, ymax, xticks, yticks, xlab, ylab){
+    var M = mapXY(r, xmin, xmax, ymin, ymax);
+    ctx.strokeStyle = '#7f8c8d'; ctx.lineWidth = 1;
+    ctx.strokeRect(r.x, r.y, r.w, r.h);
+    ctx.strokeStyle = '#e1e4e7';
+    if(xmin < 0 && xmax > 0){
+      var p = M(0, ymin); var q = M(0, ymax);
+      ctx.beginPath(); ctx.moveTo(p[0],p[1]); ctx.lineTo(q[0],q[1]); ctx.stroke();
+    }
+    if(ymin < 0 && ymax > 0){
+      var p = M(xmin, 0); var q = M(xmax, 0);
+      ctx.beginPath(); ctx.moveTo(p[0],p[1]); ctx.lineTo(q[0],q[1]); ctx.stroke();
+    }
+    ctx.fillStyle = '#2c3e50';
+    ctx.font = '10px Inter, sans-serif';
+    ctx.strokeStyle = '#7f8c8d';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+    for(var i=0;i<xticks.length;i++){
+      var xv = xticks[i];
+      var p = M(xv, ymin);
+      ctx.beginPath(); ctx.moveTo(p[0], r.y + r.h); ctx.lineTo(p[0], r.y + r.h + 4); ctx.stroke();
+      ctx.fillText(String(xv), p[0], r.y + r.h + 6);
+    }
+    ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
+    for(var i=0;i<yticks.length;i++){
+      var yv = yticks[i];
+      var p = M(xmin, yv);
+      ctx.beginPath(); ctx.moveTo(r.x, p[1]); ctx.lineTo(r.x - 4, p[1]); ctx.stroke();
+      ctx.fillText(String(yv), r.x - 6, p[1]);
+    }
+    ctx.fillStyle = '#2c3e50';
+    ctx.font = 'italic 12px Inter, sans-serif';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
+    ctx.fillText(xlab, r.x + r.w / 2, r.y + r.h + MARGIN.bottom - 2);
+    ctx.save();
+    ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+    ctx.translate(4, r.y + r.h / 2);
+    ctx.rotate(-Math.PI / 2);
+    ctx.fillText(ylab, 0, 0);
+    ctx.restore();
+  }
+  function plotCurve(ctx, r, xmin, xmax, ymin, ymax, xs, ys, color, lw, fillRgba){
+    var M = mapXY(r, xmin, xmax, ymin, ymax);
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(r.x, r.y, r.w, r.h); ctx.clip();
+    if(fillRgba){
+      ctx.beginPath();
+      var y0p = M(xmin, Math.max(0, ymin));
+      ctx.moveTo(y0p[0], y0p[1]);
+      for(var i=0;i<xs.length;i++){
+        var p = M(xs[i], ys[i]); ctx.lineTo(p[0], p[1]);
+      }
+      var y1p = M(xmax, Math.max(0, ymin));
+      ctx.lineTo(y1p[0], y1p[1]); ctx.closePath();
+      ctx.fillStyle = fillRgba; ctx.fill();
+    }
+    ctx.beginPath();
+    for(var i=0;i<xs.length;i++){
+      var p = M(xs[i], ys[i]);
+      if(i===0) ctx.moveTo(p[0],p[1]); else ctx.lineTo(p[0],p[1]);
+    }
+    ctx.lineWidth = lw || 2; ctx.strokeStyle = color; ctx.stroke();
+    ctx.restore();
+  }
+  function vLine(ctx, r, xmin, xmax, ymin, ymax, xv, color){
+    var M = mapXY(r, xmin, xmax, ymin, ymax);
+    var p = M(xv, ymin), q = M(xv, ymax);
+    ctx.save();
+    ctx.beginPath(); ctx.rect(r.x, r.y, r.w, r.h); ctx.clip();
+    ctx.setLineDash([4,3]); ctx.strokeStyle = color; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(p[0],p[1]); ctx.lineTo(q[0],q[1]); ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.restore();
+  }
+  function segment(ctx, r, xmin, xmax, ymin, ymax, x0, y0, x1, y1, color, lw){
+    var M = mapXY(r, xmin, xmax, ymin, ymax);
+    var p = M(x0, y0), q = M(x1, y1);
+    ctx.save();
+    ctx.beginPath(); ctx.rect(r.x, r.y, r.w, r.h); ctx.clip();
+    ctx.strokeStyle = color; ctx.lineWidth = lw || 1;
+    ctx.beginPath(); ctx.moveTo(p[0],p[1]); ctx.lineTo(q[0],q[1]); ctx.stroke();
+    ctx.restore();
+  }
+  function hLine(ctx, r, xmin, xmax, ymin, ymax, yv, color){
+    var M = mapXY(r, xmin, xmax, ymin, ymax);
+    var p = M(xmin, yv), q = M(xmax, yv);
+    ctx.save();
+    ctx.beginPath(); ctx.rect(r.x, r.y, r.w, r.h); ctx.clip();
+    ctx.setLineDash([4,3]); ctx.strokeStyle = color; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(p[0],p[1]); ctx.lineTo(q[0],q[1]); ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.restore();
+  }
+  function render(A){
+    var N = 800;
+    var zs = new Float64Array(N), pz = new Float64Array(N),
+        th = new Float64Array(N), pt = new Float64Array(N);
+    for(var i=0;i<N;i++){
+      var z = ZMIN + (ZMAX-ZMIN)*i/(N-1);
+      zs[i] = z;
+      pz[i] = pZ(z);
+      th[i] = z + A*Math.sin(z);
+      var deriv = 1 + A*Math.cos(z);
+      pt[i] = pz[i] / Math.max(Math.abs(deriv), 1e-6);
+    }
+    var xticksZ = [-6,-3,0,3,6], xticksT = [-6,-3,0,3,6];
+    var yticksT = [-6,-3,0,3,6], yticksP = [0, 0.1, 0.2, 0.3];
+
+    var cm = document.getElementById('cv-map');
+    if(cm){
+      var ctx = cm.getContext('2d'); ctx.clearRect(0,0,cm.width,cm.height);
+      var r = rect(cm);
+      drawAxes(ctx, r, ZMIN, ZMAX, TMIN, TMAX, xticksZ, yticksT, 'z', 'θ');
+      // 20 equidistant z-samples: rise from the z-axis to the curve, then bend
+      // left to the θ-axis. Uniform in z, non-uniform on θ ⇒ compression/expansion.
+      var NL = 20;
+      for(var k=0;k<NL;k++){
+        var zk = ZMIN + (ZMAX-ZMIN)*(k+0.5)/NL;
+        var tk = zk + A*Math.sin(zk);
+        // vertical: z-axis (θ=0) up to the curve
+        segment(ctx, r, ZMIN, ZMAX, TMIN, TMAX, zk, 0, zk, tk, 'rgba(22,160,133,0.45)', 1);
+        // horizontal: curve across to the θ-axis (z=0)
+        segment(ctx, r, ZMIN, ZMAX, TMIN, TMAX, zk, tk, 0, tk, 'rgba(22,160,133,0.45)', 1);
+      }
+      [-Math.PI, Math.PI].forEach(function(zc){
+        vLine(ctx, r, ZMIN, ZMAX, TMIN, TMAX, zc, '#e67e22');
+        hLine(ctx, r, ZMIN, ZMAX, TMIN, TMAX, zc + A*Math.sin(zc), '#e67e22');
+      });
+      plotCurve(ctx, r, ZMIN, ZMAX, TMIN, TMAX, zs, th, '#8e44ad', 2);
+    }
+    var cb = document.getElementById('cv-base');
+    if(cb){
+      var ctx = cb.getContext('2d'); ctx.clearRect(0,0,cb.width,cb.height);
+      var r = rect(cb);
+      drawAxes(ctx, r, ZMIN, ZMAX, 0, PMAX, xticksZ, yticksP, 'z', 'p_Z(z)');
+      plotCurve(ctx, r, ZMIN, ZMAX, 0, PMAX, zs, pz, '#2980b9', 2, 'rgba(41,128,185,0.25)');
+    }
+    var cw = document.getElementById('cv-warp');
+    if(cw){
+      var ctx = cw.getContext('2d'); ctx.clearRect(0,0,cw.width,cw.height);
+      var r = rect(cw);
+      drawAxes(ctx, r, TMIN, TMAX, 0, PMAX, xticksT, yticksP, 'θ', 'p_Θ(θ)');
+      [-Math.PI, Math.PI].forEach(function(tc){
+        vLine(ctx, r, TMIN, TMAX, 0, PMAX, tc, '#95a5a6');
+      });
+      plotCurve(ctx, r, TMIN, TMAX, 0, PMAX, th, pt, '#e67e22', 2, 'rgba(230,126,34,0.30)');
+    }
+  }
+  function update(){
+    var sl = document.getElementById('cv-slider'); if(!sl) return;
+    var A = parseFloat(sl.value);
+    var lbl = document.getElementById('cv-aval');
+    if(lbl) lbl.textContent = A.toFixed(2);
+    var mono = document.getElementById('cv-mono');
+    if(mono){
+      if(A < 1){ mono.textContent = 'monotonic ✓'; mono.style.color = '#27ae60'; }
+      else     { mono.textContent = 'not invertible ✗'; mono.style.color = '#c0392b'; }
+    }
+    render(A);
+  }
+  function init(){
+    var sl = document.getElementById('cv-slider'); if(!sl) return;
+    sl.addEventListener('input', update);
+    update();
+  }
+  document.addEventListener('DOMContentLoaded', init);
+  Reveal.on('slidechanged', function(e){
+    if(e.currentSlide && e.currentSlide.querySelector('#cv-slider')) update();
+  });
+})();
+
+// ============================================================
+// Live normalising-flow demo (TF.js, 4 affine-coupling layers)
+// ============================================================
+(function(){
+  var NF = { inited:false, running:false, step:0, layers:[], opt:null,
+             zFixed:null, zColors:null, targetPts:null, rafId:null };
+
+  function randn(){
+    var u=Math.random(), v=Math.random();
+    return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v);
+  }
+  function sampleBanana(n){
+    var pts = new Float32Array(n*2);
+    for(var i=0;i<n;i++){
+      var x = randn();
+      var y = 0.5 * x * x + 0.4 * randn() - 1.0;
+      pts[2*i] = x; pts[2*i+1] = y;
+    }
+    return pts;
+  }
+  function makeMlp(hidden){
+    return {
+      W1: tf.variable(tf.randomNormal([1, hidden], 0, 0.3)),
+      b1: tf.variable(tf.zeros([hidden])),
+      W2: tf.variable(tf.randomNormal([hidden, 2], 0, 0.01)),
+      b2: tf.variable(tf.zeros([2]))
+    };
+  }
+  function mlp(m, x){
+    return tf.tidy(function(){
+      var h = tf.relu(tf.add(tf.matMul(x, m.W1), m.b1));
+      return tf.add(tf.matMul(h, m.W2), m.b2);
+    });
+  }
+  function buildLayers(){
+    NF.layers = [];
+    for(var i=0;i<4;i++){
+      NF.layers.push({ mask: i%2, net: makeMlp(32) });
+    }
+  }
+  function inv(x){
+    return tf.tidy(function(){
+      var cur = x;
+      var B = x.shape[0];
+      var logDetInv = tf.zeros([B]);
+      for(var i=NF.layers.length-1; i>=0; i--){
+        var L = NF.layers[i];
+        var a, b;
+        if(L.mask === 0){
+          a = cur.slice([0,0],[-1,1]); b = cur.slice([0,1],[-1,1]);
+        } else {
+          a = cur.slice([0,1],[-1,1]); b = cur.slice([0,0],[-1,1]);
+        }
+        var st = mlp(L.net, a);
+        var s = tf.tanh(st.slice([0,0],[-1,1]));
+        var t = st.slice([0,1],[-1,1]);
+        var bOrig = tf.mul(tf.sub(b, t), tf.exp(tf.neg(s)));
+        logDetInv = tf.sub(logDetInv, s.squeeze([1]));
+        cur = (L.mask === 0) ? tf.concat([a, bOrig], 1) : tf.concat([bOrig, a], 1);
+      }
+      return { z: cur, logDetInv: logDetInv };
+    });
+  }
+  function nll(xTensor){
+    return tf.tidy(function(){
+      var inverseOut = inv(xTensor);
+      var z = inverseOut.z;
+      var logDetInv = inverseOut.logDetInv;
+      var LOG2PI = Math.log(2 * Math.PI);
+      var logPz = tf.sub(tf.mul(-0.5, tf.sum(tf.square(z), 1)), LOG2PI);
+      var logPx = tf.add(logPz, logDetInv);
+      return tf.neg(tf.mean(logPx));
+    });
+  }
+  function makeMapper(xmin, xmax, ymin, ymax, W, H){
+    return function(x, y){
+      var px = (x - xmin) / (xmax - xmin) * W;
+      var py = H - (y - ymin) / (ymax - ymin) * H;
+      return [px, py];
+    };
+  }
+  var XR = [-2.6, 2.6], YR = [-2.2, 2.2];
+  function drawZCanvas(){
+    var c = document.getElementById('nf-zcanvas');
+    if(!c) return;
+    var ctx = c.getContext('2d');
+    ctx.clearRect(0,0,c.width,c.height);
+    var M = makeMapper(-3,3,-3,3,c.width,c.height);
+    ctx.strokeStyle = '#e1e4e7'; ctx.lineWidth = 1;
+    var o = M(0,0);
+    ctx.beginPath(); ctx.moveTo(o[0],0); ctx.lineTo(o[0],c.height); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(0,o[1]); ctx.lineTo(c.width,o[1]); ctx.stroke();
+    var z = NF.zFixed;
+    for(var i=0;i<z.length/2;i++){
+      var p = M(z[2*i], z[2*i+1]);
+      ctx.fillStyle = NF.zColors[i];
+      ctx.beginPath(); ctx.arc(p[0], p[1], 2, 0, 6.2832); ctx.fill();
+    }
+  }
+  function drawXCanvas(pushforward){
+    var c = document.getElementById('nf-xcanvas');
+    if(!c) return;
+    var ctx = c.getContext('2d');
+    ctx.clearRect(0,0,c.width,c.height);
+    var M = makeMapper(XR[0],XR[1],YR[0],YR[1],c.width,c.height);
+    ctx.strokeStyle = '#e1e4e7'; ctx.lineWidth = 1;
+    var o = M(0,0);
+    ctx.beginPath(); ctx.moveTo(o[0],0); ctx.lineTo(o[0],c.height); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(0,o[1]); ctx.lineTo(c.width,o[1]); ctx.stroke();
+    ctx.fillStyle = 'rgba(150,150,150,0.35)';
+    var tp = NF.targetPts;
+    for(var i=0;i<tp.length/2;i++){
+      var p = M(tp[2*i], tp[2*i+1]);
+      ctx.beginPath(); ctx.arc(p[0], p[1], 1.6, 0, 6.2832); ctx.fill();
+    }
+    if(pushforward){
+      for(var i=0;i<pushforward.length/2;i++){
+        var p = M(pushforward[2*i], pushforward[2*i+1]);
+        ctx.fillStyle = NF.zColors[i];
+        ctx.beginPath(); ctx.arc(p[0], p[1], 2, 0, 6.2832); ctx.fill();
+      }
+    }
+  }
+  // Pushforward of the fixed z-points, snapshotting the cloud after every layer.
+  // Returns an array of Float32Arrays, one per coupling layer (last = data space).
+  function pushforwardStages(){
+    return tf.tidy(function(){
+      var cur = tf.tensor2d(NF.zFixed, [NF.zFixed.length/2, 2]);
+      var stages = [];
+      for(var i=0;i<NF.layers.length;i++){
+        var L = NF.layers[i];
+        var a, b;
+        if(L.mask === 0){
+          a = cur.slice([0,0],[-1,1]); b = cur.slice([0,1],[-1,1]);
+        } else {
+          a = cur.slice([0,1],[-1,1]); b = cur.slice([0,0],[-1,1]);
+        }
+        var st = mlp(L.net, a);
+        var s = tf.tanh(st.slice([0,0],[-1,1]));
+        var t = st.slice([0,1],[-1,1]);
+        var bNew = tf.add(tf.mul(b, tf.exp(s)), t);
+        cur = (L.mask === 0) ? tf.concat([a, bNew], 1) : tf.concat([bNew, a], 1);
+        stages.push(cur.dataSync());
+      }
+      return stages;
+    });
+  }
+  var SR = [-3.2, 3.2];
+  function drawStage(id, pts){
+    var c = document.getElementById(id);
+    if(!c) return;
+    var ctx = c.getContext('2d');
+    ctx.clearRect(0,0,c.width,c.height);
+    var M = makeMapper(SR[0],SR[1],SR[0],SR[1],c.width,c.height);
+    ctx.strokeStyle = '#e1e4e7'; ctx.lineWidth = 1;
+    var o = M(0,0);
+    ctx.beginPath(); ctx.moveTo(o[0],0); ctx.lineTo(o[0],c.height); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(0,o[1]); ctx.lineTo(c.width,o[1]); ctx.stroke();
+    for(var i=0;i<pts.length/2;i++){
+      var p = M(pts[2*i], pts[2*i+1]);
+      ctx.fillStyle = NF.zColors[i];
+      ctx.beginPath(); ctx.arc(p[0], p[1], 1.8, 0, 6.2832); ctx.fill();
+    }
+  }
+  // Redraw the 3 intermediate panels + the final data panel from one forward pass.
+  function refreshPanels(){
+    var stages = pushforwardStages();
+    drawStage('nf-c1', stages[0]);
+    drawStage('nf-c2', stages[1]);
+    drawStage('nf-c3', stages[2]);
+    drawXCanvas(stages[stages.length - 1]);
+  }
+  function initFixedViz(){
+    var N = 300;
+    NF.zFixed = new Float32Array(N*2);
+    NF.zColors = new Array(N);
+    for(var i=0;i<N;i++){
+      var z1 = randn(), z2 = randn();
+      NF.zFixed[2*i] = z1; NF.zFixed[2*i+1] = z2;
+      var ang = Math.atan2(z2, z1);
+      var hue = Math.floor(((ang + Math.PI) / (2*Math.PI)) * 360);
+      NF.zColors[i] = 'hsl(' + hue + ',70%,45%)';
+    }
+    NF.targetPts = sampleBanana(800);
+  }
+  function reset(){
+    if(NF.layers && NF.layers.length){
+      NF.layers.forEach(function(L){
+        ['W1','b1','W2','b2'].forEach(function(k){ if(L.net[k]) L.net[k].dispose(); });
+      });
+    }
+    buildLayers();
+    NF.opt = tf.train.adam(1e-3);
+    NF.step = 0;
+    var se = document.getElementById('nf-step'); if(se) se.textContent = '0';
+    var le = document.getElementById('nf-loss'); if(le) le.textContent = '—';
+    drawZCanvas();
+    refreshPanels();
+  }
+  function ensureInit(){
+    if(NF.inited) return;
+    if(typeof tf === 'undefined') return;
+    initFixedViz();
+    buildLayers();
+    NF.opt = tf.train.adam(1e-3);
+    NF.inited = true;
+    drawZCanvas();
+    refreshPanels();
+  }
+  function trainStep(){
+    var BATCH = 256;
+    var batch = sampleBanana(BATCH);
+    var xT = tf.tensor2d(batch, [BATCH, 2]);
+    var lossScalar = NF.opt.minimize(function(){ return nll(xT); }, true);
+    var lossVal = lossScalar.dataSync()[0];
+    lossScalar.dispose();
+    xT.dispose();
+    NF.step += 1;
+    return lossVal;
+  }
+  function loop(){
+    if(!NF.running) return;
+    var loss = 0;
+    for(var k=0;k<3;k++){ loss = trainStep(); }
+    var se = document.getElementById('nf-step'); if(se) se.textContent = NF.step;
+    var le = document.getElementById('nf-loss'); if(le) le.textContent = loss.toFixed(3);
+    refreshPanels();
+    NF.rafId = requestAnimationFrame(loop);
+  }
+  function toggleTrain(){
+    ensureInit();
+    NF.running = !NF.running;
+    var btn = document.getElementById('nf-toggle');
+    if(NF.running){
+      if(btn) btn.innerHTML = '❚❚ Pause';
+      loop();
+    } else {
+      if(btn) btn.innerHTML = '▶ Train';
+      if(NF.rafId){ cancelAnimationFrame(NF.rafId); NF.rafId = null; }
+    }
+  }
+  function onReset(){
+    NF.running = false;
+    if(NF.rafId){ cancelAnimationFrame(NF.rafId); NF.rafId = null; }
+    var btn = document.getElementById('nf-toggle'); if(btn) btn.innerHTML = '▶ Train';
+    ensureInit();
+    reset();
+  }
+  document.addEventListener('DOMContentLoaded', function(){
+    var t = document.getElementById('nf-toggle');
+    var r = document.getElementById('nf-reset');
+    if(t) t.addEventListener('click', toggleTrain);
+    if(r) r.addEventListener('click', onReset);
+  });
+  Reveal.on('slidechanged', function(e){
+    if(e.currentSlide && e.currentSlide.querySelector('#nf-xcanvas')) ensureInit();
+    else if(NF.running){ NF.running=false;
+      if(NF.rafId){ cancelAnimationFrame(NF.rafId); NF.rafId=null; }
+      var btn = document.getElementById('nf-toggle'); if(btn) btn.innerHTML = '▶ Train';
+    }
+  });
+})();
+
+// ============================================================
+// Continuous-time trajectories: FM (ODE) vs Diffusion (SDE)
+// ============================================================
+(function(){
+  function gaussRng(seed){ const r = createRNG(seed); return ()=>{ const u=r(); const v=r(); return Math.sqrt(-2*Math.log(u+1e-12))*Math.cos(2*Math.PI*v); }; }
+  const N_TRAJ = 12;
+  function makeTrajectories(){
+    const g = gaussRng(7);
+    const tArr = []; for (let k=0;k<=60;k++) tArr.push(k/60);
+    const fm = [], df = [];
+    for (let i=0;i<N_TRAJ;i++){
+      const z = g();
+      const tgt = (i%2===0?-1:1)*1.5 + 0.3*g();
+      const fmPath = tArr.map(t => (1-t)*z + t*tgt);
+      fm.push(fmPath);
+      let theta = z; const dfPath = [theta];
+      for (let k=1;k<tArr.length;k++){
+        const t = tArr[k-1];
+        const dt = 1/60;
+        const drift = (tgt - theta)*1.2*dt;
+        const sigma = 0.5*(1 - t);
+        theta = theta + drift + sigma*g()*Math.sqrt(dt);
+        dfPath.push(theta);
+      }
+      df.push(dfPath);
+    }
+    return {tArr, fm, df};
+  }
+  let cached = null;
+  function draw(progress){
+    if (!cached) cached = makeTrajectories();
+    const T = cached.tArr.length;
+    const cut = Math.max(1, Math.min(T, Math.floor(progress*T)));
+    const tSlice = cached.tArr.slice(0, cut);
+    const fmTraces = cached.fm.map((p) => ({
+      x: tSlice, y: p.slice(0, cut), mode:'lines',
+      line:{color:'rgba(26,84,144,0.6)', width:1.4}, showlegend:false, hoverinfo:'skip'
+    }));
+    const dfTraces = cached.df.map((p) => ({
+      x: tSlice, y: p.slice(0, cut), mode:'lines',
+      line:{color:'rgba(176,58,46,0.55)', width:1.4}, showlegend:false, hoverinfo:'skip'
+    }));
+    const lay = () => baseLayout({
+      xaxis:{title:'t', range:[0, 1]},
+      yaxis:{title:'θ', range:[-3.5, 3.5]},
+      shapes:[
+        { type:'line', x0:0, x1:0, y0:-3.5, y1:3.5, line:{color:'#bdc3c7', dash:'dot', width:1} },
+        { type:'line', x0:1, x1:1, y0:-3.5, y1:3.5, line:{color:'#bdc3c7', dash:'dot', width:1} }
+      ],
+      annotations:[
+        { x:0, y:3.2, xref:'x', yref:'y', text:'p_0', showarrow:false, font:{color:'#1a5490'} },
+        { x:1, y:3.2, xref:'x', yref:'y', text:'p_1', showarrow:false, font:{color:'#1a5490'} }
+      ]
+    });
+    if (document.getElementById('fm-traj-plot')) Plotly.react('fm-traj-plot', fmTraces, lay(), {displayModeBar:false});
+    if (document.getElementById('diff-traj-plot')) Plotly.react('diff-traj-plot', dfTraces, lay(), {displayModeBar:false});
+  }
+  let raf = null;
+  function animate(){
+    if (raf) cancelAnimationFrame(raf);
+    const t0 = performance.now();
+    const tick = (now) => {
+      const p = Math.min(1, (now - t0)/2500);
+      draw(p);
+      if (p < 1) raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+  }
+  const btn = document.getElementById('ct-replay');
+  if (btn) btn.addEventListener('click', ()=>{ cached = makeTrajectories(); animate(); });
+  function init(e){
+    if (e.currentSlide && e.currentSlide.querySelector('#fm-traj-plot')) {
+      if (!cached) cached = makeTrajectories();
+      animate();
+    } else if (raf) {
+      cancelAnimationFrame(raf); raf = null;
+    }
+  }
+  Reveal.on('slidechanged', init); Reveal.on('ready', init);
+})();
+</script>
+</body>
+</html>

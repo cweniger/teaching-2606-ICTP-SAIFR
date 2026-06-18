@@ -1,0 +1,773 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Lecture 5a: Dynamic SBI — from sequential to round-free</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reveal.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/theme/white.css">
+<link rel="stylesheet" href="lib/lecture.css">
+<style>
+  .reveal .timeline-row { display:flex; align-items:center; gap:6px; font-size:0.82em; }
+  .reveal .tl-sim   { background:#eaf2f8; border:2px solid #2980b9; border-radius:4px; padding:6px 10px; text-align:center; }
+  .reveal .tl-train { background:#fdebd0; border:2px solid #e67e22; border-radius:4px; padding:6px 10px; text-align:center; }
+  .reveal .tl-idle  { background:#f4f6f8; border:2px dashed #bdc3c7; color:#7f8c8d; border-radius:4px; padding:6px 10px; text-align:center; }
+</style>
+</head>
+<body data-lecture="5a">
+<div class="reveal">
+<div class="slides">
+
+<!-- ============================================================ -->
+<!-- 1. TITLE                                                     -->
+<!-- ============================================================ -->
+<section>
+  <h1 style="font-size:1.5em;">Machine Learning for Astroparticle Physics: <br> A Crash-course in SBI</h1>
+  <h3>Lecture 5a - Dynamic SBI: from sequential to round-free</h3>
+  <p class="subtitle">Christoph Weniger &mdash; University of Amsterdam (GRAPPA)</p>
+</section>
+
+<!-- ============================================================ -->
+<!-- 2. ROADMAP                                                   -->
+<!-- ============================================================ -->
+<section>
+  <h2>Today's Roadmap</h2>
+  <div class="box" style="margin-top:18px; text-align:center; font-size:1.0em;">
+    <strong>The question:</strong> amortized SBI trains \(q_\phi(\theta\mid x)\) once over the whole prior. When is that wasteful, and what can we do about it?
+  </div>
+  <div class="fragment" style="display:flex; gap:8px; margin-top:20px;">
+    <div class="box box-blue" style="flex:1; text-align:center;">
+      <strong style="color:#2980b9;">1</strong><br>
+      From amortized to sequential SBI<br><span style="font-size:0.85em;">Why amortization burns simulations, and how SNPE-A focuses the budget through rounds</span>
+    </div>
+    <div style="align-self:center; font-size:1.4em; color:#bdc3c7;">&rarr;</div>
+    <div class="box box-orange" style="flex:1; text-align:center;">
+      <strong style="color:#e67e22;">2</strong><br>
+      Dynamic SBI: round-free, adaptive datasets<br><span style="font-size:0.85em;">Drop the rounds. Let simulation and training run in parallel against a live, contracting dataset</span>
+    </div>
+  </div>
+  <div class="box fragment" style="margin-top:20px; text-align:center; font-size:1.0em;">
+    <strong>The thread:</strong> the same posterior-correction trick that powers SNPE-A makes the round-free continuous limit possible.
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<!-- 3. SECTION DIVIDER 1                                         -->
+<!-- ============================================================ -->
+<section>
+  <div style="display:flex; align-items:center; justify-content:center; height:100%;">
+    <div style="text-align:center;">
+      <div style="width:200px; height:4px; background:linear-gradient(90deg,#2980b9,#e74c3c); margin:0 auto 25px;"></div>
+      <h1 style="font-size:2em; margin:0;">From amortized to sequential SBI</h1>
+      <p style="font-size:1.1em; color:#7f8c8d; margin-top:15px;">Most simulations land in places we don't care about. Sequential methods fix that with rounds.</p>
+      <div style="width:200px; height:4px; background:linear-gradient(90deg,#2980b9,#e74c3c); margin:25px auto 0;"></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<!-- 4. The amortization cost                                     -->
+<!-- ============================================================ -->
+<section>
+  <h2>The cost of amortization</h2>
+  <div style="display:flex; gap:14px;">
+    <div style="flex:0 0 40%; text-align:left;">
+      <p>Amortized SBI trains \(q_\phi(\theta\mid x)\) on samples drawn from the full prior:</p>
+      <div class="box" style="text-align:center; margin:8px 0;">
+        \[ \theta_n \sim p(\theta), \quad x_n \sim p(x\mid\theta_n) \]
+      </div>
+      <p>Once trained, any new \(x_\mathrm{obs}\) is a single forward pass. Beautiful.</p>
+      <p>But the posterior \(p(\theta\mid x_\mathrm{obs})\) usually occupies a <span class="highlight">tiny fraction</span> of the prior. The vast majority of simulations carry almost no information about \(x_\mathrm{obs}\).</p>
+      <div class="box box-blue" style="margin-top:8px;">
+        Cost scales with the <em>prior volume</em>, not the posterior volume. In high precision / high dimension, that ratio explodes.
+      </div>
+    </div>
+    <div style="flex:1 1 0; min-width:0; overflow:hidden;">
+      <div id="amort-plot" style="width:100%; max-width:100%; height:400px;"></div>
+      <div class="ctrl-row" style="justify-content:center; margin-top:6px;">
+        <button id="amort-resample">&#x21bb; Resample prior</button>
+      </div>
+      <p style="text-align:center; font-size:0.82em; color:#7f8c8d; margin:4px 0 0;">
+        Grey: \(\theta\sim p(\theta)\). Red contour: the (narrow) target posterior. Almost nothing lands inside.
+      </p>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<!-- 5. The sequential idea                                       -->
+<!-- ============================================================ -->
+<section>
+  <h2>The sequential fix: focus the budget</h2>
+  <div style="display:flex; gap:14px;">
+    <div style="flex:0 0 40%; text-align:left;">
+      <p>If only we knew the posterior, we would sample \(\theta\) from there directly. We don't, but we can <strong>bootstrap</strong>:</p>
+      <ol style="font-size:0.95em; margin:6px 0;">
+        <li>Round \(r=0\): sample from the prior. Train a rough posterior \(q_\phi^{(0)}(\theta\mid x_\mathrm{obs})\).</li>
+        <li>Round \(r{+}1\): use \(q_\phi^{(r)}(\theta\mid x_\mathrm{obs})\) as the next <strong>proposal</strong> \(\tilde p(\theta)\). Simulate, retrain.</li>
+        <li>Repeat. The cloud contracts toward the true posterior.</li>
+      </ol>
+      <p style="font-size:0.9em; color:#7f8c8d;">Press <em>Next round</em> to watch the training cloud shrink onto the target.</p>
+    </div>
+    <div style="flex:1 1 0; min-width:0; overflow:hidden;">
+      <div id="rounds-plot" style="width:100%; max-width:100%; height:380px;"></div>
+      <div class="ctrl-row" style="justify-content:center; margin-top:6px;">
+        <button id="rounds-next">&#9654; Next round</button>
+        <button id="rounds-reset">&#x21bb; Reset</button>
+        <span id="rounds-label" style="color:#7f8c8d;">round 0 / prior</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<!-- 6. SNPE-A correction                                         -->
+<!-- ============================================================ -->
+<section>
+  <h2>The catch: a proposal is not the prior</h2>
+  <p>If we train \(q_\phi\) on samples \(\theta \sim \tilde p(\theta)\) (the proposal) instead of \(\theta \sim p(\theta)\) (the prior), the network learns the <em>proposal posterior</em>, not the true one:</p>
+  <div class="box" style="text-align:center; margin:8px 0;">
+    \[ q_\phi(\theta\mid x) \;\to\; \tilde p(\theta\mid x) \;\propto\; p(x\mid\theta)\,\tilde p(\theta) \]
+  </div>
+  <p><strong>SNPE-A correction.</strong> The true posterior is recovered by re-weighting:</p>
+  <div class="box box-blue" style="text-align:center; font-size:1.1em; margin:8px 0;">
+    \[ p(\theta\mid x) \;\propto\; \frac{q_\phi(\theta\mid x)\,p(\theta)}{\tilde p(\theta)} \]
+  </div>
+  <p>Division by the proposal cancels the bias toward where we chose to sample; multiplication by the prior reinstates the original Bayesian weighting. The trained \(q_\phi\) is <em>not</em> the answer; the ratio is.</p>
+  <p class="fragment" style="font-size:0.9em; color:#7f8c8d; margin-top:10px;">
+    Variants in passing: <strong>SNPE-B</strong> and <strong>SNPE-C (APT)</strong> reshuffle where the correction is applied so it stays well-conditioned for flexible densities. <strong>SNLE</strong> learns the likelihood instead, <strong>SNRE</strong> learns the likelihood ratio. All share the round-based skeleton.
+  </p>
+</section>
+
+<!-- ============================================================ -->
+<!-- 6b. SNPE-A derivation                                        -->
+<!-- ============================================================ -->
+<section>
+  <h2>Why the correction is exactly \(p/\tilde p\)</h2>
+  <p>What does \(q_\phi\) converge to when we train it by maximum likelihood on samples \(\theta_n \sim \tilde p(\theta)\) and \(x_n \sim p(x\mid\theta_n)\)?</p>
+  <div class="box" style="text-align:center; margin:8px 0;">
+    \[ \phi^\star \;=\; \arg\max_\phi \;\mathbb{E}_{\tilde p(\theta)\,p(x\mid\theta)}\!\bigl[\log q_\phi(\theta\mid x)\bigr] \]
+  </div>
+  <p>The joint sampling distribution is \(\tilde p(\theta,x) = p(x\mid\theta)\,\tilde p(\theta)\). The expectation is minimised pointwise in \(x\) by setting</p>
+  <div class="box" style="text-align:center; margin:8px 0;">
+    \[ q_{\phi^\star}(\theta\mid x) \;=\; \tilde p(\theta\mid x) \;=\; \frac{p(x\mid\theta)\,\tilde p(\theta)}{\tilde p(x)} \]
+  </div>
+  <p>The true posterior shares the same likelihood, but with the prior in place of the proposal:</p>
+  <div class="box box-blue" style="text-align:center; font-size:1.05em; margin:8px 0;">
+    \[ p(\theta\mid x) \;=\; \frac{p(x\mid\theta)\,p(\theta)}{p(x)} \;=\; \underbrace{\frac{\tilde p(x)}{p(x)}}_{\text{constant in }\theta}\;\cdot\; q_{\phi^\star}(\theta\mid x)\;\cdot\;\frac{p(\theta)}{\tilde p(\theta)} \]
+  </div>
+  <p style="margin-top:6px;">The likelihood cancels out of the ratio. What's left is the SNPE-A formula:</p>
+  <div class="box box-orange" style="text-align:center; font-size:1.1em; margin:6px 0;">
+    \[ p(\theta\mid x) \;\propto\; \frac{q_\phi(\theta\mid x)\,p(\theta)}{\tilde p(\theta)} \]
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<!-- 6c. 1D toy: SNPE-A correction in action                      -->
+<!-- ============================================================ -->
+<section>
+  <h2>SNPE-A in 1D: three curves, one ratio</h2>
+  <div style="display:flex; gap:14px;">
+    <div style="flex:0 0 36%; text-align:left;">
+      <p>One parameter \(\theta\), one observation, the same SNPE-A formula:</p>
+      <div class="box" style="text-align:center; padding:6px 10px;">
+        \[ p(\theta\mid x) \;\propto\; \frac{q_\phi(\theta\mid x)\,p(\theta)}{\tilde p(\theta)} \]
+      </div>
+      <ul style="font-size:0.92em;">
+        <li><span style="color:#2980b9;">Blue</span>: prior \(p(\theta)\), broad.</li>
+        <li><span style="color:#e67e22;">Orange</span>: proposal \(\tilde p(\theta)\), offset from the true posterior.</li>
+        <li><span style="color:#7f8c8d;">Grey</span>: what \(q_\phi\) learned (the proposal posterior).</li>
+        <li><span style="color:#c0392b;">Red</span>: corrected posterior, \(\propto q_\phi\,p/\tilde p\).</li>
+      </ul>
+      <p style="font-size:0.9em; color:#7f8c8d;">Slide the proposal: the grey curve drifts with it, the red curve does not.</p>
+    </div>
+    <div style="flex:1 1 0; min-width:0; overflow:hidden;">
+      <div id="snpe1d-plot" style="width:100%; max-width:100%; height:360px;"></div>
+      <div class="ctrl-row" style="justify-content:center; margin-top:6px;">
+        <label><input type="range" id="snpe1d-mu" min="-1.5" max="1.5" step="0.05" value="0.6" style="width:240px;">
+          &nbsp;proposal mean = <span id="snpe1d-mu-val">0.60</span></label>
+      </div>
+      <div class="ctrl-row" style="justify-content:center; margin-top:4px;">
+        <label><input type="range" id="snpe1d-sig" min="0.15" max="1.2" step="0.05" value="0.45" style="width:240px;">
+          &nbsp;proposal width = <span id="snpe1d-sig-val">0.45</span></label>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<!-- 7. Sequential cost timeline                                  -->
+<!-- ============================================================ -->
+<section>
+  <h2>Rounds mean idle compute</h2>
+  <p>The sequential loop is strictly serial: simulate a batch, then train on it, then simulate the next.</p>
+  <div style="margin-top:16px;">
+    <p style="font-size:0.85em; color:#7f8c8d; margin:4px 0;"><strong>Round-based timeline</strong></p>
+    <div class="timeline-row">
+      <div class="tl-sim" style="flex:2;">Simulate (round 0)</div>
+      <div class="tl-idle" style="flex:0.4;">idle</div>
+      <div class="tl-train" style="flex:1.4;">Train</div>
+      <div class="tl-idle" style="flex:0.4;">idle</div>
+      <div class="tl-sim" style="flex:1.6;">Simulate (round 1)</div>
+      <div class="tl-idle" style="flex:0.4;">idle</div>
+      <div class="tl-train" style="flex:1.4;">Train</div>
+      <div class="tl-idle" style="flex:0.4;">idle</div>
+      <div class="tl-sim" style="flex:1.2;">Sim 2</div>
+      <div class="tl-train" style="flex:1.2;">Train</div>
+    </div>
+  </div>
+  <div class="fragment" style="display:flex; gap:12px; margin-top:20px;">
+    <div class="box" style="flex:1;">
+      <strong style="color:#2980b9;">Trainer idle</strong> while the simulator fills the next batch.
+    </div>
+    <div class="box" style="flex:1;">
+      <strong style="color:#e67e22;">Simulator idle</strong> while the trainer drains the current batch.
+    </div>
+    <div class="box" style="flex:1;">
+      <strong style="color:#e74c3c;">All-or-nothing rounds</strong>: a bad proposal wastes a whole round before correction.
+    </div>
+  </div>
+  <p class="fragment" style="margin-top:14px; text-align:center; font-size:1.05em;">
+    What if simulation and training could run <strong>at the same time</strong>?
+  </p>
+</section>
+
+<!-- ============================================================ -->
+<!-- 7b. What can go wrong with sequential SBI                    -->
+<!-- ============================================================ -->
+<section>
+  <h2>What can go wrong with sequential SBI</h2>
+  <p>The ratio \(p(\theta)/\tilde p(\theta)\) is what makes sequential SBI valid, but it is also where the trouble starts.</p>
+  <div style="display:flex; gap:12px; margin-top:10px;">
+    <div class="box" style="flex:1;">
+      <strong style="color:#e74c3c;">Light-tailed proposal</strong><br>
+      If \(\tilde p(\theta)\) decays faster than \(p(\theta)\), the weight \(p/\tilde p\) blows up in the tails. A single far-out sample dominates the corrected posterior. Variance explodes.
+    </div>
+    <div class="box" style="flex:1;">
+      <strong style="color:#e67e22;">Proposal leakage</strong><br>
+      A flexible \(q_\phi\) (e.g. a normalising flow) can place mass <em>outside</em> the prior. The next proposal samples there; those simulations are wasted, and \(p/\tilde p\) is ill-defined.
+    </div>
+    <div class="box" style="flex:1;">
+      <strong style="color:#8e44ad;">All-or-nothing rounds</strong><br>
+      A bad proposal at round \(r\) doesn't reveal itself until training finishes. The whole simulation budget for that round is committed before you know.
+    </div>
+  </div>
+  <p class="fragment" style="margin-top:14px;"><strong>The fixes that motivated SNPE-B, SNPE-C (APT), and family</strong>:</p>
+  <ul class="fragment" style="font-size:0.92em;">
+    <li><strong>SNPE-B</strong>: weight the training loss by \(p/\tilde p\) instead of correcting after the fact. Avoids the division but inherits high-variance weights.</li>
+    <li><strong>SNPE-C (APT)</strong>: parametrise the proposal posterior directly so the ratio is built into the loss. Requires an "atomic" proposal trick to stay tractable.</li>
+    <li><strong>Dynamic SBI</strong> (next): keep \(\tilde p\) close to the prior at all times by updating it continuously, so the ratio never gets a chance to misbehave.</li>
+  </ul>
+</section>
+
+<!-- ============================================================ -->
+<!-- 8. SECTION DIVIDER 2                                         -->
+<!-- ============================================================ -->
+<section>
+  <div style="display:flex; align-items:center; justify-content:center; height:100%;">
+    <div style="text-align:center;">
+      <div style="width:200px; height:4px; background:linear-gradient(90deg,#2980b9,#e74c3c); margin:0 auto 25px;"></div>
+      <h1 style="font-size:2em; margin:0;">Dynamic SBI: round-free, adaptive datasets</h1>
+      <p style="font-size:1.1em; color:#7f8c8d; margin-top:15px;">Take the round count to infinity. Simulation, training, and proposal updates all happen in parallel.</p>
+      <div style="width:200px; height:4px; background:linear-gradient(90deg,#2980b9,#e74c3c); margin:25px auto 0;"></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<!-- 9. Dynamic SBI schematic (Fig 1)                             -->
+<!-- ============================================================ -->
+<section>
+  <h2>The dynamic SBI framework</h2>
+  <div style="display:flex; gap:14px;">
+    <div style="flex:0 0 36%; text-align:left;">
+      <p>Two processes run <strong>in parallel</strong>, communicating through shared resources:</p>
+      <div class="box box-blue" style="padding:8px 12px; margin:6px 0;">
+        <strong>Simulator process</strong> &nbsp;keeps a live dataset \(\mathcal{D}_\mathrm{live}\) up to date with the current proposal \(\tilde p(\theta)\), deleting stale samples and drawing new ones.
+      </div>
+      <div class="box box-orange" style="padding:8px 12px; margin:6px 0;">
+        <strong>Trainer process</strong> &nbsp;optimises \(q_\phi\) on \(\mathcal{D}_\mathrm{live}\), and updates \(\tilde p(\theta)\) so the next batch of simulations is even more relevant to \(x_\mathrm{obs}\).
+      </div>
+      <p style="font-size:0.9em; color:#7f8c8d;">No rounds. No barrier. Each process pushes ahead with whatever the other has produced so far.</p>
+    </div>
+    <div style="flex:1 1 0; min-width:0; overflow:hidden; text-align:center;">
+      <img src="figures/lecture5a/figure1-summary.png" style="max-width:100%; max-height:460px;">
+      <p style="font-size:0.78em; color:#7f8c8d; margin:2px 0 0;">Lyu et al. 2025, Fig. 1.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<!-- 9b. Pseudocode                                               -->
+<!-- ============================================================ -->
+<section>
+  <h2>The asynchronous loop, in pseudocode</h2>
+  <div style="display:flex; gap:14px; margin-top:8px;">
+    <div class="box box-blue" style="flex:1; padding:10px 14px;">
+      <h3 style="margin-top:0; color:#2980b9; font-size:1.0em;">Simulator process (loop forever)</h3>
+<pre style="font-size:0.78em; line-height:1.45; margin:6px 0;"><code>while running:
+    θ ~ p̃(θ)                   # current proposal
+    x  = simulate(θ)
+    w  = p(θ) / p̃(θ)            # importance weight
+    D_live.append( (θ, x, w) )
+
+    # prune stale, low-weight samples
+    for (θ_i, x_i, w_i) in D_live:
+        if w_i < w_thresh
+           or p̃(θ_i) below current support:
+            D_live.remove(i)
+</code></pre>
+    </div>
+    <div class="box box-orange" style="flex:1; padding:10px 14px;">
+      <h3 style="margin-top:0; color:#e67e22; font-size:1.0em;">Trainer process (loop forever)</h3>
+<pre style="font-size:0.78em; line-height:1.45; margin:6px 0;"><code>while running:
+    B = sample_minibatch(D_live)
+    L = -mean_{(θ,x,w) in B}[
+            log q_φ(θ | x) ]   # weighted optional
+    φ ← φ - η ∇_φ L
+
+    # periodically refresh proposal
+    if step % K == 0:
+        p̃(θ) ← truncate(
+            q_φ(θ | x_obs),  # current estimate
+            support = prior
+        )
+</code></pre>
+    </div>
+  </div>
+  <div class="box" style="margin-top:10px; padding:8px 12px; font-size:0.92em;">
+    <strong>Shared resources:</strong> the live dataset \(\mathcal{D}_\mathrm{live}\), the proposal \(\tilde p(\theta)\), and the observation \(x_\mathrm{obs}\). Both processes read and write them concurrently, with appropriate locking.
+  </div>
+  <p style="text-align:center; font-size:0.85em; color:#7f8c8d; margin-top:6px;">
+    No outer "round" index. The trainer never waits for a batch to fill; the simulator never waits for training to finish.
+  </p>
+</section>
+
+<!-- ============================================================ -->
+<!-- 10. Adaptive dataset animation                               -->
+<!-- ============================================================ -->
+<section>
+  <h2>The adaptive dataset, in motion</h2>
+  <div style="display:flex; gap:14px;">
+    <div style="flex:0 0 36%; text-align:left;">
+      <p>Instead of three discrete rounds (previous animation), the training set evolves <strong>continuously</strong>:</p>
+      <ul style="font-size:0.95em;">
+        <li>Old samples that no longer match the sharpening proposal fade out.</li>
+        <li>New samples stream in from the current \(\tilde p(\theta)\).</li>
+        <li>The cloud flows toward the target posterior without ever stopping.</li>
+      </ul>
+      <p style="font-size:0.9em; color:#7f8c8d;">Same target as before. Press <em>Run</em>; the cloud contracts smoothly rather than in jumps.</p>
+    </div>
+    <div style="flex:1 1 0; min-width:0; overflow:hidden;">
+      <div id="dyn-plot" style="width:100%; max-width:100%; height:380px;"></div>
+      <div class="ctrl-row" style="justify-content:center; margin-top:6px;">
+        <button id="dyn-run">&#9654; Run</button>
+        <button id="dyn-reset">&#x21bb; Reset</button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<!-- 11. Truncation + importance weights                          -->
+<!-- ============================================================ -->
+<section>
+  <h2>Truncation and the same SNPE-A correction</h2>
+  <p>Each sample in the live dataset carries an importance weight</p>
+  <div class="box" style="text-align:center; margin:8px 0;">
+    \[ w(\theta) \;=\; \frac{p(\theta)}{\tilde p(\theta)} \]
+  </div>
+  <p>Samples whose weight drops below threshold (the proposal moved away from them) are <strong>truncated</strong> from \(\mathcal{D}_\mathrm{live}\) and re-simulated under the new proposal. Nothing ever sits in the buffer doing nothing useful.</p>
+  <p>At every instant, the posterior estimate is recovered by the <span class="highlight">same SNPE-A correction</span> as in the round-based case:</p>
+  <div class="box box-orange" style="text-align:center; font-size:1.1em; margin:8px 0;">
+    \[ p(\theta\mid x) \;\propto\; \frac{q_\phi(\theta\mid x)\,p(\theta)}{\tilde p(\theta)} \]
+  </div>
+  <p class="fragment" style="margin-top:8px;">
+    The correction makes <em>round-free</em> possible: the proposal can change continuously without breaking the Bayesian bookkeeping. Sequential SBI in the limit of infinitely many infinitesimal rounds.
+  </p>
+</section>
+
+<!-- ============================================================ -->
+<!-- 12. Results: comparison (Fig 3)                              -->
+<!-- ============================================================ -->
+<section>
+  <h2>Dynamic vs round-based vs amortized</h2>
+  <div style="display:flex; gap:14px; align-items:center;">
+    <div style="flex:0 0 28%; text-align:left;">
+      <p>10-D bimodal Gaussian benchmark. Four schemes given the same wall-clock budget:</p>
+      <ul style="font-size:0.9em;">
+        <li><span style="color:#2980b9;"><strong>Dynamic SBI</strong></span></li>
+        <li><span style="color:#e91e63;"><strong>Amortized</strong></span></li>
+        <li><span style="color:#e67e22;"><strong>Round-based</strong></span> (keep old data)</li>
+        <li><span style="color:#27ae60;"><strong>Round-based</strong></span> (new data only)</li>
+      </ul>
+      <div class="box box-blue" style="padding:8px 12px; margin-top:8px; font-size:0.9em;">
+        Dynamic reaches the lowest validation loss <strong>and</strong> uses the fewest simulations to get there. The simulator-trainer panels (right) show no idle gaps.
+      </div>
+    </div>
+    <div style="flex:1 1 0; min-width:0; overflow:hidden; text-align:center;">
+      <img src="figures/lecture5a/figure3-comparison_os_a_round_amortized.png" style="max-width:100%; max-height:460px;">
+      <p style="font-size:0.78em; color:#7f8c8d; margin:2px 0 0;">Lyu et al. 2025, Fig. 3.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<!-- 13. Astrophysics application (Fig 4)                         -->
+<!-- ============================================================ -->
+<section>
+  <h2>Application: stochastic gravitational-wave background</h2>
+  <div style="display:flex; gap:14px; align-items:center;">
+    <div style="flex:0 0 30%; text-align:left;">
+      <p>Inference on a stochastic GW background signal in three LISA-like channels (A, E, T).</p>
+      <p>Dynamic SBI posterior (<span style="color:#2980b9;">blue</span>) recovers the reference posterior (<span style="color:#c0392b;">pink</span>) on the injection parameters (black markers).</p>
+      <div class="box box-orange" style="padding:8px 12px; margin-top:8px; font-size:0.9em;">
+        Training and validation losses decrease smoothly while simulations are still streaming in. No discrete jumps where a "round" would end.
+      </div>
+      <p style="font-size:0.85em; color:#7f8c8d;">A second application in the paper: 14-D strong gravitational lensing, matched against likelihood-based nested sampling.</p>
+    </div>
+    <div style="flex:1 1 0; min-width:0; overflow:hidden; text-align:center;">
+      <img src="figures/lecture5a/figure4-sgwb.png" style="max-width:100%; max-height:460px;">
+      <p style="font-size:0.78em; color:#7f8c8d; margin:2px 0 0;">Lyu et al. 2025, Fig. 4.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<!-- 13b. Strong lensing application                              -->
+<!-- ============================================================ -->
+<section>
+  <h2>Application: 14-D strong gravitational lensing</h2>
+  <div style="display:flex; gap:14px; align-items:center;">
+    <div style="flex:0 0 30%; text-align:left;">
+      <p>Lens + source model with 14 free parameters, broad priors.</p>
+      <p>Dynamic SBI (<span style="color:#c0392b;">pink</span>) compared against likelihood-based nested sampling (<span style="color:#2980b9;">blue</span>) as ground truth.</p>
+      <ul style="font-size:0.9em;">
+        <li>Marginals agree across all 14 parameters.</li>
+        <li>Posterior standard deviations match within ratios of ~1 across the board.</li>
+        <li>Right-lower inset: proposal width shrinks rapidly toward the LBI scale as training proceeds.</li>
+      </ul>
+      <div class="box box-orange" style="padding:8px 12px; margin-top:8px; font-size:0.9em;">
+        Why this case matters: the prior volume is enormous relative to the posterior. Amortized SBI would burn millions of simulations just to find the bulk.
+      </div>
+    </div>
+    <div style="flex:1 1 0; min-width:0; overflow:hidden; text-align:center;">
+      <img src="figures/lecture5a/x1.png" style="max-width:100%; max-height:480px;">
+      <p style="font-size:0.78em; color:#7f8c8d; margin:2px 0 0;">Lyu et al. 2025, Fig. 5.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<!-- 14. (slot reserved)                                          -->
+<!-- ============================================================ -->
+
+<!-- ============================================================ -->
+<!-- 15. SUMMARY                                                  -->
+<!-- ============================================================ -->
+<section>
+  <h2>Summary &amp; What's Next</h2>
+  <div style="display:flex; gap:15px; font-size:0.9em;">
+    <div class="box" style="flex:1;">
+      <h3 style="margin-top:0; color:#2980b9;">From amortized to sequential</h3>
+      <ul style="font-size:0.92em; line-height:1.5;">
+        <li>Amortized SBI pays prior-volume cost, not posterior-volume cost.</li>
+        <li>SNPE-A focuses simulations through rounds with proposal \(\tilde p(\theta)\).</li>
+        <li>The price of using a proposal is a correction by \(p(\theta)/\tilde p(\theta)\).</li>
+      </ul>
+    </div>
+    <div class="box" style="flex:1;">
+      <h3 style="margin-top:0; color:#e67e22;">Dynamic SBI</h3>
+      <ul style="font-size:0.92em; line-height:1.5;">
+        <li>Rounds are unnecessary: the SNPE-A correction is valid instant by instant.</li>
+        <li>A live dataset is continuously truncated and refilled from the current \(\tilde p\).</li>
+        <li>Simulator and trainer run in parallel; no idle compute, faster wall-clock convergence.</li>
+      </ul>
+    </div>
+  </div>
+  <div class="box" style="text-align:center; margin-top:14px; padding:10px; font-size:0.9em;">
+    <strong>Key equations:</strong> &nbsp;
+    \( p(\theta\mid x) \propto \dfrac{q_\phi(\theta\mid x)\,p(\theta)}{\tilde p(\theta)} \)
+    &nbsp;|&nbsp;
+    \( w(\theta) = p(\theta)/\tilde p(\theta) \)
+    &nbsp;|&nbsp;
+    rounds \(\to\infty\) continuously
+  </div>
+  <p style="text-align:center; margin-top:12px; font-size:0.9em; color:#7f8c8d;">
+    Next: putting it all together &mdash; what changes in practice when you swap rounds for an asynchronous loop?
+  </p>
+  <p style="text-align:center; margin-top:6px; font-size:0.82em; color:#95a5a6;">
+    Reference: Lyu, Alvey, Anau Montel, Pieroni &amp; Weniger, <em>Dynamic SBI</em>, arXiv:2510.13997.
+  </p>
+</section>
+
+</div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/plotly.js@2.35.0/dist/plotly.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reveal.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/plugin/math/math.js"></script>
+<script src="lib/lecture-helpers.js"></script>
+<script src="lib/lecture-boot.js"></script>
+<script>
+/* ============================================================
+   Shared layout helper
+   ============================================================ */
+const LAY_BASE = {
+  paper_bgcolor:'rgba(0,0,0,0)', plot_bgcolor:'rgba(0,0,0,0)',
+  font:{size:13}, margin:{t:30, r:20, b:40, l:55},
+  legend:{x:0.02, y:0.98, bgcolor:'rgba(255,255,255,0.6)'}
+};
+function baseLayout(opts={}) { return Object.assign({}, LAY_BASE, opts); }
+
+/* Synthetic target posterior: anisotropic Gaussian centered near (0.4, -0.3) */
+const TARGET_MU = [0.4, -0.3];
+const TARGET_SIG = [0.18, 0.12];
+const TARGET_ROT = 0.6;       // rotation angle (radians)
+const PRIOR_RANGE = 2.2;      // prior uniform on [-PR, PR]^2
+function rotate(p, ang){ const c=Math.cos(ang), s=Math.sin(ang); return [c*p[0]-s*p[1], s*p[0]+c*p[1]]; }
+function sampleTarget(rng){
+  const z = [gaussN(rng), gaussN(rng)];
+  const w = rotate([z[0]*TARGET_SIG[0], z[1]*TARGET_SIG[1]], TARGET_ROT);
+  return [TARGET_MU[0]+w[0], TARGET_MU[1]+w[1]];
+}
+function targetContour(){
+  // Pre-compute an ellipse at ~2σ for display.
+  const N=120, pts_x=[], pts_y=[];
+  for (let i=0; i<=N; i++){
+    const t=2*Math.PI*i/N;
+    const p=rotate([2*TARGET_SIG[0]*Math.cos(t), 2*TARGET_SIG[1]*Math.sin(t)], TARGET_ROT);
+    pts_x.push(TARGET_MU[0]+p[0]); pts_y.push(TARGET_MU[1]+p[1]);
+  }
+  return {x:pts_x, y:pts_y};
+}
+function unifPrior(rng){ return [(rng()-0.5)*2*PRIOR_RANGE, (rng()-0.5)*2*PRIOR_RANGE]; }
+
+/* ============================================================
+   Slide 4: amortized — prior cloud vs narrow target
+   ============================================================ */
+(function(){
+  let rng = createRNG(7);
+  function draw(){
+    const N=600, xs=[], ys=[];
+    for (let i=0;i<N;i++){ const t=unifPrior(rng); xs.push(t[0]); ys.push(t[1]); }
+    const contour = targetContour();
+    Plotly.react('amort-plot', [
+      { x:xs, y:ys, mode:'markers', name:'prior samples',
+        marker:{size:4, color:'rgba(127,140,141,0.55)'} },
+      { x:contour.x, y:contour.y, mode:'lines',
+        name:'target posterior',
+        line:{color:'#c0392b', width:3},
+        fill:'toself', fillcolor:'rgba(192,57,43,0.15)' }
+    ], baseLayout({
+      autosize:true,
+      xaxis:{title:'θ₁', range:[-PRIOR_RANGE,PRIOR_RANGE], zeroline:false},
+      yaxis:{title:'θ₂', range:[-PRIOR_RANGE,PRIOR_RANGE], zeroline:false, scaleanchor:'x'},
+    }), {displayModeBar:false, responsive:true});
+    Plotly.Plots.resize('amort-plot');
+  }
+  const btn = document.getElementById('amort-resample');
+  if (btn) btn.addEventListener('click', ()=>{ rng = createRNG(Math.floor(Math.random()*1e6)); draw(); });
+  Reveal.on('slidechanged', e=>{ if(e.currentSlide && e.currentSlide.querySelector('#amort-plot')) draw(); });
+  if (document.getElementById('amort-plot')) draw();
+})();
+
+/* ============================================================
+   Slide 5: round-based scatter — three jumps
+   ============================================================ */
+(function(){
+  let rng = createRNG(13);
+  let round = 0;
+  const N = 400;
+  // proposals: round 0 = prior; round 1,2,3 progressively tighter around target
+  function proposalSamples(r){
+    const xs=[], ys=[];
+    if (r===0){
+      for (let i=0;i<N;i++){ const t=unifPrior(rng); xs.push(t[0]); ys.push(t[1]); }
+    } else {
+      // shrink factor towards target
+      const shrink = [0.55, 0.25, 0.08][r-1] || 0.05;
+      for (let i=0;i<N;i++){
+        const z=[gaussN(rng), gaussN(rng)];
+        // interpolate variance: round-1 wider, round-3 close to target
+        const sx = TARGET_SIG[0] + shrink*0.9;
+        const sy = TARGET_SIG[1] + shrink*0.9;
+        const w = rotate([z[0]*sx, z[1]*sy], TARGET_ROT);
+        xs.push(TARGET_MU[0]+w[0]); ys.push(TARGET_MU[1]+w[1]);
+      }
+    }
+    return {xs, ys};
+  }
+  const colors = ['rgba(127,140,141,0.5)','rgba(41,128,185,0.55)','rgba(230,126,34,0.6)','rgba(39,174,96,0.65)'];
+  function draw(){
+    const s = proposalSamples(round);
+    const contour = targetContour();
+    Plotly.react('rounds-plot', [
+      { x:s.xs, y:s.ys, mode:'markers', name:'training set',
+        marker:{size:4, color:colors[round]} },
+      { x:contour.x, y:contour.y, mode:'lines', name:'target',
+        line:{color:'#c0392b', width:3},
+        fill:'toself', fillcolor:'rgba(192,57,43,0.12)' }
+    ], baseLayout({
+      autosize:true,
+      xaxis:{title:'θ₁', range:[-PRIOR_RANGE,PRIOR_RANGE], zeroline:false},
+      yaxis:{title:'θ₂', range:[-PRIOR_RANGE,PRIOR_RANGE], zeroline:false, scaleanchor:'x'},
+    }), {displayModeBar:false, responsive:true});
+    Plotly.Plots.resize('rounds-plot');
+    const labels=['round 0 / prior','round 1','round 2','round 3'];
+    document.getElementById('rounds-label').textContent = labels[round];
+  }
+  const next = document.getElementById('rounds-next');
+  const reset = document.getElementById('rounds-reset');
+  if (next) next.addEventListener('click', ()=>{ round = Math.min(3, round+1); draw(); });
+  if (reset) reset.addEventListener('click', ()=>{ round = 0; rng = createRNG(13); draw(); });
+  Reveal.on('slidechanged', e=>{ if(e.currentSlide && e.currentSlide.querySelector('#rounds-plot')) draw(); });
+  if (document.getElementById('rounds-plot')) draw();
+})();
+
+/* ============================================================
+   Slide 6c: SNPE-A 1D toy — prior, proposal, q_phi, corrected
+   ============================================================ */
+(function(){
+  // Setup: true posterior is N(0, 0.25^2); prior is N(0, 1^2).
+  // True likelihood at fixed x_obs gives true posterior shape.
+  // q_phi (proposal posterior) is the proposal × likelihood (up to norm),
+  // shown by combining proposal with likelihood implied by truth.
+  const TRUE_MU = 0.0, TRUE_SIG = 0.25;
+  const PRIOR_MU = 0.0, PRIOR_SIG = 1.0;
+  // Likelihood implied by true posterior and prior:
+  //   p(theta|x) ∝ L(theta) p(theta)   =>   L(theta) ∝ p(theta|x)/p(theta).
+  // Both Gaussian => L is Gaussian with
+  //   1/sig_L^2 = 1/TRUE_SIG^2 - 1/PRIOR_SIG^2
+  const SIGL2 = 1/(1/(TRUE_SIG*TRUE_SIG) - 1/(PRIOR_SIG*PRIOR_SIG));
+  const SIGL = Math.sqrt(SIGL2);
+  // mean of L: derived so that posterior mean = TRUE_MU
+  // mu_L/sig_L^2 = TRUE_MU/TRUE_SIG^2 - PRIOR_MU/PRIOR_SIG^2 = 0
+  const MUL = 0.0;
+
+  const GRID = [];
+  for (let x=-2; x<=2.001; x+=0.01) GRID.push(x);
+  function gauss(x, mu, sig){ return Math.exp(-0.5*((x-mu)/sig)**2)/(sig*Math.sqrt(2*Math.PI)); }
+  function normalise(arr){
+    const dx = GRID[1]-GRID[0];
+    const s = arr.reduce((a,b)=>a+b,0)*dx;
+    return arr.map(v=>v/s);
+  }
+
+  function draw(){
+    const muP = parseFloat(document.getElementById('snpe1d-mu').value);
+    const sigP = parseFloat(document.getElementById('snpe1d-sig').value);
+    document.getElementById('snpe1d-mu-val').textContent = muP.toFixed(2);
+    document.getElementById('snpe1d-sig-val').textContent = sigP.toFixed(2);
+
+    const prior   = GRID.map(t => gauss(t, PRIOR_MU, PRIOR_SIG));
+    const proposal= GRID.map(t => gauss(t, muP, sigP));
+    const lik     = GRID.map(t => gauss(t, MUL, SIGL));
+    // q_phi is the proposal posterior: proportional to lik * proposal
+    const qphi    = normalise(GRID.map((t,i)=> lik[i]*proposal[i]));
+    // corrected posterior: q_phi * prior / proposal
+    const correctedRaw = GRID.map((t,i)=> qphi[i]*prior[i]/Math.max(proposal[i],1e-12));
+    const corrected = normalise(correctedRaw);
+
+    Plotly.react('snpe1d-plot', [
+      { x:GRID, y:prior,    name:'prior p(θ)',
+        line:{color:'#2980b9', width:2, dash:'dot'} },
+      { x:GRID, y:proposal, name:'proposal p̃(θ)',
+        line:{color:'#e67e22', width:2, dash:'dash'} },
+      { x:GRID, y:qphi,     name:'q_φ(θ|x)  (proposal posterior)',
+        line:{color:'#7f8c8d', width:2.5} },
+      { x:GRID, y:corrected,name:'corrected p(θ|x)',
+        line:{color:'#c0392b', width:3},
+        fill:'tozeroy', fillcolor:'rgba(192,57,43,0.12)' },
+    ], baseLayout({
+      autosize:true,
+      xaxis:{title:'θ', range:[-2,2], zeroline:false},
+      yaxis:{title:'density', rangemode:'tozero'},
+      legend:{x:0.02, y:0.98, bgcolor:'rgba(255,255,255,0.7)', font:{size:11}},
+    }), {displayModeBar:false, responsive:true});
+    Plotly.Plots.resize('snpe1d-plot');
+  }
+  ['snpe1d-mu','snpe1d-sig'].forEach(id=>{
+    const el = document.getElementById(id);
+    if (el) el.addEventListener('input', draw);
+  });
+  Reveal.on('slidechanged', e=>{ if(e.currentSlide && e.currentSlide.querySelector('#snpe1d-plot')) draw(); });
+  if (document.getElementById('snpe1d-plot')) draw();
+})();
+
+/* ============================================================
+   Slide 10: dynamic continuous animation
+   ============================================================ */
+(function(){
+  let rng = createRNG(29);
+  const N = 400;
+  let xs = [], ys = [];
+  let progress = 0;        // 0..1 contraction
+  let animId = null;
+  function init(){
+    xs = []; ys = [];
+    for (let i=0;i<N;i++){ const t=unifPrior(rng); xs.push(t[0]); ys.push(t[1]); }
+    progress = 0;
+  }
+  function draw(){
+    const contour = targetContour();
+    Plotly.react('dyn-plot', [
+      { x:xs.slice(), y:ys.slice(), mode:'markers', name:'live dataset',
+        marker:{size:4, color:'rgba(41,128,185,0.55)'} },
+      { x:contour.x, y:contour.y, mode:'lines', name:'target',
+        line:{color:'#c0392b', width:3},
+        fill:'toself', fillcolor:'rgba(192,57,43,0.12)' }
+    ], baseLayout({
+      autosize:true,
+      xaxis:{title:'θ₁', range:[-PRIOR_RANGE,PRIOR_RANGE], zeroline:false},
+      yaxis:{title:'θ₂', range:[-PRIOR_RANGE,PRIOR_RANGE], zeroline:false, scaleanchor:'x'},
+    }), {displayModeBar:false, responsive:true});
+    Plotly.Plots.resize('dyn-plot');
+  }
+  function step(){
+    // continuous truncation/refill: each tick, replace a fraction with samples from a shrinking proposal
+    const frac = 0.06;                        // ~6% replaced per tick
+    const k = Math.max(1, Math.floor(N*frac));
+    // proposal width contracts smoothly with progress
+    const widthExtra = (1 - progress) * 1.0;  // shrinks to 0
+    for (let i=0;i<k;i++){
+      const idx = Math.floor(rng()*N);
+      // sample from current proposal: Gaussian around target, broader early on
+      const z=[gaussN(rng), gaussN(rng)];
+      const sx = TARGET_SIG[0] + widthExtra*0.9;
+      const sy = TARGET_SIG[1] + widthExtra*0.9;
+      const w = rotate([z[0]*sx, z[1]*sy], TARGET_ROT);
+      xs[idx] = TARGET_MU[0]+w[0];
+      ys[idx] = TARGET_MU[1]+w[1];
+    }
+    progress = Math.min(1, progress + 0.015);
+    draw();
+    if (progress < 1) animId = setTimeout(step, 80);
+    else animId = null;
+  }
+  function run(){
+    if (animId) { clearTimeout(animId); animId = null; }
+    step();
+  }
+  function reset(){
+    if (animId) { clearTimeout(animId); animId = null; }
+    rng = createRNG(29); init(); draw();
+  }
+  const runBtn = document.getElementById('dyn-run');
+  const resetBtn = document.getElementById('dyn-reset');
+  if (runBtn) runBtn.addEventListener('click', run);
+  if (resetBtn) resetBtn.addEventListener('click', reset);
+  Reveal.on('slidechanged', e=>{
+    if (e.currentSlide && e.currentSlide.querySelector('#dyn-plot')) {
+      reset();
+    } else if (animId) {
+      clearTimeout(animId); animId = null;
+    }
+  });
+  if (document.getElementById('dyn-plot')) { init(); draw(); }
+})();
+</script>
+</body>
+</html>
