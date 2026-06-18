@@ -28,9 +28,8 @@
 <!-- ============================================================ -->
 <section>
   <h1 style="font-size:1.5em;">Machine Learning for Astroparticle Physics: <br> A Crash-course in SBI</h1>
-  <h3>Lecture 4a &mdash; Normalising flows &amp; continuous-time heads</h3>
+  <h3>Lecture 4a &mdash; Normalising flows</h3>
   <p class="subtitle">Christoph Weniger, University of Amsterdam (GRAPPA)</p>
-  <p class="subtitle" style="color:#95a5a6;">Carried over from Lecture 3 &mdash; to be covered in the next session.</p>
 </section>
 
 <!-- ============================================================ -->
@@ -201,6 +200,10 @@
   <p>
     Then alternate which half is "active" across layer. Stack \(L\) of these &rarr; expressive flow.
   </p>
+  <p class="credit" style="text-align:right; margin-top:6px;">
+    This is <strong>RealNVP</strong>: Dinh, Sohl-Dickstein &amp; Bengio, &ldquo;Density estimation using Real NVP&rdquo; (2016),
+    <a href="https://arxiv.org/abs/1605.08803" style="color:#2980b9;">arXiv:1605.08803</a>.
+  </p>
 </section>
 
 <!-- Why the coupling Jacobian is cheap: dense vs triangular -->
@@ -325,142 +328,77 @@
   </div>
 </section>
 
-
-<!-- Full pipeline revisited -->
+<!-- Other generative models at a glance -->
 <section>
-  <h2>The full pipeline, revisited</h2>
-  <div style="display:flex; gap:14px; align-items:center;">
-    <div style="flex:1.2; text-align:center;">
-      <img src="figures/lecture6/fig_sbi_pipeline.png" class="fig" style="max-height:420px;">
+  <h2>Other generative models, at a glance</h2>
+  <p>
+  Coupling normalising flows are but one choice of conditional head \(q_\phi(\boldsymbol\theta\mid\mathbf{x})\). Others trade exact density for scale or speed:
+  </p>
+  <ul style="font-size:0.92em; line-height:1.5;">
+    <li><strong>Discrete normalising flows</strong> (RealNVP, neural spline, ...). Low to moderate dim (\(\lesssim 100\)), exact density, fast sampling.</li>
+    <li><strong>Continuous normalising flows</strong> (neural ordinary differential equation, ODE). Normalising flow with "infinite steps"; 
+      exact density via ODE; training/sampling requires ODE.</li>
+    <li><strong>Flow matching</strong>. Similar to continuous normalising flows, but without ODE solve during training (much faster).
+    <li><strong>Diffusion / score-based</strong> (neural stochastic differential equation, SDE). For high-dimensional, image- or field-shaped data;
+     fast training; slow sampling (requires SDE).</li>
+    <li><strong>Autoregressive models / Transformers</strong> Can handle varying parameter dimensionality (transdimensional), exact likelihoods, but sampling is sequential and can be slow.</li>
+    <li><strong>Cross entropy/classification</strong>. Discrete parameters, closed-form conditional, simple and fast.</li>
+  </ul>
+</section>
+
+
+<!-- LISA SGWB application -->
+<section>
+  <h2>Example: stochastic GW background with LISA</h2>
+  <div style="display:flex; align-items:center;">
+    <div style="flex:1; text-align:center;">
+      <div class="box-blue" style="font-size:24px">
+        <p>Here the parameter \(\boldsymbol\theta\) is four-dimensional, and describes properties of the stochastic GW background and noise model. We estimate the posterior \(q_\phi(\boldsymbol\theta\mid\mathbf{x})\) 
+          based on synthetic LISA data.</p>
+      </div>
+      <div class="box-green" style="font-size:24px">
+        <p>Normalising flows allow to model non-Gaussian (here potato-shaped) posteriors, which are common in physics.</p>
+      </div>
     </div>
-    <div style="flex:1;">
-      <div class="box box-green"><strong>Simulator</strong>: physics model, possibly slow.</div>
-      <div class="box box-orange"><strong>Embedding \(T_\phi\)</strong>: CNN / Transformer / GNN, matches the data modality.</div>
-      <div class="box box-purple"><strong>Conditional flow</strong>: coupling layers conditioned on \(T_\phi(\mathbf{x})\).</div>
-      <div class="box box-blue"><strong>Inference loss</strong>: \(-\log q_\phi(\boldsymbol\theta^\star\mid\mathbf{x})\).</div>
+    <div style="flex:2; text-align:center;">
+      <img src="figures/lecture6/fig_saqqara_corner.png" class="fig" style="max-height:580px;">
     </div>
-  </div>
-  <div class="box" style="margin-top:8px; text-align:center;">
-    <strong>Amortised:</strong> train once, then inference on any new \(\mathbf{x}_{\text{obs}}\) is a single forward pass + sampling.
   </div>
 </section>
 
 <!-- LISA SGWB application -->
 <section>
-  <h2>Application, stochastic GW background with LISA</h2>
-  <div style="display:flex; gap:4px; align-items:flex-start;">
-    <div style="flex:1.35; text-align:center;">
-      <img src="figures/lecture6/fig_saqqara_corner.png" class="fig" style="max-height:470px;">
-      <div style="font-size:0.65em; color:#7f8c8d; margin-top:2px;">
-        Posteriors for stochastic-background amplitude \(\alpha\), tilt \(\gamma\), and two noise parameters \(A\), \(P\). Inset: injected PSD, noise + SGWB + unresolved transients.
-      </div>
-    </div>
-    <div style="flex:1; font-size:0.60em;">
-      <div class="box box-blue" style="padding:8px 10px;">
-        <strong>Problem.</strong> LISA data = instrument noise + a stochastic GW background + <em>hundreds</em> of unresolved transient sources (SMBH mergers). Goal: infer the background parameters.
-      </div>
-      <div class="box box-orange" style="padding:8px 10px;">
-        <strong>Why SBI?</strong> The likelihood over the transient population is intractable. Traditional MCMC either ignores transients (biased, <span style="color:#e67e22;">orange dashed</span>) or has to sample their full parameter space (prohibitively expensive).
-      </div>
-      <div class="box box-green" style="padding:8px 10px;">
-        <strong>Result.</strong> The SBI posterior (<span style="font-weight:600;">orange solid</span>, TMNRE via <em>saqqara</em>) <em>automatically marginalises</em> over the transients and recovers the true injection, matching MCMC (<span style="font-weight:600;">black</span>) on the clean case C1.
-      </div>
-      <div class="box box-purple" style="padding:8px 10px;">
-        <strong>Take-away.</strong> SBI turns a nuisance (the transient population) into something implicit in the simulator, no likelihood engineering needed.
-      </div>
-    </div>
-  </div>
-  <p class="credit" style="margin-top:2px;">Alvey, Bhardwaj, Domcke, Pieroni &amp; Weniger, <a href="https://arxiv.org/abs/2309.07954" style="color:#2980b9;">arXiv:2309.07954</a>, code: <em>saqqara</em>.</p>
-</section>
-
-<!-- ============================================================ -->
-<!-- IMPORTED FROM lecture3.draft.html — Flow matching & diffusion -->
-<!-- ============================================================ -->
-
-<!-- Section divider -->
-<section>
-  <div style="display:flex; align-items:center; justify-content:center; height:100%;">
-    <div style="text-align:center;">
-      <div style="width:200px; height:4px; background:linear-gradient(90deg,#2980b9,#e74c3c); margin:0 auto 25px;"></div>
-      <h1 style="font-size:2em; margin:0;">Continuous-time heads</h1>
-      <p style="font-size:1.1em; color:#7f8c8d; margin-top:15px;">Flow matching and diffusion, two continuous-time pictures sharing one visual anchor, ODE vs SDE.</p>
-      <div style="width:200px; height:4px; background:linear-gradient(90deg,#2980b9,#e74c3c); margin:25px auto 0;"></div>
-    </div>
-  </div>
-</section>
-
-<!-- Continuous-time unified picture -->
-<section>
-  <h2>Continuous-time generative models, one picture</h2>
-  <p>Coupling flows compose <strong>discrete</strong> invertible maps. The next two families take the same idea to continuous time: pull samples through a vector field over \(t\in[0, 1]\).</p>
-  <div style="display:flex; gap:14px; margin-top:6px;">
+  <h2>Example: reconstruction of the initial matter density field</h2>
+  <div style="display:flex; align-items:center;">
     <div style="flex:1; text-align:center;">
-      <div style="font-weight:600; color:#2c3e50;">Flow matching, ODE</div>
-      <div id="fm-traj-plot" style="width:100%; height:300px;"></div>
-      <p style="font-size:0.8em; color:#7f8c8d; margin-top:0;">\(d\theta/dt = v_\phi(\theta, t)\), smooth, deterministic trajectories.</p>
+      <div class="box-blue" style="font-size:24px">
+        <p>Here the parameter describes the initial density field at redshift $z=1000$, 
+          and it is  \(64\times64\times64 = 262144\) dimensional.
+          We estimate the posterior \(q_\phi(\boldsymbol\theta\mid\mathbf{x})\) 
+          based todays density field.</p>
+      </div>
+      <div class="box-green" style="font-size:24px">
+          <p>The posterior is approximated as a multivariate Gaussian, $q_\phi(\boldsymbol\theta\mid\mathbf{x}) = \mathcal{N}(\boldsymbol\mu_\phi(\mathbf{x}),
+          \Sigma_\phi(\mathbf{x}))$.
+      </div>
     </div>
-    <div style="flex:1; text-align:center;">
-      <div style="font-weight:600; color:#2c3e50;">Diffusion, SDE</div>
-      <div id="diff-traj-plot" style="width:100%; height:300px;"></div>
-      <p style="font-size:0.8em; color:#7f8c8d; margin-top:0;">\(d\theta = b_\phi(\theta, t)\,dt + g(t)\,dW_t\), noisy, stochastic paths.</p>
+    <div style="flex:2; text-align:center;">
+      <img src="figures/pointcloud_anim_top2.gif" class="fig" style="max-height:580px;">
+      (Preliminary, Oleg Savchenko, in preparation)
     </div>
   </div>
-  <p style="text-align:center; margin-top:6px;">
-    <strong>Both</strong> transport a base \(p_0\) (Gaussian noise) into the target \(p_1\) (posterior) over \(t\in[0,1]\). One uses an ODE, the other an SDE.
+</section>
+
+<!-- Full pipeline revisited -->
+<section>
+  <h2>What next?</h2>
+  <div style="text-align:center;">
+      <img src="figures/lecture6/fig_sbi_pipeline2.png" class="fig" style="max-height:420px;">
+  </div>
+  <p style="font-size:24px">
+    We now discussed the red block in the diagram below: the conditional head \(q_\phi(\boldsymbol\theta\mid\mathbf{x})\) can be a normalising flow, or any other generative model.
+    Next we will discuss a classical example for a summary network \(T_\phi(\mathbf{x})\), the CNN.
   </p>
-  <button id="ct-replay" style="padding:4px 14px; cursor:pointer; font-weight:600; display:block; margin:6px auto 0;">&#9654; Replay</button>
-</section>
-
-<!-- Flow matching -->
-<section>
-  <h2>Flow matching</h2>
-  <p>Learn a velocity field \(v_\phi(\theta, t)\) such that the ODE
-    \(\;d\theta_t/dt = v_\phi(\theta_t, t)\), \(\theta_0 \sim p_0\), \(\theta_1 \sim p(\theta\mid x)\)
-    transports the base noise to the posterior.</p>
-  <div class="box">
-    <strong>Training, conditional FM objective.</strong>
-    Pick a "probability path" \(p_t(\theta\mid\theta_1)\) (e.g. straight-line \(\theta_t = (1-t)\theta_0 + t\theta_1\)); target velocity \(u_t(\theta\mid\theta_1)\). Regress:
-    \[ \mathcal{L}_{\rm FM}(\phi) = \mathbb{E}_{t,\theta_0,\theta_1}\bigl\| v_\phi(\theta_t, t, x) - u_t(\theta\mid\theta_1)\bigr\|^2 \]
-  </div>
-  <p style="margin-top:8px;"><strong>Sampling.</strong> Draw \(\theta_0\sim p_0\); integrate the learned ODE with any black-box solver (Euler, RK4, adaptive). Typically 10&ndash;50 steps.</p>
-  <p><strong>Density.</strong> Available via instantaneous change-of-variables (Hutchinson trace), rarely cheap. FM is mostly used as a <em>sampler</em>.</p>
-  <p style="margin-top:6px; font-size:0.85em; color:#7f8c8d; text-align:center;">Lipman et al. 2023 (ICLR). SBI: Dax et al. 2023 (DINGO-FM), Wildberger et al. 2023.</p>
-</section>
-
-<!-- Diffusion -->
-<section>
-  <h2>Diffusion / score-based generative models</h2>
-  <p>Define a <strong>forward</strong> SDE that turns data into noise:</p>
-  <p style="text-align:center;">
-    \( d\theta_t = -\tfrac{1}{2}\beta(t)\theta_t\,dt + \sqrt{\beta(t)}\,dW_t, \quad t\in[0, 1] \)
-  </p>
-  <p>Learn the <strong>score</strong> \(s_\phi(\theta, t, x) \approx \nabla_\theta\log p_t(\theta\mid x)\) by denoising:</p>
-  <div class="box" style="text-align:center;">
-    \[ \mathcal{L}_{\rm DSM}(\phi) = \mathbb{E}_{t, \theta_0, x}\bigl\| s_\phi(\theta_t, t, x) - \nabla_\theta\log p_t(\theta_t\mid\theta_0)\bigr\|^2 \]
-  </div>
-  <p style="margin-top:12px;"><strong>Sampling</strong> = integrate the <em>reverse</em> SDE (or its probability-flow ODE) from \(t=1\) (noise) back to \(t=0\) (sample). 50&ndash;500 steps typical.</p>
-  <p><strong>SBI flavour.</strong> Condition the score on \(x\) (or \(T_\phi(x)\)). One trained score net amortises over all observations.</p>
-  <p style="margin-top:6px; color:#7f8c8d; text-align:center;">Sohl-Dickstein et al. 2015; Song &amp; Ermon 2019; Ho et al. (DDPM) 2020; Song et al. (score SDE) 2021. SBI: Geffner et al. 2023, Sharrock et al. 2024.</p>
-</section>
-
-<!-- When to reach for which -->
-<section>
-  <h2>When to reach for which inference head</h2>
-  <table style="margin-top:8px;">
-    <thead>
-      <tr><th></th><th>Coupling flow</th><th>Flow matching</th><th>Diffusion</th></tr>
-    </thead>
-    <tbody>
-      <tr><td><strong>Exact log-density</strong></td><td>yes, cheap</td><td>yes, expensive (trace)</td><td>yes, expensive</td></tr>
-      <tr><td><strong>Sampling cost</strong></td><td>one forward pass</td><td>10&ndash;50 ODE steps</td><td>50&ndash;500 SDE steps</td></tr>
-      <tr><td><strong>Training stability</strong></td><td>good, architecture-constrained</td><td>very good, regression loss</td><td>excellent</td></tr>
-      <tr><td><strong>Scales to very high-D \(\theta\)</strong></td><td>moderate</td><td>good</td><td>excellent</td></tr>
-      <tr><td><strong>Shines when</strong></td><td>medium-D, need fast amortised \(\log q\)</td><td>medium-D, fast amortised sampler</td><td>very high-D (images, fields)</td></tr>
-    </tbody>
-  </table>
-  <div class="box" style="margin-top:14px; text-align:center;">
-    Rule of thumb in 2026: <strong>coupling flow</strong> for typical SBI (parameters \(\lesssim 50\)D). <strong>FM/diffusion</strong> when \(\theta\) itself is image-shaped (e.g. dark-matter maps, lensing source planes) or when you want sample-speed and do not need exact \(\log q\).
-  </div>
 </section>
 
 </div>
