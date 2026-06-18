@@ -62,31 +62,35 @@
 <!-- ============================================================ -->
 <section>
   <h2>Where can our inference go wrong?</h2>
-  <p style="font-size:0.95em;">A taxonomy of <strong>epistemic uncertainties</strong> in SBI: three failure modes, each with its own diagnostic strategy.</p>
-  <table class="tax-table">
-    <thead>
-      <tr><th style="width:11%;">Category</th><th style="width:14%;">Type</th><th>Description</th></tr>
-    </thead>
-    <tbody>
-      <tr>
-        <td rowspan="3" style="font-weight:600; color:#2c3e50;">Epistemic</td>
-        <td class="type">Type A</td>
-        <td>Misspecified model<br><span class="quote">"I'm simulating the wrong world"</span></td>
-      </tr>
-      <tr>
-        <td class="type">Type B</td>
-        <td>Lossy summary<br><span class="quote">"I'm discarding relevant information"</span></td>
-      </tr>
-      <tr>
-        <td class="type">Type C</td>
-        <td>Inexact inference<br><span class="quote">"I can't compute the posterior exactly"</span></td>
-      </tr>
-      <tr class="aleo"><td>Aleatoric</td><td>&mdash;</td><td>Irreducible randomness in the data</td></tr>
-    </tbody>
-  </table>
-  <p class="fragment" style="margin-top:10px; font-size:0.9em; color:#7f8c8d;">
-    Today's diagnostics live in the <strong>forward&ndash;backward family</strong>: they test <strong>Type C</strong> well, can hint at <strong>Type B</strong> with the right ordering, and are <strong>blind to Type A</strong> by construction.
-  </p>
+  <p style="font-size:26px; text-align:left;">A taxonomy of <strong>epistemic uncertainties</strong> in SBI: three failure modes, each with its own diagnostic strategy.</p>
+  <div style="display:flex; gap:16px; align-items:flex-start; margin-top:10px;">
+    <div style="flex:1.1;">
+      <img src="figures/lecture6/fig_sbi_pipeline2.png" style="width:100%;">
+    </div>
+    <div style="flex:1;">
+      <table class="tax-table" style="font-size:26px">
+        <thead>
+          <tr><th style="width:11%;">Category</th><th style="width:14%;">Type</th><th>Description</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td rowspan="3" style="font-weight:600; color:#2c3e50;">Epistemic</td>
+            <td class="type">Type A</td>
+            <td>Misspecified model<br><span class="quote">"I'm simulating the wrong world"</span></td>
+          </tr>
+          <tr>
+            <td class="type">Type B</td>
+            <td>Lossy summary<br><span class="quote">"I'm discarding relevant information"</span></td>
+          </tr>
+          <tr>
+            <td class="type">Type C</td>
+            <td>Inexact inference<br><span class="quote">"I can't compute the posterior exactly"</span></td>
+          </tr>
+          <tr class="aleo"><td>Aleatoric</td><td>&mdash;</td><td>Irreducible randomness in the data</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
 </section>
 
 <!-- ============================================================ -->
@@ -108,18 +112,28 @@
 <!-- ============================================================ -->
 <section>
   <h2>The forward&ndash;backward consistency principle</h2>
-  <p>Compare two joint distributions on \((\theta, x)\):</p>
-  <div class="box" style="text-align:center; margin:10px auto; max-width:620px;">
+  <div style="display:flex; align-items:center; height:80%;">
+  <div style="font-size:26px">
+  <p style="text-align:left;">Compare samples from two joint distributions on \((\theta, x)\), derived from the forward model and the backward model, respectively.</p>
+  <div class="box box-green" style="display:inline-block; width:fit-content;">
     \[ \underbrace{q_\phi(\theta\mid x)\,p(x)}_{\text{backward (inference)}} \;\;\overset{?}{=}\;\; \underbrace{p(x\mid\theta)\,p(\theta)}_{\text{forward (simulator)}} \]
   </div>
-  <p>If \(q_\phi(\theta\mid x) = p(\theta\mid x)\), the two coincide. Any discrepancy flags inference error.</p>
-  <p class="fragment"><strong>Simulation-based calibration (SBC).</strong> Given an observation \(x\), draw one parameter from the true posterior, \(\theta^* \sim p(\theta\mid x)\), and \(L\) further draws from the learned posterior, \(\theta_{1:L} \sim q_\phi(\theta\mid x)\). By Bayes' theorem this is equivalent to:</p>
-  <div class="box" style="text-align:center; margin:8px auto; max-width:640px;">
+  <p style="text-align:left;">Key insight observation: If \(q_\phi(\theta\mid x) = p(\theta\mid x)\), the two coincide. Vice versa, any discrepancy flags inference error.</p>
+  </div>
+  </div>
+</section>
+
+<section>
+  <h2>The forward&ndash;backward consistency principle</h2>
+  <div style="font-size:26px;">
+  <p style="text-align:left;"><strong>Simulation-based calibration (SBC).</strong> Given an observation \(x\), draw one parameter from the true posterior, \(\theta^* \sim p(\theta\mid x)\), and \(L\) further draws from the learned posterior, \(\theta_{1:L} \sim q_\phi(\theta\mid x)\). By Bayes' theorem this is equivalent to:</p>
+  <div class="box box-green" style="text-align:center; margin:8px auto; max-width:640px;">
     \[ \theta^* \sim p(\theta),\quad x \sim p(x\mid\theta^*),\quad \theta_{1:L} \sim q_\phi(\theta\mid x) \]
   </div>
-  <p class="fragment"><strong>Rank statistic:</strong> position of \(\theta^*\) among \(\theta_{1:L}\), i.e. \(F(\theta^*) = \tfrac{1}{L}\sum_i \mathbb{1}(\theta_i \le \theta^*)\). Under \(q_\phi = p\), all \(L+1\) positions are equally likely:</p>
+  <p style="text-align:left;"><strong>Rank statistic.</strong> Position of \(\theta^*\) among \(\theta_{1:L}\), i.e. \(F(\theta^*) = \tfrac{1}{L}\sum_i \mathbb{1}(\theta_i \le \theta^*)\). Under \(q_\phi = p\), all \(L+1\) positions are equally likely:</p>
   <div class="box box-blue" style="text-align:center; margin:8px auto; max-width:520px;">
     \[ F(\theta^*) \;\sim\; \text{Uniform}\bigl(\{0, \tfrac{1}{L}, \ldots, 1\}\bigr) \]
+  </div>
   </div>
 </section>
 
@@ -128,7 +142,7 @@
 <!-- ============================================================ -->
 <section>
   <h2>What SBC actually does, in one picture</h2>
-  <div style="display:flex; gap:14px;">
+  <div style="display:flex; gap:14px; font-size:26px">
     <div style="flex:0 0 36%; text-align:left;">
       <p>For each of \(N\) simulated experiments we get one rank between \(0\) and \(L\). Aggregate them into a histogram.</p>
       <ol style="font-size:0.95em; margin-top:6px;">
@@ -152,18 +166,18 @@
 <!-- ============================================================ -->
 <section>
   <h2>Demo: reading SBC rank histograms</h2>
-  <div style="display:flex; gap:14px;">
+  <div style="display:flex; gap:14px; font-size:26px">
     <div style="flex:0 0 34%; text-align:left;">
       <p>Simulator: \(\theta\sim\mathcal{U}(-1,1)\), \(x\mid\theta\sim\mathcal{N}(\theta, \sigma^2)\) with \(\sigma=0.1\).</p>
       <p>Learned posterior:</p>
       <div class="box" style="text-align:center; margin:6px 0;">
         \[ q_\phi(\theta\mid x) = \mathcal{N}(\theta;\,x+b,\,(s\sigma)^2) \]
       </div>
-      <ul style="font-size:0.92em;">
+      <ul>
         <li><strong>Bias</strong> \(b\): shifts the mean</li>
         <li><strong>Scale</strong> \(s\): \(s<1\) underdispersed; \(s>1\) overdispersed</li>
       </ul>
-      <div class="box box-orange" style="font-size:0.9em;">
+      <div class="box box-orange">
         <strong>Watch for:</strong> bias &rarr; <em>skew</em>; underdispersion &rarr; <em>U-shape</em>; overdispersion &rarr; <em>inverse U-shape</em>.
       </div>
     </div>
@@ -189,20 +203,17 @@
 <!-- ============================================================ -->
 <section>
   <h2>HPDR coverage: same machinery, different ordering</h2>
-  <p>The <strong>highest posterior density region</strong> at level \(1-\alpha\):</p>
-  <div class="box" style="text-align:center; margin:6px auto; max-width:560px;">
-    \[ \mathcal{C}_{1-\alpha}(x) = \{\theta : q_\phi(\theta\mid x) \ge \gamma_{1-\alpha}\}, \quad \int_{\mathcal{C}_{1-\alpha}(x)} q_\phi(\theta\mid x)\,d\theta = 1 - \alpha \]
+  <div style="font-size:26px">
+    <p style="text-align:left">The <strong>highest posterior density region</strong> at level \(1-\alpha\):</p>
+    <div class="box" style="text-align:center;">
+      \[ \mathcal{C}_{1-\alpha}(x) = \{\theta : q_\phi(\theta\mid x) \ge \gamma_{1-\alpha}\}, \quad \int_{\mathcal{C}_{1-\alpha}(x)} q_\phi(\theta\mid x)\,d\theta = 1 - \alpha \]
+    </div>
+    <p style="text-align:left">If \(q_\phi = p\), a fraction \(1-\alpha\) of true parameters \(\theta^*\) should fall inside. Plot empirical vs nominal coverage: the <strong>pp-plot</strong>.</p>
+    <p style="text-align:left">Equivalently, this is a rank test with ordering function \(q_\phi(\theta\mid x)\):</p>
+    <div class="box" style="text-align:center; margin:6px auto; max-width:600px;">
+      \[ F_x(\theta^*) = \tfrac{1}{L}\sum_{i=1}^{L} \mathbb{1}\bigl(q_\phi(\theta_i\mid x) \ge q_\phi(\theta^*\mid x)\bigr) \]
+    </div>
   </div>
-  <p>If \(q_\phi = p\), a fraction \(1-\alpha\) of true parameters \(\theta^*\) should fall inside. Plot empirical vs nominal coverage: the <strong>pp-plot</strong>.</p>
-  <p class="fragment">Equivalently, this is a rank test with ordering function \(q_\phi(\theta\mid x)\):</p>
-  <div class="box" style="text-align:center; margin:6px auto; max-width:600px;">
-    \[ F_x(\theta^*) = \tfrac{1}{L}\sum_{i=1}^{L} \mathbb{1}\bigl(q_\phi(\theta_i\mid x) \ge q_\phi(\theta^*\mid x)\bigr) \]
-  </div>
-  <ul class="fragment" style="font-size:0.95em;">
-    <li>Overdispersed \(q_\phi\) &rarr; <strong>overcoverage</strong> (pp-curve above diagonal)</li>
-    <li>Underdispersed \(q_\phi\) &rarr; <strong>undercoverage</strong> (pp-curve below diagonal)</li>
-    <li>Pure bias produces only a <strong>mild</strong> pp-plot deviation, far less dramatic than the SBC histogram</li>
-  </ul>
 </section>
 
 <!-- ============================================================ -->
@@ -219,7 +230,6 @@
       <div class="box box-orange" style="font-size:0.9em;">
         <strong>HPDR</strong> orders by \(q_\phi(\theta_i\mid x)\). Tracks dispersion well, only mildly responds to pure bias.
       </div>
-      <p style="font-size:0.88em; color:#7f8c8d;">Crank up the bias slider with scale at 1: SBC screams, the pp-plot barely budges.</p>
     </div>
     <div style="flex:1 1 0; min-width:0; overflow:hidden;">
       <div style="display:flex; gap:8px;">
@@ -370,14 +380,14 @@
 <section>
   <h2>Beyond marginals: probing the joint</h2>
   <p>SBC applied separately to each component \(\theta_i\) tests only the marginals. It can pass while the <strong>joint</strong> posterior is wrong (correlations distorted).</p>
-  <div class="box" style="text-align:center; margin:8px auto; max-width:620px;">
+  <div class="box" style="text-align:center; margin:8px auto;">
     <strong>Cram&eacute;r&ndash;Wold theorem.</strong> A distribution is determined by all its one-dimensional projections.
     \[ q_\phi(\mathbf{w}^\top\boldsymbol\theta \mid x) = p(\mathbf{w}^\top\boldsymbol\theta \mid x) \quad \text{for all } \mathbf{w} \in \mathbb{R}^N \;\;\Rightarrow\;\; q_\phi = p \]
   </div>
   <ul style="font-size:0.95em;">
-    <li class="fragment">Practical recipe: SBC on a <strong>random ensemble</strong> of projections \(\mathbf{w}^\top\boldsymbol\theta\).</li>
-    <li class="fragment">Cheap (rank-test samples reused), and much more revealing than per-coordinate SBC.</li>
-    <li class="fragment">This is the bridge from SBC to the generalized rank framework: arbitrary ordering functions \(f(\boldsymbol\theta, x)\).</li>
+    <li>Practical recipe: SBC on a <strong>random ensemble</strong> of projections \(\mathbf{w}^\top\boldsymbol\theta\).</li>
+    <li>Cheap (rank-test samples reused), and much more revealing than per-coordinate SBC.</li>
+    <li>This is the bridge from SBC to the generalized rank framework: arbitrary ordering functions \(f(\boldsymbol\theta, x)\).</li>
   </ul>
 </section>
 
@@ -398,7 +408,7 @@
       <tr><td class="type">Score ranks</td><td>score (\(d\) tests)</td><td>Yes</td><td>\(\nabla_{\theta_i} \log p(x\mid\boldsymbol\theta)\)</td></tr>
     </tbody>
   </table>
-  <div class="box box-blue fragment" style="margin-top:10px;">
+  <div class="box box-blue" style="margin-top:10px;">
     <strong>Completeness.</strong> If the rank statistic is uniform for <em>every</em> ordering \(f(\boldsymbol\theta, x)\), then \(q_\phi = p\) almost everywhere (Lemos et al. 2023). Any finite set of orderings is necessary but not sufficient.
   </div>
 </section>
