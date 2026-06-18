@@ -254,6 +254,57 @@
   </div>
 </section>
 
+<!-- Live 2D normalising-flow demo -->
+<section>
+  <h2>Flow pushforward, live 2D demo</h2>
+  <!-- Top row: base -> 3 intermediate stages -> data, with arrows between -->
+  <div style="display:flex; gap:4px; align-items:center; justify-content:center;">
+    <div style="text-align:center;">
+      <div style="font-weight:600; color:#2980b9; font-size:0.78em; margin-bottom:2px;">Base &nbsp;\(z\sim\mathcal{N}(0,I)\)</div>
+      <canvas id="nf-zcanvas" width="158" height="158" style="border:1px solid #bdc3c7; border-radius:4px; background:#fafafa;"></canvas>
+    </div>
+    <div style="font-size:1.5em; color:#bdc3c7; padding-bottom:14px;">&rarr;</div>
+    <div style="text-align:center;">
+      <div style="font-weight:600; color:#8e44ad; font-size:0.78em; margin-bottom:2px;">after &nbsp;\(f_1\)</div>
+      <canvas id="nf-c1" width="158" height="158" style="border:1px solid #bdc3c7; border-radius:4px; background:#fafafa;"></canvas>
+    </div>
+    <div style="font-size:1.5em; color:#bdc3c7; padding-bottom:14px;">&rarr;</div>
+    <div style="text-align:center;">
+      <div style="font-weight:600; color:#8e44ad; font-size:0.78em; margin-bottom:2px;">after &nbsp;\(f_2\)</div>
+      <canvas id="nf-c2" width="158" height="158" style="border:1px solid #bdc3c7; border-radius:4px; background:#fafafa;"></canvas>
+    </div>
+    <div style="font-size:1.5em; color:#bdc3c7; padding-bottom:14px;">&rarr;</div>
+    <div style="text-align:center;">
+      <div style="font-weight:600; color:#8e44ad; font-size:0.78em; margin-bottom:2px;">after &nbsp;\(f_3\)</div>
+      <canvas id="nf-c3" width="158" height="158" style="border:1px solid #bdc3c7; border-radius:4px; background:#fafafa;"></canvas>
+    </div>
+    <div style="font-size:1.5em; color:#bdc3c7; padding-bottom:14px;">&rarr;</div>
+    <div style="text-align:center;">
+      <div style="font-weight:600; color:#e67e22; font-size:0.78em; margin-bottom:2px;">Data &nbsp;\(x=f_\theta(z)\)</div>
+      <canvas id="nf-xcanvas" width="158" height="158" style="border:1px solid #bdc3c7; border-radius:4px; background:#fafafa;"></canvas>
+    </div>
+  </div>
+  <!-- Controls + info, moved below the panels -->
+  <div style="display:flex; gap:18px; align-items:center; justify-content:center; margin-top:12px; font-size:0.85em;">
+    <div class="box box-blue" style="padding:6px 12px; margin:0;">
+      <strong>Flow:</strong> 4 affine coupling layers, MLP(32). &nbsp;
+      <strong>Target:</strong> banana (grey). &nbsp;
+      <strong>Loss:</strong> \(-\mathbb{E}[\log q_\theta(x)]\)
+    </div>
+    <div>
+      <button id="nf-toggle" style="padding:5px 10px; cursor:pointer; font-weight:600;">&#9654; Train</button>
+      <button id="nf-reset"  style="padding:5px 10px; cursor:pointer;">Reset</button>
+    </div>
+    <div style="font-family:monospace;">
+      step: <span id="nf-step">0</span> &nbsp; loss: <span id="nf-loss">&mdash;</span>
+    </div>
+  </div>
+  <p style="text-align:center; margin-top:6px; font-size:0.8em; color:#7f8c8d;">
+    Colours tag fixed \(z\)-points by angle, watch each coupling layer bend the cloud step by step into the banana.
+  </p>
+  <p class="credit" style="margin-top:4px;">Trained live in your browser with TF.js. Each layer: \(x_b = z_b \cdot e^{s(z_a)} + t(z_a)\), swapping \(a\leftrightarrow b\). Exact log-density via \(\log|\det J| = \sum_\ell s_\ell\).</p>
+</section>
+
 <!-- Conditional flows -->
 <section>
   <h2>Conditional flows, plugging in the data</h2>
@@ -274,39 +325,6 @@
   </div>
 </section>
 
-<!-- Live 2D normalising-flow demo -->
-<section>
-  <h2>Flow pushforward, live 2D demo</h2>
-  <div style="display:flex; gap:14px; align-items:flex-start;">
-    <div style="flex:1; text-align:center;">
-      <div style="font-weight:600; color:#2980b9; margin-bottom:2px;">Base space &nbsp;\(z \sim \mathcal{N}(0, I)\)</div>
-      <canvas id="nf-zcanvas" width="300" height="300" style="border:1px solid #bdc3c7; border-radius:4px; background:#fafafa;"></canvas>
-    </div>
-    <div style="flex:1; text-align:center;">
-      <div style="font-weight:600; color:#e67e22; margin-bottom:2px;">Data space &nbsp;\(x = f_\theta(z)\)</div>
-      <canvas id="nf-xcanvas" width="300" height="300" style="border:1px solid #bdc3c7; border-radius:4px; background:#fafafa;"></canvas>
-    </div>
-    <div style="flex:0.8; text-align:left; font-size:0.85em;">
-      <div class="box box-blue" style="padding:8px 10px; margin:2px 0;">
-        <strong>Flow:</strong> 4 affine coupling layers, MLP(32).<br>
-        <strong>Target:</strong> banana (grey).<br>
-        <strong>Loss:</strong> \(-\mathbb{E}[\log q_\theta(x)]\)
-      </div>
-      <div style="margin-top:6px;">
-        <button id="nf-toggle" style="padding:5px 10px; cursor:pointer; font-weight:600;">&#9654; Train</button>
-        <button id="nf-reset"  style="padding:5px 10px; cursor:pointer;">Reset</button>
-      </div>
-      <div style="margin-top:8px; font-family:monospace; font-size:0.95em;">
-        step: <span id="nf-step">0</span><br>
-        loss: <span id="nf-loss">&mdash;</span>
-      </div>
-      <div style="margin-top:6px; font-size:0.8em; color:#7f8c8d;">
-        Colours tag fixed \(z\)-points by angle, watch them get warped into the banana.
-      </div>
-    </div>
-  </div>
-  <p class="credit" style="margin-top:4px;">Trained live in your browser with TF.js. Each layer: \(x_b = z_b \cdot e^{s(z_a)} + t(z_a)\), swapping \(a\leftrightarrow b\). Exact log-density via \(\log|\det J| = \sum_\ell s_\ell\).</p>
-</section>
 
 <!-- Full pipeline revisited -->
 <section>
@@ -699,29 +717,6 @@ function baseLayout(opts) {
       NF.layers.push({ mask: i%2, net: makeMlp(32) });
     }
   }
-  function fwd(z){
-    return tf.tidy(function(){
-      var cur = z;
-      var B = z.shape[0];
-      var logDet = tf.zeros([B]);
-      for(var i=0;i<NF.layers.length;i++){
-        var L = NF.layers[i];
-        var a, b;
-        if(L.mask === 0){
-          a = cur.slice([0,0],[-1,1]); b = cur.slice([0,1],[-1,1]);
-        } else {
-          a = cur.slice([0,1],[-1,1]); b = cur.slice([0,0],[-1,1]);
-        }
-        var st = mlp(L.net, a);
-        var s = tf.tanh(st.slice([0,0],[-1,1]));
-        var t = st.slice([0,1],[-1,1]);
-        var bNew = tf.add(tf.mul(b, tf.exp(s)), t);
-        logDet = tf.add(logDet, s.squeeze([1]));
-        cur = (L.mask === 0) ? tf.concat([a, bNew], 1) : tf.concat([bNew, a], 1);
-      }
-      return { x: cur, logDet: logDet };
-    });
-  }
   function inv(x){
     return tf.tidy(function(){
       var cur = x;
@@ -805,12 +800,54 @@ function baseLayout(opts) {
       }
     }
   }
-  function pushforwardFixed(){
+  // Pushforward of the fixed z-points, snapshotting the cloud after every layer.
+  // Returns an array of Float32Arrays, one per coupling layer (last = data space).
+  function pushforwardStages(){
     return tf.tidy(function(){
-      var zT = tf.tensor2d(NF.zFixed, [NF.zFixed.length/2, 2]);
-      var out = fwd(zT);
-      return out.x.dataSync();
+      var cur = tf.tensor2d(NF.zFixed, [NF.zFixed.length/2, 2]);
+      var stages = [];
+      for(var i=0;i<NF.layers.length;i++){
+        var L = NF.layers[i];
+        var a, b;
+        if(L.mask === 0){
+          a = cur.slice([0,0],[-1,1]); b = cur.slice([0,1],[-1,1]);
+        } else {
+          a = cur.slice([0,1],[-1,1]); b = cur.slice([0,0],[-1,1]);
+        }
+        var st = mlp(L.net, a);
+        var s = tf.tanh(st.slice([0,0],[-1,1]));
+        var t = st.slice([0,1],[-1,1]);
+        var bNew = tf.add(tf.mul(b, tf.exp(s)), t);
+        cur = (L.mask === 0) ? tf.concat([a, bNew], 1) : tf.concat([bNew, a], 1);
+        stages.push(cur.dataSync());
+      }
+      return stages;
     });
+  }
+  var SR = [-3.2, 3.2];
+  function drawStage(id, pts){
+    var c = document.getElementById(id);
+    if(!c) return;
+    var ctx = c.getContext('2d');
+    ctx.clearRect(0,0,c.width,c.height);
+    var M = makeMapper(SR[0],SR[1],SR[0],SR[1],c.width,c.height);
+    ctx.strokeStyle = '#e1e4e7'; ctx.lineWidth = 1;
+    var o = M(0,0);
+    ctx.beginPath(); ctx.moveTo(o[0],0); ctx.lineTo(o[0],c.height); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(0,o[1]); ctx.lineTo(c.width,o[1]); ctx.stroke();
+    for(var i=0;i<pts.length/2;i++){
+      var p = M(pts[2*i], pts[2*i+1]);
+      ctx.fillStyle = NF.zColors[i];
+      ctx.beginPath(); ctx.arc(p[0], p[1], 1.8, 0, 6.2832); ctx.fill();
+    }
+  }
+  // Redraw the 3 intermediate panels + the final data panel from one forward pass.
+  function refreshPanels(){
+    var stages = pushforwardStages();
+    drawStage('nf-c1', stages[0]);
+    drawStage('nf-c2', stages[1]);
+    drawStage('nf-c3', stages[2]);
+    drawXCanvas(stages[stages.length - 1]);
   }
   function initFixedViz(){
     var N = 300;
@@ -837,8 +874,7 @@ function baseLayout(opts) {
     var se = document.getElementById('nf-step'); if(se) se.textContent = '0';
     var le = document.getElementById('nf-loss'); if(le) le.textContent = '—';
     drawZCanvas();
-    var pf = pushforwardFixed();
-    drawXCanvas(pf);
+    refreshPanels();
   }
   function ensureInit(){
     if(NF.inited) return;
@@ -848,8 +884,7 @@ function baseLayout(opts) {
     NF.opt = tf.train.adam(1e-3);
     NF.inited = true;
     drawZCanvas();
-    var pf = pushforwardFixed();
-    drawXCanvas(pf);
+    refreshPanels();
   }
   function trainStep(){
     var BATCH = 256;
@@ -868,8 +903,7 @@ function baseLayout(opts) {
     for(var k=0;k<3;k++){ loss = trainStep(); }
     var se = document.getElementById('nf-step'); if(se) se.textContent = NF.step;
     var le = document.getElementById('nf-loss'); if(le) le.textContent = loss.toFixed(3);
-    var pf = pushforwardFixed();
-    drawXCanvas(pf);
+    refreshPanels();
     NF.rafId = requestAnimationFrame(loop);
   }
   function toggleTrain(){
