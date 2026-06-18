@@ -203,38 +203,74 @@
   </p>
 </section>
 
+<!-- Why the coupling Jacobian is cheap: dense vs triangular -->
+<section>
+  <h2>Why the Jacobian is cheap</h2>
+  <div class="box box-green" style="text-align:center;">
+    <strong>Cheap Jacobian.</strong>
+    \(J\) is triangular &rArr; \(\log|\det J| = \sum_i s_\phi(\mathbf{z}_A)_i\), so the cost is \(\mathcal{O}(d)\), not \(\mathcal{O}(d^3)\).
+  </div>
+  <div style="text-align:center; margin-top:6px;">
+  <svg viewBox="0 0 760 360" xmlns="http://www.w3.org/2000/svg" style="max-width:100%; height:auto;" font-family="Inter, sans-serif">
+    <!-- ====================== titles ====================== -->
+    <text x="178" y="38" text-anchor="middle" font-size="17" font-weight="600" fill="#2c3e50">Dense Jacobian</text>
+    <text x="578" y="38" text-anchor="middle" font-size="17" font-weight="600" fill="#2c3e50">Affine-coupling Jacobian</text>
+
+    <!-- ====================== DENSE (left) ====================== -->
+    <!-- every entry nonzero -->
+    <rect x="70" y="60" width="216" height="216" fill="#aed6f1"/>
+    <!-- grid -->
+    <path d="M70 60V276 M106 60V276 M142 60V276 M178 60V276 M214 60V276 M250 60V276 M286 60V276 M70 60H286 M70 96H286 M70 132H286 M70 168H286 M70 204H286 M70 240H286 M70 276H286"
+          stroke="#5499c7" stroke-width="1" fill="none"/>
+    <!-- brackets -->
+    <path d="M64 60 h-10 V276 h10 M292 60 h10 V276 h-10" stroke="#2c3e50" stroke-width="2.5" fill="none"/>
+    <text x="178" y="302" text-anchor="middle" font-size="13" fill="#34495e">every entry nonzero</text>
+    <text x="178" y="322" text-anchor="middle" font-size="13" fill="#c0392b" font-weight="600">det costs \(\mathcal{O}(d^3)\)</text>
+
+    <!-- ====================== COUPLING (right) ====================== -->
+    <!-- top-right zero block -->
+    <rect x="578" y="60" width="108" height="108" fill="#f4f6f7"/>
+    <!-- bottom-left dense block (nonzero, irrelevant to det) -->
+    <rect x="470" y="168" width="108" height="108" fill="#d5dbdb"/>
+    <!-- diagonal cells (set the determinant) -->
+    <rect x="470" y="60"  width="36" height="36" fill="#f5b041"/>
+    <rect x="506" y="96"  width="36" height="36" fill="#f5b041"/>
+    <rect x="542" y="132" width="36" height="36" fill="#f5b041"/>
+    <rect x="578" y="168" width="36" height="36" fill="#f5b041"/>
+    <rect x="614" y="204" width="36" height="36" fill="#f5b041"/>
+    <rect x="650" y="240" width="36" height="36" fill="#f5b041"/>
+    <!-- block annotations -->
+    <text x="632" y="120" text-anchor="middle" font-size="22" fill="#95a5a6" font-weight="600">0</text>
+    <text x="524" y="218" text-anchor="middle" font-size="13" fill="#7f8c8d">&#8800; 0</text>
+    <text x="524" y="234" text-anchor="middle" font-size="10" fill="#95a5a6">(ignored)</text>
+    <!-- grid -->
+    <path d="M470 60V276 M506 60V276 M542 60V276 M578 60V276 M614 60V276 M650 60V276 M686 60V276 M470 60H686 M470 96H686 M470 132H686 M470 168H686 M470 204H686 M470 240H686 M470 276H686"
+          stroke="#aab7b8" stroke-width="1" fill="none"/>
+    <!-- brackets -->
+    <path d="M464 60 h-10 V276 h10 M692 60 h10 V276 h-10" stroke="#2c3e50" stroke-width="2.5" fill="none"/>
+    <text x="578" y="302" text-anchor="middle" font-size="13" fill="#34495e">lower-triangular</text>
+    <text x="578" y="322" text-anchor="middle" font-size="13" fill="#27ae60" font-weight="600">det = &#8719; diagonal = &#8719; exp(s\(_i\)), \(\;\mathcal{O}(d)\)</text>
+  </svg>
+  </div>
+</section>
+
 <!-- Conditional flows -->
 <section>
   <h2>Conditional flows, plugging in the data</h2>
-  <div class="box box-orange" style="text-align:center;">
-    For SBI we want \(q_\phi(\boldsymbol\theta \mid \mathbf{x})\), not just \(q_\phi(\boldsymbol\theta)\).<br>
-    Let the scale and shift networks depend on the data (or its embedding):
-    \[ s_\phi(\mathbf{z}_A, T_\phi(\mathbf{x})), \qquad t_\phi(\mathbf{z}_A, T_\phi(\mathbf{x})) \]
+  From modeling densities to modeling conditional densities.
+  <div class="box box-orange">
+    For SBI we want \(q_\phi(\boldsymbol\theta \mid \mathbf{x})\), not just \(q_\phi(\boldsymbol\theta)\).
+    To that end, the scale and shift networks should be data dependent (potentially through an embedding \(T_\phi(\mathbf{x})\)):
+    \[ s_\phi(\mathbf{z}_A) \to s_\phi(\mathbf{z}_A, T_\phi(\mathbf{x})), \qquad t_\phi(\mathbf{z}_A) \to t_\phi(\mathbf{z}_A, T_\phi(\mathbf{x})) \]
   </div>
-  <div class="box box-blue" style="margin-top:10px;">
-    <strong>End-to-end picture.</strong>
+  <div style="margin-top:10px; text-align:left">
+    <strong>Full picture</strong>
     <ol style="font-size:0.95em;">
       <li><strong>Embedding</strong> \(T_\phi(\mathbf{x})\) compresses the data (CNN / Transformer / GNN, see Lec 4).</li>
       <li><strong>Conditional flow</strong> turns \(\mathbf{z}\sim\mathcal{N}(0,I)\) into \(\boldsymbol\theta\), with all coupling-layer parameters depending on \(T_\phi(\mathbf{x})\).</li>
       <li>Loss: \(-\log q_\phi(\boldsymbol\theta^\star\mid\mathbf{x})\) averaged over simulator pairs.</li>
     </ol>
-  </div>
-  <div class="box box-green" style="text-align:center;">
-    Every component, embedding and coupling networks \(s, t\), is trained together by backprop.
-  </div>
-</section>
-
-<!-- 2D worked example (figure) -->
-<section>
-  <h2>Flow pushforward, 2D worked example</h2>
-  <div style="text-align:center;">
-    <img src="figures/lecture6/fig_flow_pushforward.png" class="fig">
-  </div>
-  <p class="credit">
-    Base samples \(\mathbf{z}\sim\mathcal{N}(0, I)\) are warped layer-by-layer into the target shape (here: two-moons). Each layer's Jacobian contributes to the log-density, keeping normalisation exact.
-  </p>
-  <div class="box" style="margin-top:6px; text-align:center;">
-    In the conditional version, the target shape <em>depends on \(\mathbf{x}\)</em>, each observation gets its own warped posterior.
+  <p>Every component, embedding and coupling networks \(s, t\), is trained together by backprop.</p>
   </div>
 </section>
 
