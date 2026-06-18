@@ -52,9 +52,9 @@
 <!-- Why flows + wishlist -->
 <section>
   <h2>Why we need flows</h2>
-  <div class="box box-orange" style="text-align:center;">
+  <p>
     Real posteriors in physics are often <strong>multimodal</strong>, <strong>curved</strong>, or <strong>heavy-tailed</strong>. Gaussians can't represent them.
-  </div>
+  </p>
   <div style="display:flex; gap:14px; margin-top:14px;">
     <div class="box box-blue" style="flex:1; text-align:center;">
       <strong>&#9312; Evaluate \(\log q_\phi(\boldsymbol\theta\mid\mathbf{x})\)</strong><br><br>
@@ -69,32 +69,48 @@
       Multimodal, curved, heavy-tailed.
     </div>
   </div>
-  <div class="box" style="margin-top:16px; text-align:center;">
+  <p>
     MLPs on raw outputs fail &#9312;: nothing forces normalisation.<br>
     <strong>Normalising flows</strong> satisfy all three by construction, via the change-of-variables formula.
+  </p>
+</section>
+
+<!-- The flow picture: base density warped into a target -->
+<section>
+  <h2>The big picture</h2>
+  <p style="text-align:center; font-size:0.95em; color:#2c3e50; margin-bottom:10px;">
+    A simple base density \(\pi_0(\mathbf{z}_0)\) is pushed through a chain of invertible maps \(f_i\) into a complex target \(\pi_K(\mathbf{z}_K)\).
+  </p>
+  <div style="text-align:center;">
+    <img src="https://lilianweng.github.io/posts/2018-10-13-flow-models/normalizing-flow.png"
+         class="fig" style="max-height:300px; background:#fff; padding:8px;">
   </div>
+  <p class="credit">
+    Figure: Lilian Weng, &ldquo;Flow-based Deep Generative Models&rdquo; (2018),
+    <a href="https://lilianweng.github.io/posts/2018-10-13-flow-models/" style="color:#2980b9;">lilianweng.github.io</a>,
+    after Weng's adaptation of Rezende &amp; Mohamed (2015), <a href="https://arxiv.org/abs/1505.05770" style="color:#2980b9;">arXiv:1505.05770</a>.
+  </p>
 </section>
 
 <!-- Change of variables -->
 <section>
   <h2>Change of variables</h2>
+  <p>Normalising flows are based on the change-of-variables formula.</p>
   <div class="box box-blue" style="text-align:center;">
-    <strong>1D.</strong> If \(z \sim p_Z(z)\) and \(\theta = f(z)\) with \(f\) invertible and differentiable,
+    <strong>Univariate case.</strong> If \(z \sim p_Z(z)\) and \(\theta = f(z)\) with \(f\) invertible and differentiable,
     \[ p_\Theta(\theta) \;=\; p_Z(z)\,\left|\frac{dz}{d\theta}\right| \;=\; p_Z(f^{-1}(\theta))\,\left|\frac{df}{dz}\right|^{-1} \]
   </div>
   <div class="box box-purple" style="text-align:center;">
-    <strong>Multivariate.</strong> For \(\mathbf{z} \in \mathbb{R}^d\), \(\boldsymbol\theta = f(\mathbf{z})\),
+    <strong>Multivariate case.</strong> For \(\mathbf{z} \in \mathbb{R}^d\), and a mapping \(\boldsymbol\theta = f(\mathbf{z})\),
     \[ p_\Theta(\boldsymbol\theta) \;=\; p_Z(f^{-1}(\boldsymbol\theta))\;\left|\det \frac{\partial f}{\partial \mathbf{z}}\right|^{-1} \]
     The Jacobian determinant is the <em>volume rescaling</em>. General \(|\det J|\) costs \(\mathcal{O}(d^3)\).
   </div>
-  <p style="text-align:center; font-size:0.95em; color:#555;">
-    Flow design: pick architectures where \(J\) is triangular, so \(|\det J| = \prod_i J_{ii}\) costs \(\mathcal{O}(d)\).
-  </p>
 </section>
 
 <!-- 1D worked example: warping a Gaussian -->
 <section>
-  <h2>Worked example: warping a Gaussian</h2>
+  <h2>Example: warping a Gaussian</h2>
+  <p></p>The volume compression can be nicely visualised in the univariate case.</p>
   <div style="display:flex; gap:10px; justify-content:center; align-items:flex-start; margin-top:6px;">
     <div style="text-align:center;">
       <canvas id="cv-map" width="280" height="240" style="border:1px solid #bdc3c7; border-radius:4px; background:#fafafa;"></canvas>
@@ -116,14 +132,17 @@
     <input id="cv-slider" type="range" min="0" max="0.99" step="0.01" value="0.80" style="width:320px; accent-color:#e67e22;">
     <span id="cv-mono" style="font-size:0.95em; color:#27ae60; font-weight:600;">monotonic &#10003;</span>
   </div>
-  <p style="text-align:center; margin-top:10px; font-size:0.95em; color:#2c3e50;">
+  <p style="text-align:left; margin-top:10px; margin-top:50px; font-size:0.95em; color:#2c3e50;">
     Base \(\mathcal{N}(0,1.5^2)\) pushed through \(\theta = z + A\sin z\). For \(A < 1\) the map is strictly monotonic, still invertible, but as \(A\to 1\) the derivative near \(z=\pm\pi\) collapses, so density mass piles up there: the warped target becomes <strong>bimodal</strong>.
   </p>
 </section>
 
 <!-- Stack of invertible maps -->
 <section>
-  <h2>Normalising flow = stack of invertible maps</h2>
+  <h2></h2>Normalising flow = stack of invertible maps</h2>
+  <div> 
+    <p>to build a normalising flow, we now stack many simple invertible maps to generate a complex one.</p>
+  </div>
   <div class="box box-purple" style="text-align:center; font-size:1.05em;">
     \[ \boldsymbol\theta \;=\; f_L \circ f_{L-1} \circ \cdots \circ f_1(\mathbf{z}), \qquad \mathbf{z} \sim \mathcal{N}(0, I_d) \]
     Each \(f_\ell\) is invertible and differentiable, with parameters \(\phi_\ell\) (possibly conditioned on \(\mathbf{x}\)).
@@ -141,25 +160,28 @@
 <!-- Log-density by chain of Jacobians -->
 <section>
   <h2>Log-density by chain of Jacobians</h2>
-  <div class="box box-blue" style="text-align:center;">
+  <p>Evaluating the loss function (NLL) is formally straightforward.</p>
+  <div class="box box-blue">
     Let \(\mathbf{z}_\ell = f_\ell(\mathbf{z}_{\ell-1})\), \(\mathbf{z}_0 = \mathbf{z}\), \(\mathbf{z}_L = \boldsymbol\theta\). Change-of-variables composes:
     \[ \log q_\phi(\boldsymbol\theta\mid\mathbf{x}) \;=\; \log p_Z(\mathbf{z}_0) \;-\; \sum_{\ell=1}^{L} \log \left| \det \frac{\partial f_\ell}{\partial \mathbf{z}_{\ell-1}} \right| \]
   </div>
-  <div class="box box-green" style="text-align:center;">
+  <div class="box box-green">
     <strong>Training is just minibatch SGD:</strong>
     \[ \mathcal{L}_{\mathrm{NPE}}(\phi) = -\frac{1}{|\mathcal{B}|}\sum_{(\boldsymbol\theta, \mathbf{x})\in\mathcal{B}} \log q_\phi(\boldsymbol\theta\mid\mathbf{x}) \]
-    The whole stack, including any conditioning network, trains end-to-end with backprop.
   </div>
-  <p style="text-align:center; font-size:0.95em; color:#555;">
-    <strong>Key design constraint:</strong> each \(|\det \partial f_\ell / \partial \mathbf{z}_{\ell-1}|\) must be cheap.
+  <p>
+    <strong>Key design constraint:</strong> each \(|\det \partial f_\ell / \partial \mathbf{z}_{\ell-1}|\) must be computationally cheap.
   </p>
 </section>
 
 <!-- Coupling layers -->
 <section>
-  <h2>Affine coupling layers</h2>
+  <h2>Example: Affine coupling layers</h2>
+  A specific type of mapping with cheap log determinant are affine coupling layers.
   <div class="box box-purple">
-    Split \(\mathbf{z} = (\mathbf{z}_A, \mathbf{z}_B)\). Define
+    Idea: For each mapping, split parameters vector in two components \(\mathbf{z} = (\mathbf{z}_A, \mathbf{z}_B)\). 
+    
+    Define the transformation as
     \[ \mathbf{z}'_A = \mathbf{z}_A, \qquad
        \mathbf{z}'_B = \mathbf{z}_B \odot \exp\!\big(s_\phi(\mathbf{z}_A)\big) \;+\; t_\phi(\mathbf{z}_A) \]
     where \(s_\phi, t_\phi\) are arbitrary neural networks (MLPs).
@@ -176,8 +198,8 @@
       \(\mathcal{O}(d)\), not \(\mathcal{O}(d^3)\).
     </div>
   </div>
-  <p style="text-align:center; font-size:0.95em; color:#555; margin-top:10px;">
-    Alternate which half is "active" across layers (<em>RealNVP</em>). Stack \(L\) of these &rarr; expressive flow.
+  <p>
+    Then alternate which half is "active" across layer. Stack \(L\) of these &rarr; expressive flow.
   </p>
 </section>
 
@@ -504,6 +526,15 @@ function baseLayout(opts) {
     ctx.setLineDash([]);
     ctx.restore();
   }
+  function segment(ctx, r, xmin, xmax, ymin, ymax, x0, y0, x1, y1, color, lw){
+    var M = mapXY(r, xmin, xmax, ymin, ymax);
+    var p = M(x0, y0), q = M(x1, y1);
+    ctx.save();
+    ctx.beginPath(); ctx.rect(r.x, r.y, r.w, r.h); ctx.clip();
+    ctx.strokeStyle = color; ctx.lineWidth = lw || 1;
+    ctx.beginPath(); ctx.moveTo(p[0],p[1]); ctx.lineTo(q[0],q[1]); ctx.stroke();
+    ctx.restore();
+  }
   function hLine(ctx, r, xmin, xmax, ymin, ymax, yv, color){
     var M = mapXY(r, xmin, xmax, ymin, ymax);
     var p = M(xmin, yv), q = M(xmax, yv);
@@ -534,6 +565,17 @@ function baseLayout(opts) {
       var ctx = cm.getContext('2d'); ctx.clearRect(0,0,cm.width,cm.height);
       var r = rect(cm);
       drawAxes(ctx, r, ZMIN, ZMAX, TMIN, TMAX, xticksZ, yticksT, 'z', 'θ');
+      // 20 equidistant z-samples: rise from the z-axis to the curve, then bend
+      // left to the θ-axis. Uniform in z, non-uniform on θ ⇒ compression/expansion.
+      var NL = 20;
+      for(var k=0;k<NL;k++){
+        var zk = ZMIN + (ZMAX-ZMIN)*(k+0.5)/NL;
+        var tk = zk + A*Math.sin(zk);
+        // vertical: z-axis (θ=0) up to the curve
+        segment(ctx, r, ZMIN, ZMAX, TMIN, TMAX, zk, 0, zk, tk, 'rgba(22,160,133,0.45)', 1);
+        // horizontal: curve across to the θ-axis (z=0)
+        segment(ctx, r, ZMIN, ZMAX, TMIN, TMAX, zk, tk, 0, tk, 'rgba(22,160,133,0.45)', 1);
+      }
       [-Math.PI, Math.PI].forEach(function(zc){
         vLine(ctx, r, ZMIN, ZMAX, TMIN, TMAX, zc, '#e67e22');
         hLine(ctx, r, ZMIN, ZMAX, TMIN, TMAX, zc + A*Math.sin(zc), '#e67e22');
