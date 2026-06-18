@@ -285,17 +285,17 @@
   <h2>Failure 2: SBC is blind to information loss</h2>
   <div style="display:flex; gap:14px;">
     <div style="flex:0 0 36%; text-align:left;">
-      <p>Two observations \(x_1, x_2 \sim \mathcal{N}(\theta, \sigma^2)\). The Bayes-optimal posterior uses both:</p>
-      <div class="box" style="text-align:center; font-size:0.95em;">
+      <p style="font-size:0.95em;">Two observations \(x_1, x_2 \sim \mathcal{N}(\theta, \sigma^2)\). The Bayes-optimal posterior uses both:</p>
+      <div class="box" style="text-align:center; font-size:0.9em; padding:6px 10px; margin:6px 0;">
         \[ p(\theta\mid x_1, x_2) = \mathcal{N}\!\Bigl(\tfrac{x_1+x_2}{2},\, \tfrac{\sigma^2}{2}\Bigr) \]
       </div>
-      <p>Compare two flawed posteriors, <strong>both wider than optimal</strong>:</p>
-      <ul style="font-size:0.93em;">
-        <li><span style="color:#c0392b;"><strong>Overdispersed</strong></span> &mdash; correct mean, scale \(s>1\)</li>
-        <li><span style="color:#27ae60;"><strong>Lossy summary</strong></span> &mdash; uses only \(x_1\): \(q = \mathcal{N}(x_1, \sigma^2)\)</li>
+      <p style="font-size:0.92em; margin:4px 0;">Compare two flawed posteriors, both wider than optimal:</p>
+      <ul style="font-size:0.9em; margin:2px 0;">
+        <li><span style="color:#c0392b;"><strong>Overdispersed</strong></span>: correct mean, scale \(s>1\)</li>
+        <li><span style="color:#27ae60;"><strong>Lossy</strong></span>: uses only \(x_1\), \(q = \mathcal{N}(x_1, \sigma^2)\)</li>
       </ul>
-      <div class="box box-orange" style="font-size:0.9em;">
-        SBC catches the overdispersed case. The lossy case looks <strong>calibrated</strong>: it is a valid posterior, just based on less information (Type B).
+      <div class="box box-orange" style="font-size:0.85em; padding:8px 10px; margin:6px 0;">
+        SBC catches overdispersion. The lossy case looks <strong>calibrated</strong>: a valid posterior, just based on less information (Type B).
       </div>
     </div>
     <div style="flex:1 1 0; min-width:0; overflow:hidden;">
@@ -341,11 +341,11 @@
 <section>
   <h2>Failure 3: HPDR coverage is blind to shape</h2>
   <div style="display:flex; gap:14px;">
-    <div style="flex:0 0 36%; text-align:left;">
-      <p>HPDR tests check only the <em>mass</em> inside super-level sets. Distorted shapes that preserve mass-vs-level remain undetected.</p>
-      <p>Construct \(q(\theta) = g(|\theta - \theta_0|)\) such that every symmetric interval has the same mass as the true posterior. The pp-plot is <strong>perfectly diagonal</strong>, even when the shape is bimodal or shifted.</p>
-      <div class="box box-purple" style="font-size:0.9em;">
-        Mitigation: combine multiple ordering functions (HPDR, central interval, lower/upper limits, SBC). Each closes a different blind direction.
+    <div style="flex:0 0 34%; text-align:left;">
+      <p style="font-size:0.92em;">HPDR tests check only the <em>mass</em> inside super-level sets. Distorted shapes that preserve mass-vs-level go undetected.</p>
+      <p style="font-size:0.92em;">Construct \(q(\theta) = g(|\theta - \theta_0|)\) so every symmetric interval matches the true posterior mass. The pp-plot stays <strong>perfectly diagonal</strong>, even when the shape is bimodal.</p>
+      <div class="box box-purple" style="font-size:0.85em; padding:8px 10px;">
+        Mitigation: combine ordering functions (HPDR, central interval, lower/upper limits, SBC). Each closes a different blind direction.
       </div>
     </div>
     <div style="flex:1 1 0; min-width:0; overflow:hidden;">
@@ -359,8 +359,8 @@
       </div>
     </div>
   </div>
-  <p style="font-size:0.85em; color:#7f8c8d; text-align:center; margin-top:4px;">
-    Left: true posterior (dashed) vs distorted \(q\). Right: pp-plot of HPDR coverage &mdash; on the diagonal regardless of distortion.
+  <p style="font-size:0.8em; color:#7f8c8d; text-align:center; margin-top:2px;">
+    Left: true posterior (dashed) vs distorted \(q\). Right: pp-plot stays on the diagonal regardless of distortion.
   </p>
 </section>
 
@@ -955,7 +955,7 @@ function runSBC_HPDR(N, L, b, s, sigma, seed) {
       { x: xs, y: ys, mode:'lines', name:'HPDR coverage',
         line:{color:'#8e44ad', width:3} }
     ], baseLayout({
-      autosize:true, title:{text:'pp-plot &mdash; still diagonal', font:{size:13}},
+      autosize:true, title:{text:'pp-plot: still diagonal', font:{size:13}},
       xaxis:{title:'nominal 1−α', range:[0,1]},
       yaxis:{title:'realised', range:[0,1]}
     }), {displayModeBar:false, responsive:true});
