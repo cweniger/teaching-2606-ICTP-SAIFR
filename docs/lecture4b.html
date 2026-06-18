@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<title>Lecture 4b: Embedding networks and data compression</title>
+<title>Lecture 4b: Data embedding with CNNs</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
@@ -101,8 +101,7 @@
 <section>
   <h1 style="font-size:1.5em;">Machine Learning for<br>Astroparticle Physics</h1>
   <p style="font-family:'Space Grotesk',sans-serif; font-size:0.85em; font-weight:500; color:#34495e; margin:6px 0 18px;">A Crash-Course in Simulation-Based Inference</p>
-  <h3>Lecture 4b: Embedding networks and data compression</h3>
-  <p class="subtitle">From raw observation \(x\) to a learned feature \(s_\psi(x)\) feeding \(q_\phi(\theta\mid s_\psi(x))\)</p>
+  <h3>Lecture 4b: Data embedding with CNNs</h3>
   <p class="subtitle">Christoph Weniger &mdash; University of Amsterdam (GRAPPA)</p>
 </section>
 
@@ -278,59 +277,22 @@
 
 </section><!-- end vertical stack: Brief History -->
 
-<!-- SLIDE: From Binary to Multi-Class Classification (1/2) -->
+<!-- SLIDE: Classification as a (trivial) inference head -->
 <section>
-  <h2>The Classification Problem</h2>
-  <div style="display:flex; gap:24px; margin-top:16px; align-items:flex-start;">
-    <div style="flex:1;">
-      <div class="box" style="border-left:4px solid #888;">
-        <p><strong>What we had (Lecture 3):</strong></p>
-        <ul style="margin-top:6px;">
-          <li>Binary classification (2 classes)</li>
-          <li>Low-dimensional input \(\mathbf{x} \in \mathbb{R}^d\)</li>
-          <li>MLP → 1 logit → sigmoid → probability</li>
-          <li>Binary cross-entropy loss</li>
-        </ul>
-      </div>
-    </div>
-    <div class="fragment" style="flex:1;">
-      <div class="box" style="border-left:4px solid #e67e22;">
-        <p><strong>What we want now:</strong></p>
-        <ul style="margin-top:6px;">
-          <li>\(K = 10\) classes (e.g. CIFAR-10: airplane, car, bird, &hellip;)</li>
-          <li>Input: even tiny colour image \(\mathbf{x} \in \mathbb{R}^{3 \times 32 \times 32}\) &mdash; 3072 values!</li>
-          <li>Network → \(K\) logits → <strong>softmax</strong> → class probabilities</li>
-          <li>Multi-class cross-entropy loss</li>
-        </ul>
-      </div>
-    </div>
+  <h2>Classification with a Neural Network</h2>
+  <div class="box" style="font-size:26px; border-left:4px solid #888; margin-top:14px;">
+    <p><strong>1. A normalised distribution from logits.</strong> An MLP maps the input to \(K\) raw scores (<em>logits</em>) \(z_1, \ldots, z_K\); the <strong>softmax</strong> turns them into a probability distribution over classes:</p>
+    \[q_\phi(\theta = k \mid \mathbf{x}) = \frac{e^{z_k}}{\sum_{j=1}^{K} e^{z_j}}, \qquad q_\phi \geq 0, \quad \sum_k q_\phi = 1.\]
   </div>
 
-</section>
+  <div class="fragment box" style="font-size:26px; border-left:4px solid #888; margin-top:12px;">
+    <p><strong>2. The NLL loss is just multi-class cross-entropy.</strong> Minimising the negative log-likelihood over simulated pairs \((\theta_n, \mathbf{x}_n)\) is exactly the cross-entropy loss &mdash; a different name for the same maximum-likelihood objective:</p>
+    \[\mathcal{L}(\phi) = -\frac{1}{N}\sum_{n=1}^{N} \log q_\phi(\theta = \theta_n \mid \mathbf{x}_n).\]
+  </div>
 
-<!-- SLIDE: Softmax and Cross-Entropy (2/2) -->
-<section>
-  <h2>Softmax &amp; Multi-Class Cross-Entropy</h2>
-  <div style="display:flex; gap:30px; margin-top:16px; align-items:flex-start;">
-    <div style="flex:1;">
-      <div class="box">
-        <p><strong>Softmax</strong> generalises the sigmoid to \(K\) classes:</p>
-        \[p(y = k \mid \mathbf{x}) = \frac{e^{z_k}}{\sum_{j=1}^{K} e^{z_j}}\]
-        <p style="margin-top:8px;">where \(z_1, \ldots, z_K\) are the <em>logits</em> (raw network outputs).</p>
-        <p style="margin-top:8px;">Properties: \(p_k \geq 0\) and \(\sum_k p_k = 1\).</p>
-      </div>
-    </div>
-    <div style="flex:1;">
-      <div class="box">
-        <p><strong>Multi-class cross-entropy loss:</strong></p>
-        \[E = -\frac{1}{N}\sum_{n=1}^{N} \log p(y = y_n \mid \mathbf{x}_n)\]
-        <p style="margin-top:8px;">Minimising this trains the network to assign high probability to the correct class.</p>
-      </div>
-    </div>
-  </div>
-  <div class="fragment box" style="margin-top:16px; text-align:center; border-left:4px solid #c0392b;">
-    <p><strong>The problem:</strong> an MLP on thousands or millions of flattened pixel color values has no notion of spatial structure. We need something <em>before</em> the MLP to extract features from images. That something is the <strong style="color:#e67e22;">convolutional neural network</strong>.</p>
-  </div>
+  <p class="fragment" style="margin-top:14px; text-align:center; font-size:0.9em;">
+    So the inference head here is <strong>trivial</strong>. What is now tricky is the <strong style="color:#e67e22;">embedding network</strong>: turning a large colour image (\(\mathbf{x} \in \mathbb{R}^{3 \times 128 \times 128}\) &mdash; thousands of pixels) into something an MLP can digest (e.g. a 1024-vector). That something is the <strong style="color:#e67e22;">convolutional neural network</strong>.
+  </p>
 </section>
 
 <!-- ============================================================ -->
@@ -2232,22 +2194,6 @@
   <p class="credit">Credits: LeCun et al, Gradient-based learning applied to document recognition, 1998.</p>
 </section>
 
-<!-- SLIDE: Discussion moment -->
-<section>
-  <h2 style="margin-bottom:0.3em;">☕ Discussion</h2>
-  <p style="text-align:center; color:#888; font-size:0.85em; margin-bottom:20px;">1 min think — 3 min discuss with neighbours — share with the group</p>
-  <div style="display:flex; gap:20px; margin-top:10px;">
-    <div class="box" style="flex:1; border-left:4px solid #e67e22;">
-      <p style="font-size:1.0em;"><strong>1.</strong> In the demo, the CNN learned edge detectors in the first layer — without being told to. <em>Why</em> does this happen? What "forces" the network to learn edges rather than something else?</p>
-    </div>
-    <div class="box" style="flex:1; border-left:4px solid #2980b9;">
-      <p style="font-size:1.0em;"><strong>2.</strong> Our LeNet-5 has ~44k parameters. A modern ResNet has ~25 million. What do you think the extra parameters buy you? When would LeNet-5 be enough?</p>
-    </div>
-  </div>
-  <div class="fragment box" style="margin-top:20px; border-left:4px solid #27ae60; text-align:center;">
-    <p style="font-size:1.0em;"><strong>Bonus:</strong> We added noise with σ = 0.5 to the training images. Would the CNN still work if we trained on clean images but tested on noisy ones? Why or why not?</p>
-  </div>
-</section>
 
 <!-- ============================================================ -->
 <!-- SECTION 3: BUILDING CNNs                                     -->
