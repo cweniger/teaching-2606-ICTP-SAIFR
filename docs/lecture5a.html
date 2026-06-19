@@ -31,29 +31,112 @@
   <p class="subtitle">Christoph Weniger &mdash; University of Amsterdam (GRAPPA)</p>
 </section>
 
+<section>
+  <h2>Information Content: A Venn Diagram View</h2>
+  <div style="font-size:22px">
+    <table style="width:100%; border-collapse:collapse;">
+      <tr style="vertical-align:top; border-bottom:1px solid #ecf0f1;">
+        <td style="width:22%; padding:10px 16px 10px 0; font-weight:700; color:#2980b9; white-space:nowrap;">Entropy</td>
+        <td style="padding:10px 0;">
+          \[ H(X) = -\sum_x p(x)\log p(x) \]
+          <span style="font-size:0.9em; color:#555;">Average uncertainty in \(X\). How many bits does it take to describe a draw from \(p(x)\)?</span>
+        </td>
+      </tr>
+      <tr style="vertical-align:top; border-bottom:1px solid #ecf0f1;">
+        <td style="padding:10px 16px 10px 0; font-weight:700; color:#e67e22; white-space:nowrap;">Conditional Entropy</td>
+        <td style="padding:10px 0;">
+          \[ H(X\mid Y) = -\sum_{x,y} p(x,y)\log p(x\mid y) \]
+          <span style="font-size:0.9em; color:#555;">Remaining uncertainty in \(X\) after observing \(Y\).</span>
+        </td>
+      </tr>
+      <tr style="vertical-align:top;">
+        <td style="padding:10px 16px 10px 0; font-weight:700; color:#27ae60; white-space:nowrap;">Mutual Information</td>
+        <td style="padding:10px 0;">
+          \[ I(X;Y) = H(X) - H(X\mid Y) = \sum_{x,y} p(x,y)\log\frac{p(x,y)}{p(x)p(y)} \]
+          <span style="font-size:0.9em; color:#555;">How much knowing \(Y\) reduces uncertainty about \(X\). Zero iff \(X \perp Y\).</span>
+        </td>
+      </tr>
+    </table>
+  </div>
+</section>
+
 <!-- ============================================================ -->
-<!-- 2. ROADMAP                                                   -->
+<!-- INFORMATION VENN DIAGRAM                                     -->
 <!-- ============================================================ -->
 <section>
-  <h2>Today's Roadmap</h2>
-  <div class="box" style="margin-top:18px; text-align:center; font-size:1.0em;">
-    <strong>The question:</strong> our network spat out a posterior \(q_\phi(\theta\mid x)\). How do we know if it is right, and how can it fool us?
-  </div>
-  <div class="fragment" style="display:flex; gap:8px; margin-top:18px;">
-    <div class="box box-blue" style="flex:1; text-align:center;">
-      <strong style="color:#2980b9;">1</strong><br>
-      Rank Diagnostics<br>
-      <span style="font-size:0.85em;">Forward-backward consistency, SBC, HPDR coverage</span>
+  <h2>Information Content: A Venn Diagram View</h2>
+  <div style="display:flex; gap:24px; align-items:center; margin-top:10px;">
+    <div style="flex:3.7; text-align:center;">
+      <img src="figures/lecture6/fig_info_venn.png" style="width:900px;">
     </div>
-    <div style="align-self:center; font-size:1.4em; color:#bdc3c7;">&rarr;</div>
-    <div class="box box-orange" style="flex:1; text-align:center;">
-      <strong style="color:#e67e22;">2</strong><br>
-      Failure Modes &amp; Generalization<br>
-      <span style="font-size:0.85em;">Where rank tests are blind, and the unifying framework</span>
+    <div style="flex:1; font-size:22px;">
+      <div class="box box-blue">
+        <strong>Data Processing Inequality</strong>
+        \[ I(\theta;\, T(x)) \;\le\; I(\theta;\, x) \]
+        <p style="margin:6px 0 0;">Any deterministic function \(T(x)\) can only destroy — never create — information about \(\theta\).</p>
+      </div>
+      <div class="box box-green" style="margin-top:10px;">
+        <strong>Sufficient Statistic</strong>
+        \[ T(x)\ \text{sufficient} \;\Leftrightarrow\; I(\theta;\,T(x)) = I(\theta;\,x) \]
+        <p style="margin:6px 0 0;">Equality holds iff \(\theta \perp x \mid T(x)\): the statistic captures <em>everything</em> about \(\theta\).</p>
+      </div>
+      <p style="font-size:0.9em; color:#7f8c8d; margin-top:10px;">
+        Compressing \(x \to T(x)\) before SBI can only widen posteriors. The ideal learned summary is a sufficient statistic.
+      </p>
     </div>
   </div>
-  <div class="box fragment" style="margin-top:18px; text-align:center; font-size:0.95em;">
-    <strong>The thread:</strong> rank tests turn one universal property, the uniformity of ranks, into a deck of complementary diagnostics. No single one is sufficient.
+</section>
+
+<!-- ============================================================ -->
+<!-- 2. BUILDING SYSTEMS THAT WORK                               -->
+<!-- ============================================================ -->
+<section>
+  <h2>Building Systems That Work</h2>
+  <div style="display:flex; gap:16px; margin-top:10px; align-items:flex-start; font-size:26px;">
+    <div style="flex:1;">
+      <div class="box" style="font-style:italic; color:#555; line-height:1.5;">
+        "A complex system that works is invariably found to have evolved from a simple system that worked.
+        A complex system designed from scratch never works and cannot be patched up to make it work.
+        You have to start over with a working simple system."
+        <div style="margin-top:4px; text-align:right; font-style:normal; color:#7f8c8d; font-size:0.88em;">
+          — John Gall, <em>The Systems Bible</em>, 1977
+        </div>
+      </div>
+      <p style="margin-top:10px; font-size:26px; text-align:left">
+        A <strong>clockmaker</strong> does not assemble every gear and escapement at once and expect it to tick.
+        Start with the gear train — verify it rotates. Add the escapement, check regulation. Add the pendulum,
+        verify synchronization. <em>At each step, the mechanism works.</em>
+      </p>
+      <br>
+      <p style="font-size: 26px; text-align:left">
+        SBI pipelines (and anything deep learning related) obey the same law. The diagnostics ahead are designed to pinpoint failures in
+        <strong>nearly-working</strong> systems. Applied to a completely broken pipeline they generate noise;
+        applied to an incrementally refined system they can tell you exactly what broke.
+      </p>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2>Building Systems That Work</h2>
+  <div style="display:flex; gap:16px; margin-top:20px; align-items:flex-start; font-size:26px;">
+    <div style="flex:1;">
+      <div class="box box-blue">
+        <strong style="color:#2980b9;">The Iterative Refinement Workflow</strong>
+        <ol style="margin:6px 0 0; line-height:1.65;">
+          <li><strong>Start minimal</strong> — toy data, known sufficient statistics, simple network</li>
+          <li><strong>Validate thoroughly</strong> — SBC, coverage, posterior predictive checks</li>
+          <li><strong>Add one component</strong> — learned summaries <em>or</em> realistic noise <em>or</em> more parameters; not all at once</li>
+          <li><strong>Re-validate</strong> — pass → proceed; fail → you know what broke</li>
+          <li><strong>Iterate</strong> — repeat until full problem complexity</li>
+        </ol>
+      </div>
+      <div class="box box-orange" style="margin-top:8px;">
+        <strong>Rules of thumb:</strong> trust validated components when progressing &mdash;
+        question everything when stuck &mdash;
+        if you can't describe the failure in 5&nbsp;sentences, the example isn't minimal enough.
+      </div>
+    </div>
   </div>
 </section>
 
@@ -94,6 +177,33 @@
 </section>
 
 <!-- ============================================================ -->
+<!-- 2. ROADMAP                                                   -->
+<!-- ============================================================ -->
+<section>
+  <h2>Today's Roadmap</h2>
+  <div class="box" style="margin-top:18px; text-align:center; font-size:1.0em;">
+    <strong>The question:</strong> our network spat out a posterior \(q_\phi(\theta\mid x)\). How do we know if it is right, and how can it fool us?
+  </div>
+  <div class="fragment" style="display:flex; gap:8px; margin-top:18px;">
+    <div class="box box-blue" style="flex:1; text-align:center;">
+      <strong style="color:#2980b9;">1</strong><br>
+      Rank Diagnostics<br>
+      <span style="font-size:0.85em;">Forward-backward consistency, SBC, HPDR coverage</span>
+    </div>
+    <div style="align-self:center; font-size:1.4em; color:#bdc3c7;">&rarr;</div>
+    <div class="box box-orange" style="flex:1; text-align:center;">
+      <strong style="color:#e67e22;">2</strong><br>
+      Failure Modes &amp; Generalization<br>
+      <span style="font-size:0.85em;">Where rank tests are blind, and the unifying framework</span>
+    </div>
+  </div>
+  <div class="box fragment" style="margin-top:18px; text-align:center; font-size:0.95em;">
+    <strong>The thread:</strong> rank tests turn one universal property, the uniformity of ranks, into a deck of complementary diagnostics. No single one is sufficient.
+  </div>
+</section>
+
+
+<!-- ============================================================ -->
 <!-- 4. SECTION DIVIDER 1                                         -->
 <!-- ============================================================ -->
 <section>
@@ -118,7 +228,7 @@
   <div class="box box-green" style="display:inline-block; width:fit-content;">
     \[ \underbrace{q_\phi(\theta\mid x)\,p(x)}_{\text{backward (inference)}} \;\;\overset{?}{=}\;\; \underbrace{p(x\mid\theta)\,p(\theta)}_{\text{forward (simulator)}} \]
   </div>
-  <p style="text-align:left;">Key insight observation: If \(q_\phi(\theta\mid x) = p(\theta\mid x)\), the two coincide. Vice versa, any discrepancy flags inference error.</p>
+  <p style="text-align:left;">Key observation: If \(q_\phi(\theta\mid x) = p(\theta\mid x)\), the two distributions coincide. Vice versa, any discrepancy flags inference error.</p>
   </div>
   </div>
 </section>
@@ -126,14 +236,40 @@
 <section>
   <h2>The forward&ndash;backward consistency principle</h2>
   <div style="font-size:26px;">
-  <p style="text-align:left;"><strong>Simulation-based calibration (SBC).</strong> Given an observation \(x\), draw one parameter from the true posterior, \(\theta^* \sim p(\theta\mid x)\), and \(L\) further draws from the learned posterior, \(\theta_{1:L} \sim q_\phi(\theta\mid x)\). By Bayes' theorem this is equivalent to:</p>
+  <p style="text-align:left;"><strong>Simulation-based calibration (SBC).</strong> Given an observation \(x\sim p(x)\) drawn from the generative model, draw one parameter from the true posterior, \(\theta^* \sim p(\theta\mid x)\), and \(L\) further draws from the learned posterior, \(\theta_{1:L} \sim q_\phi(\theta\mid x)\).
+  <div class="box box-green" style="text-align:center; margin:8px auto; max-width:640px;">
+    \[ x \sim p(x),\quad \theta^* \sim p(\theta\mid x),\quad \theta_{1:L} \sim q_\phi(\theta\mid x) \]
+  </div>
+    However, we cannot draw from the true posterior.  Luckily, by Bayes' theorem this is equivalent to:</p>
   <div class="box box-green" style="text-align:center; margin:8px auto; max-width:640px;">
     \[ \theta^* \sim p(\theta),\quad x \sim p(x\mid\theta^*),\quad \theta_{1:L} \sim q_\phi(\theta\mid x) \]
   </div>
-  <p style="text-align:left;"><strong>Rank statistic.</strong> Position of \(\theta^*\) among \(\theta_{1:L}\), i.e. \(F(\theta^*) = \tfrac{1}{L}\sum_i \mathbb{1}(\theta_i \le \theta^*)\). Under \(q_\phi = p\), all \(L+1\) positions are equally likely:</p>
-  <div class="box box-blue" style="text-align:center; margin:8px auto; max-width:520px;">
-    \[ F(\theta^*) \;\sim\; \text{Uniform}\bigl(\{0, \tfrac{1}{L}, \ldots, 1\}\bigr) \]
+  And this can we draw quite easily once $q_\phi(\theta \mid x)$ is trained.
   </div>
+</section>
+
+<section>
+  <h2>The forward&ndash;backward consistency principle</h2>
+  <div style="font-size:26px;">
+    <p style="text-align:left;">Now, given rank test samples</p>
+    \[ \theta^* \sim p(\theta),\quad x \sim p(x\mid\theta^*),\quad \theta_{1:L} \sim q_\phi(\theta\mid x) \]
+    <p style="text-align:left">we can use some rank statistics arguments to construct a test.</p>
+    <p style="text-align:left;">The <strong>position (rank)</strong> of the true posterior sample
+      \(\theta^*\) among the approximate posterior samples
+      \(\theta_{1:L}\),
+      is given by
+    <p>
+      \(F(\theta^*) = \tfrac{1}{L}\sum_i \mathbb{1}(\theta_i \le \theta^*)\).
+    </p>
+    <br>
+    <p style="text-align:left;">
+      Assuming that \(q_\phi = p\), all \(L+1\) positions are equally likely, and hence we expect:</p>
+    <p>
+      \[ F(\theta^*) \;\sim\; \text{Uniform}\bigl(\{0, \tfrac{1}{L}, \ldots, 1\}\bigr) \]
+    </p>
+    <div class="box box-blue">Any deviations from this uniform distribution are a sign of miscalibration. This is the core
+      idea of SBC.</p>
+    </div>
   </div>
 </section>
 
@@ -143,7 +279,7 @@
 <section>
   <h2>What SBC actually does, in one picture</h2>
   <div style="display:flex; gap:14px; font-size:26px">
-    <div style="flex:0 0 36%; text-align:left;">
+    <div style="flex:0 0 45%; text-align:left;">
       <p>For each of \(N\) simulated experiments we get one rank between \(0\) and \(L\). Aggregate them into a histogram.</p>
       <ol style="font-size:0.95em; margin-top:6px;">
         <li>Draw \(\theta^*\) from the prior.</li>
@@ -152,11 +288,17 @@
         <li>Count how many of the \(\theta_i\) are below \(\theta^*\).</li>
         <li>Repeat \(N\) times; histogram the ranks.</li>
       </ol>
-      <p style="font-size:0.9em; color:#7f8c8d;">Under \(q_\phi=p\), the histogram is flat; any structure is a calibration signature.</p>
+      <p style="font-size:0.9em; color:#7f8c8c;">Under \(q_\phi=p\), the histogram is flat; any structure is a calibration signature.</p>
     </div>
     <div style="flex:1 1 0; min-width:0; overflow:hidden;">
-      <div id="sbc-cartoon-plot" style="width:100%; max-width:100%; height:400px;"></div>
-      <p style="text-align:center; font-size:0.85em; color:#7f8c8d; margin:4px 0 0;">Top: a single trial &mdash; samples (orange) vs. true value (red &times;). Bottom: how the rank of the trial above falls into the histogram.</p>
+      <div id="sbc-cartoon-plot" style="width:100%; max-width:100%; height:380px;"></div>
+      <div class="ctrl-row" style="justify-content:center; margin-top:6px; gap:10px;">
+        <button id="sbc-cartoon-next">&#x25B6; Draw one trial</button>
+        <button id="sbc-cartoon-fill">&#x23E9; Complete to 1000</button>
+        <button id="sbc-cartoon-reset">&#x21BA; Reset</button>
+        <span style="font-size:0.85em; color:#7f8c8d;">trials: <span id="sbc-cartoon-count">0</span></span>
+      </div>
+      <p style="text-align:center; font-size:0.8em; color:#7f8c8d; margin:4px 0 0;">Top: one trial &mdash; the true value (red &times;) among the approx-posterior samples (orange). Bottom: the trial's rank drops into the histogram.</p>
     </div>
   </div>
 </section>
@@ -182,18 +324,22 @@
       </div>
     </div>
     <div style="flex:1 1 0; min-width:0; overflow:hidden;">
-      <div id="demoA-plot" style="width:100%; max-width:100%; height:340px;"></div>
+      <div id="demoA-plot" style="width:100%; max-width:100%; height:380px;"></div>
       <div class="ctrl-row" style="justify-content:center; margin-top:6px;">
-        <label><input type="range" id="demoA-bias" min="-0.15" max="0.15" step="0.005" value="0" style="width:200px;">
+        <label><input type="range" id="demoA-bias" min="-0.15" max="0.15" step="0.005" value="0" style="width:160px;">
           &nbsp;bias \(b\) = <span id="demoA-bias-val" style="display:inline-block; min-width:3em;">0.000</span></label>
-        <label><input type="range" id="demoA-scale" min="0.4" max="2.0" step="0.02" value="1.0" style="width:200px;">
+        <label><input type="range" id="demoA-scale" min="0.4" max="2.0" step="0.02" value="1.0" style="width:160px;">
           &nbsp;scale \(s\) = <span id="demoA-scale-val" style="display:inline-block; min-width:2.5em;">1.00</span></label>
-      </div>
-      <div class="ctrl-row" style="justify-content:center; margin-top:4px;">
-        <label><input type="range" id="demoA-L" min="5" max="40" step="1" value="20" style="width:140px;">
+        <label><input type="range" id="demoA-L" min="5" max="40" step="1" value="20" style="width:110px;">
           &nbsp;\(L\) = <span id="demoA-L-val" style="display:inline-block; min-width:2em;">20</span></label>
-        <button id="demoA-resample">&#x21bb; Resample</button>
       </div>
+      <div class="ctrl-row" style="justify-content:center; margin-top:4px; gap:10px;">
+        <button id="demoA-next">&#x25B6; Draw one trial</button>
+        <button id="demoA-fill">&#x23E9; Complete to 1000</button>
+        <button id="demoA-reset">&#x21BA; Reset</button>
+        <span style="font-size:0.85em; color:#7f8c8d;">trials: <span id="demoA-count">0</span></span>
+      </div>
+      <p style="text-align:center; font-size:0.8em; color:#7f8c8d; margin:4px 0 0;">Each trial draws \(\theta^*\) and \(x\) afresh, so both posteriors recentre on \(x\). Red &times; is \(\theta^*\); orange dots are the \(q\)-samples whose rank we record.</p>
     </div>
   </div>
 </section>
@@ -212,6 +358,44 @@
     <p style="text-align:left">Equivalently, this is a rank test with ordering function \(q_\phi(\theta\mid x)\):</p>
     <div class="box" style="text-align:center; margin:6px auto; max-width:600px;">
       \[ F_x(\theta^*) = \tfrac{1}{L}\sum_{i=1}^{L} \mathbb{1}\bigl(q_\phi(\theta_i\mid x) \ge q_\phi(\theta^*\mid x)\bigr) \]
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<!-- 8b. DEMO: READING HPDR RANK HISTOGRAMS                       -->
+<!-- ============================================================ -->
+<section>
+  <h2>Demo: reading HPDR rank histograms</h2>
+  <div style="display:flex; gap:14px; font-size:26px">
+    <div style="flex:0 0 34%; text-align:left;">
+      <p>Same simulator and learned posterior as before &mdash; only the <strong>ordering</strong> changes.</p>
+      <p>Now we rank by <strong>density</strong> \(q_\phi(\theta\mid x)\):</p>
+      <div class="box" style="text-align:center; margin:6px 0;">
+        \[ F_x(\theta^*) = \tfrac{1}{L}\sum_i \mathbb{1}\bigl(q_\phi(\theta_i\mid x) \ge q_\phi(\theta^*\mid x)\bigr) \]
+      </div>
+      <p style="font-size:0.95em;">The dots now sit <em>on</em> the orange curve at their density height; the red line marks \(q_\phi(\theta^*\mid x)\). The rank counts the orange dots <strong>above</strong> the red line.</p>
+      <div class="box box-orange">
+        <strong>Watch for:</strong> pure bias &rarr; <em>barely moves</em>; underdispersion &rarr; mass at <em>high</em> \(F_x\) (the truth sits in the tails); overdispersion &rarr; mass at <em>low</em> \(F_x\).
+      </div>
+    </div>
+    <div style="flex:1 1 0; min-width:0; overflow:hidden;">
+      <div id="demoH-plot" style="width:100%; max-width:100%; height:380px;"></div>
+      <div class="ctrl-row" style="justify-content:center; margin-top:6px;">
+        <label><input type="range" id="demoH-bias" min="-0.15" max="0.15" step="0.005" value="0" style="width:160px;">
+          &nbsp;bias \(b\) = <span id="demoH-bias-val" style="display:inline-block; min-width:3em;">0.000</span></label>
+        <label><input type="range" id="demoH-scale" min="0.4" max="2.0" step="0.02" value="1.0" style="width:160px;">
+          &nbsp;scale \(s\) = <span id="demoH-scale-val" style="display:inline-block; min-width:2.5em;">1.00</span></label>
+        <label><input type="range" id="demoH-L" min="5" max="40" step="1" value="20" style="width:110px;">
+          &nbsp;\(L\) = <span id="demoH-L-val" style="display:inline-block; min-width:2em;">20</span></label>
+      </div>
+      <div class="ctrl-row" style="justify-content:center; margin-top:4px; gap:10px;">
+        <button id="demoH-next">&#x25B6; Draw one trial</button>
+        <button id="demoH-fill">&#x23E9; Complete to 1000</button>
+        <button id="demoH-reset">&#x21BA; Reset</button>
+        <span style="font-size:0.85em; color:#7f8c8d;">trials: <span id="demoH-count">0</span></span>
+      </div>
+      <p style="text-align:center; font-size:0.8em; color:#7f8c8d; margin:4px 0 0;">Horizontal lines carry each density to the axis. Orange lines above the red one are the samples ranked higher than \(\theta^*\).</p>
     </div>
   </div>
 </section>
@@ -414,41 +598,6 @@
 </section>
 
 <!-- ============================================================ -->
-<!-- 17. A DIAGNOSTIC RECIPE                                      -->
-<!-- ============================================================ -->
-<section>
-  <h2>A diagnostic recipe</h2>
-  <p style="font-style:italic; color:#7f8c8d;">"When a fail-safe system fails, it fails by failing to fail-safe." &mdash; John Gall</p>
-  <div style="display:flex; gap:12px; margin-top:8px;">
-    <div class="box box-blue" style="flex:1;">
-      <strong>1. Start minimal.</strong>
-      <ul style="font-size:0.9em;">
-        <li>Toy data, simple model, few parameters.</li>
-        <li>Run SBC + HPDR. Diagnose what you can in the easy case.</li>
-      </ul>
-    </div>
-    <div class="box box-orange" style="flex:1;">
-      <strong>2. Add one component at a time.</strong>
-      <ul style="font-size:0.9em;">
-        <li>Learned summary, realistic noise, or more parameters &mdash; not all at once.</li>
-        <li>Re-validate after each step.</li>
-      </ul>
-    </div>
-    <div class="box box-green" style="flex:1;">
-      <strong>3. Stack orderings.</strong>
-      <ul style="font-size:0.9em;">
-        <li>SBC + HPDR + random projections.</li>
-        <li>Likelihood / score ranks when the model allows.</li>
-        <li>Stratify by \(x\) when bias may vary.</li>
-      </ul>
-    </div>
-  </div>
-  <p class="fragment" style="margin-top:10px; text-align:center; font-size:0.95em;">
-    Each failure should point to a clear next step. If a passing diagnostic surprises you, ask which blind spot you may have walked into.
-  </p>
-</section>
-
-<!-- ============================================================ -->
 <!-- 18. KEY TAKEAWAYS                                            -->
 <!-- ============================================================ -->
 <section>
@@ -472,7 +621,7 @@
       <ul style="font-size:0.9em; line-height:1.5;">
         <li>FW&ndash;BW consistency principle</li>
         <li>SBC rank statistic, flat under \(q_\phi = p\)</li>
-        <li>HPDR coverage as a rank test on \(q_\phi(\theta\mid x)\)</li>
+        <li>HPDR coverage as a rank test on \(q_\phi(\theta\mid x)\</li>
       </ul>
     </div>
     <div class="box" style="flex:1;">
@@ -565,72 +714,104 @@ function ppCurve(scores) {
 }
 
 // ============================================================
-// Slide 6 — Cartoon: one trial + one bin landing
+// Slide 6 — Interactive cartoon: build the rank histogram trial by trial
 // ============================================================
 (function() {
-  function draw(e) {
-    if (e && (!e.currentSlide || !e.currentSlide.querySelector('#sbc-cartoon-plot'))) return;
-    const rng = createRNG(42);
-    const sigma = 0.1;
-    const theta_star = -0.35;
-    const x = theta_star + sigma * gaussN(rng);
-    const L = 20;
-    const draws = [];
-    for (let i = 0; i < L; i++) draws.push(x + sigma * gaussN(rng));
+  const L = 20;
+  const sigma = 0.1;
+  const rng = createRNG(20260618);   // persistent: advances on every draw
+  let ranks = [];
+  let last = null;                   // {theta_star, x, approx, truth, rank}
+
+  function genTrial() {
+    const theta_star = -1 + 2*rng();             // prior  θ* ~ U(-1,1)
+    const x = theta_star + sigma*gaussN(rng);    // simulator  x ~ N(θ*, σ²)
+    const approx = [];
     let rank = 0;
-    for (const t of draws) if (t <= theta_star) rank++;
-
-    // True posterior pdf for display
-    const grid = [];
-    for (let t = -1; t <= 1; t += 0.005) grid.push(t);
-    const pdf = grid.map(t => normPdf(t, x, sigma));
-
-    // Build a small mock SBC histogram (flat-ish) to show "this trial contributes to bin k"
-    const N = 600;
-    const counts = new Array(L+1).fill(0);
-    const rng2 = createRNG(7);
-    for (let n = 0; n < N; n++) {
-      const ts = -1 + 2*rng2();
-      const xn = ts + sigma*gaussN(rng2);
-      let cnt = 0;
-      for (let i = 0; i < L; i++) {
-        const ti = xn + sigma*gaussN(rng2);
-        if (ti <= ts) cnt++;
-      }
-      counts[cnt] += 1;
+    for (let i = 0; i < L; i++) {
+      const a = x + sigma*gaussN(rng);           // approx posterior  q(θ|x) = N(x, σ²)
+      approx.push(a);
+      if (a <= theta_star) rank++;               // rank = #{θ_i ≤ θ*}
     }
-    counts[rank] += 8; // highlight bin
-    const dens = counts.map(c => c * (L+1) / (N+8));
-    const xax = counts.map((_, i) => i / L);
+    ranks.push(rank);
+    return { theta_star, x, approx, rank };
+  }
 
-    Plotly.react('sbc-cartoon-plot', [
-      // Top panel: posterior density and samples
-      { x: grid, y: pdf, mode:'lines', xaxis:'x', yaxis:'y2',
-        line:{color:'#c0392b', width:2}, name:'q(θ|x)',
-        fill:'tozeroy', fillcolor:'rgba(192,57,43,0.08)', showlegend:false },
-      { x: draws, y: draws.map(()=>0.3), mode:'markers', xaxis:'x', yaxis:'y2',
-        marker:{size:7, color:'#e67e22'}, name:'θ₁..₂₀', showlegend:false },
-      { x: [theta_star], y: [0.3], mode:'markers', xaxis:'x', yaxis:'y2',
+  function render() {
+    const total = ranks.length;
+    const counts = new Array(L+1).fill(0);
+    for (const r of ranks) counts[r]++;
+    const xax = counts.map((_, i) => i / L);
+    const barColor = counts.map((_, i) => (last && i === last.rank) ? '#e67e22' : '#2980b9');
+
+    const traces = [];
+    // --- bottom panel: histogram of accumulated ranks (raw counts) ---
+    traces.push({ x: xax, y: counts, type:'bar', xaxis:'x2', yaxis:'y2',
+      marker:{color:barColor, line:{color:'#fff', width:1}}, opacity:0.9,
+      showlegend:false, hoverinfo:'y' });
+    if (total > 0) {
+      const expected = total/(L+1);
+      traces.push({ x:[-0.05, 1.05], y:[expected, expected], mode:'lines', xaxis:'x2', yaxis:'y2',
+        line:{color:'#7f8c8d', width:1.5, dash:'dash'}, showlegend:false, hoverinfo:'skip' });
+    }
+
+    // --- top panel: the most recent trial ---
+    const annotations = [];
+    if (last) {
+      const grid = [];
+      for (let t = -1.3; t <= 1.3001; t += 0.005) grid.push(t);
+      const pdf = grid.map(t => normPdf(t, last.x, sigma));
+      traces.push({ x: grid, y: pdf, mode:'lines', xaxis:'x', yaxis:'y',
+        line:{color:'#c0392b', width:2}, fill:'tozeroy', fillcolor:'rgba(192,57,43,0.07)',
+        showlegend:false, hoverinfo:'skip' });
+      traces.push({ x:[last.theta_star, last.theta_star], y:[0, 4.6], mode:'lines',
+        xaxis:'x', yaxis:'y', line:{color:'#c0392b', width:1, dash:'dot'},
+        showlegend:false, hoverinfo:'skip' });
+      // approx-posterior samples as a rug below the curve; red × is the true value θ*
+      traces.push({ x: last.approx, y: last.approx.map(()=>0.55), mode:'markers', xaxis:'x', yaxis:'y',
+        marker:{size:7, color:'#e67e22'}, showlegend:false, hoverinfo:'skip' });
+      traces.push({ x:[last.theta_star], y:[0.55], mode:'markers', xaxis:'x', yaxis:'y',
         marker:{size:18, color:'#c0392b', symbol:'x-thin', line:{color:'#c0392b', width:4}},
-        name:'θ*', showlegend:false },
-      // Bottom panel: rank histogram
-      { x: xax, y: dens, type:'bar', xaxis:'x2', yaxis:'y',
-        marker:{color:'#2980b9', line:{color:'#fff', width:1}}, opacity:0.85,
-        name:'rank hist', showlegend:false }
-    ], {
-      grid:{rows:2, columns:1, pattern:'independent', roworder:'top to bottom'},
-      xaxis:{title:'θ', range:[-1, 1], domain:[0,1]},
-      yaxis2:{title:'density', anchor:'x', domain:[0.55, 1.0], range:[0, 6]},
-      xaxis2:{title:'rank / L', range:[-0.05, 1.05], domain:[0,1], anchor:'y'},
-      yaxis:{title:'density', range:[0, 2.2], domain:[0, 0.42]},
-      margin:{t:18, r:16, b:38, l:50},
+        showlegend:false, hoverinfo:'skip' });
+      annotations.push({ x:0.5, y=4.3, xref:'x', yref:'y', text:'rank = '+last.rank+' / '+L,
+        showarrow:false, font:{size:13, color:'#2c3e50'} });
+    } else {
+      annotations.push({ x:0.0, y=2.3, xref:'x', yref:'y', text:'press “Draw one trial” to begin',
+        showarrow:false, font:{size:13, color:'#95a5a6'} });
+    }
+
+    Plotly.react('sbc-cartoon-plot', traces, {
+      xaxis:{title:'θ', range:[-1.3, 1.3], domain:[0,1], anchor:'y'},
+      yaxis:{visible:false, range:[0, 4.6], domain:[0.56, 1.0], anchor:'x'},
+      xaxis2:{title:'rank / L', range:[-0.05, 1.05], domain:[0,1], anchor:'y2'},
+      yaxis2:{title:'count', range:[0, Math.max(5, Math.max.apply(null, counts))*1.15 + 1],
+        domain:[0, 0.40], anchor:'x2'},
+      annotations: annotations,
+      margin:{t:14, r:16, b:38, l:46},
       paper_bgcolor:'rgba(0,0,0,0)', plot_bgcolor:'rgba(0,0,0,0)',
       font:{size:12}, showlegend:false, autosize:true
     }, {displayModeBar:false, responsive:true});
     Plotly.Plots.resize('sbc-cartoon-plot');
+
+    const cntEl = document.getElementById('sbc-cartoon-count');
+    if (cntEl) cntEl.textContent = total;
   }
+
+  function nextTrial() { last = genTrial(); render(); }
+  function fill() { while (ranks.length < 1000) last = genTrial(); render(); }
+  function reset() { ranks = []; last = null; render(); }
+
+  function wire() {
+    const b = document.getElementById('sbc-cartoon-next');
+    if (!b || b.dataset.wired) return;
+    b.dataset.wired = '1';
+    b.addEventListener('click', nextTrial);
+    document.getElementById('sbc-cartoon-fill').addEventListener('click', fill);
+    document.getElementById('sbc-cartoon-reset').addEventListener('click', reset);
+  }
+
   function init(e) {
-    if (e.currentSlide && e.currentSlide.querySelector('#sbc-cartoon-plot')) draw(e);
+    if (e.currentSlide && e.currentSlide.querySelector('#sbc-cartoon-plot')) { wire(); render(); }
   }
   Reveal.on('slidechanged', init); Reveal.on('ready', init);
 })();
@@ -665,45 +846,283 @@ function runSBC_HPDR(N, L, b, s, sigma, seed) {
 }
 
 // ============================================================
-// Slide 7 — Demo A: SBC histogram
+// Slide 7 — Demo A: build the SBC histogram trial by trial.
+// Each trial draws a fresh θ* ~ prior and x ~ simulator, so both posteriors
+// recentre on x (the curves jump). True p(θ|x): N(x,σ²) blue;
+// approx q: N(x+b,(sσ)²) orange (slider-controlled).
 // ============================================================
 (function() {
-  let seed = 11;
-  const N = 1500, sigma = 0.1;
-  function draw(e) {
-    if (e && (!e.currentSlide || !e.currentSlide.querySelector('#demoA-plot'))) return;
-    const b = parseFloat(document.getElementById('demoA-bias').value);
-    const s = parseFloat(document.getElementById('demoA-scale').value);
-    const L = parseInt(document.getElementById('demoA-L').value, 10);
+  const sigma = 0.1;
+  const rng = createRNG(73);     // persistent: advances on every draw
+  let ranks = [];
+  let last = null;               // {theta_star, x, approx, rank}
+  let L = 20, b = 0, s = 1;
+
+  // Sample one trial at a freshly drawn x (push=true counts it).
+  function genTrial() {
+    const theta_star = -1 + 2*rng();             // θ* ~ prior U(-1,1)
+    const x = theta_star + sigma*gaussN(rng);    // x ~ N(θ*, σ²)
+    const t = sampleAt(theta_star, x);
+    ranks.push(t.rank);
+    return t;
+  }
+  // Re-sample the q-draws for a fixed (θ*, x) under the current b, s (no count).
+  function sampleAt(theta_star, x) {
+    const sq = s*sigma, mu_q = x + b;
+    const approx = [];
+    let rank = 0;
+    for (let i = 0; i < L; i++) {
+      const a = mu_q + sq*gaussN(rng);           // θ_i ~ q(θ|x) = N(x+b,(sσ)²)
+      approx.push(a);
+      if (a <= theta_star) rank++;               // rank = #{θ_i ≤ θ*}
+    }
+    return { theta_star, x, approx, rank };
+  }
+
+  function readControls() {
+    b = parseFloat(document.getElementById('demoA-bias').value);
+    s = parseFloat(document.getElementById('demoA-scale').value);
+    L = parseInt(document.getElementById('demoA-L').value, 10);
     document.getElementById('demoA-bias-val').textContent = b.toFixed(3);
     document.getElementById('demoA-scale-val').textContent = s.toFixed(2);
     document.getElementById('demoA-L-val').textContent = L;
-    const out = runSBC_HPDR(N, L, b, s, sigma, seed);
-    const hist = rankHistogram(out.ranks, L);
-    Plotly.react('demoA-plot', [
-      // Uniform reference
-      { x:[0, 1], y:[1, 1], mode:'lines',
-        line:{color:'#7f8c8d', dash:'dash', width:2},
-        name:'uniform', showlegend:true },
-      rankTrace(hist, '#2980b9', 'SBC rank histogram')
-    ], baseLayout({
-      autosize:true,
-      xaxis:{title:'rank / L', range:[-0.04, 1.04]},
-      yaxis:{title:'normalised density', range:[0, 2.6]}
-    }), {displayModeBar:false, responsive:true});
+  }
+
+  function render() {
+    const total = ranks.length;
+    const counts = new Array(L+1).fill(0);
+    for (const r of ranks) counts[r]++;
+    const xax = counts.map((_, i) => i / L);
+    const barColor = counts.map((_, i) => (last && i === last.rank) ? '#e67e22' : '#2980b9');
+
+    const sq = s*sigma;
+    // peak heights are x-independent, so the vertical scale stays stable as curves jump
+    const ytop = Math.max(normPdf(0,0,sigma), normPdf(0,0,sq)) * 1.12;
+    const yRug = 0.10 * ytop;
+
+    const traces = [];
+    // --- bottom panel: histogram of accumulated ranks (raw counts) ---
+    traces.push({ x: xax, y: counts, type:'bar', xaxis:'x2', yaxis:'y2',
+      marker:{color:barColor, line:{color:'#fff', width:1}}, opacity:0.9, showlegend:false, hoverinfo:'y' });
+    if (total > 0) {
+      const expected = total/(L+1);
+      traces.push({ x:[-0.05, 1.05], y:[expected, expected], mode:'lines', xaxis:'x2', yaxis:'y2',
+        line:{color:'#7f8c8d', width:1.5, dash:'dash'}, showlegend:false, hoverinfo:'skip' });
+    }
+    // --- top panel: the two posteriors for the most recent trial ---
+    const annotations = [];
+    if (last) {
+      const grid = [];
+      for (let t = -1.3; t <= 1.3001; t += 0.004) grid.push(t);
+      const pdfTrue   = grid.map(t => normPdf(t, last.x, sigma));
+      const pdfApprox = grid.map(t => normPdf(t, last.x + b, sq));
+      traces.push({ x: grid, y: pdfTrue, mode:'lines', xaxis:'x', yaxis:'y',
+        line:{color:'#2980b9', width:2}, fill:'tozeroy', fillcolor:'rgba(41,128,185,0.07)',
+        name:'true p(θ|x)', showlegend:true, hoverinfo:'skip' });
+      traces.push({ x: grid, y: pdfApprox, mode:'lines', xaxis:'x', yaxis:'y',
+        line:{color:'#e67e22', width:2}, fill:'tozeroy', fillcolor:'rgba(230,126,34,0.07)',
+        name:'approx q(θ|x)', showlegend:true, hoverinfo:'skip' });
+      traces.push({ x:[last.theta_star, last.theta_star], y:[0, ytop], mode:'lines', xaxis:'x', yaxis:'y',
+        line:{color:'#c0392b', width:1, dash:'dot'}, showlegend:false, hoverinfo:'skip' });
+      traces.push({ x: last.approx, y: last.approx.map(()=>yRug), mode:'markers', xaxis:'x', yaxis:'y',
+        marker:{size:7, color:'#e67e22'}, showlegend:false, hoverinfo:'skip' });
+      traces.push({ x:[last.theta_star], y:[yRug], mode:'markers', xaxis:'x', yaxis:'y',
+        marker:{size:18, color:'#c0392b', symbol:'x-thin', line:{color:'#c0392b', width:4}},
+        showlegend:false, hoverinfo:'skip' });
+      annotations.push({ x:0, y:0.97*ytop, xref:'paper', yref:'y', text:'rank = '+last.rank+' / '+L,
+        showarrow:false, xanchor:'left', font:{size:13, color:'#2c3e50'} });
+    } else {
+      annotations.push({ x:0, y:0.55*ytop, xref:'x', yref:'y', text:'press “Draw one trial” to begin',
+        showarrow:false, font:{size:13, color:'#95a5a6'} });
+    }
+
+    Plotly.react('demoA-plot', traces, {
+      xaxis:{title:'θ', range:[-1.3, 1.3], domain:[0,1], anchor:'y'},
+      yaxis:{visible:false, range:[0, ytop], domain:[0.54, 1.0], anchor:'x'},
+      xaxis2:{title:'rank / L', range:[-0.05, 1.05], domain:[0,1], anchor:'y2'},
+      yaxis2:{title:'count', range:[0, Math.max(5, Math.max.apply(null, counts))*1.15 + 1],
+        domain:[0, 0.40], anchor:'x2'},
+      annotations: annotations,
+      margin:{t:14, r:16, b:38, l:46},
+      paper_bgcolor:'rgba(0,0,0,0)', plot_bgcolor:'rgba(0,0,0,0)',
+      font:{size:12}, showlegend:true,
+      legend:{x:0.02, y:1.0, font:{size:11}, bgcolor:'rgba(255,255,255,0.6)'},
+      autosize:true
+    }, {displayModeBar:false, responsive:true});
     Plotly.Plots.resize('demoA-plot');
+
+    const c = document.getElementById('demoA-count'); if (c) c.textContent = total;
   }
-  function bind() {
-    ['demoA-bias', 'demoA-scale', 'demoA-L'].forEach(id => {
-      const el = document.getElementById(id);
-      if (el && !el._bound) { el.addEventListener('input', () => draw()); el._bound = true; }
-    });
-    const btn = document.getElementById('demoA-resample');
-    if (btn && !btn._bound) { btn.onclick = () => { seed = (seed*1664525 + 1013904223) | 0; draw(); }; btn._bound = true; }
+
+  function nextTrial() { last = genTrial(); render(); }
+  function fill() { while (ranks.length < 1000) last = genTrial(); render(); }
+  function reset() { ranks = []; last = null; render(); }
+  // Changing the model restarts the accumulation; keep the last x so the curves
+  // update in place (only the buttons make the view jump to a new x).
+  function onSlider() {
+    readControls(); ranks = [];
+    if (last) last = sampleAt(last.theta_star, last.x);
+    render();
   }
+
+  function wire() {
+    const b1 = document.getElementById('demoA-next');
+    if (!b1 || b1.dataset.wired) return;
+    b1.dataset.wired = '1';
+    b1.addEventListener('click', nextTrial);
+    document.getElementById('demoA-fill').addEventListener('click', fill);
+    document.getElementById('demoA-reset').addEventListener('click', reset);
+    ['demoA-bias', 'demoA-scale', 'demoA-L'].forEach(id =>
+      document.getElementById(id).addEventListener('input', onSlider));
+  }
+
   function init(e) {
-    bind();
-    if (e.currentSlide && e.currentSlide.querySelector('#demoA-plot')) draw(e);
+    if (e.currentSlide && e.currentSlide.querySelector('#demoA-plot')) { wire(); readControls(); render(); }
+  }
+  Reveal.on('slidechanged', init); Reveal.on('ready', init);
+})();
+
+// ============================================================
+// Slide 8b — Demo: HPDR rank histogram, ordered by density.
+// Same simulator/posterior as Demo A, but the rank is
+//   F_x = #{ q(θ_i|x) ≥ q(θ*|x) }.
+// Dots ride on the orange curve at their density height; horizontal
+// lines carry those heights to the axis; the red line is the θ* threshold.
+// ============================================================
+(function() {
+  const sigma = 0.1;
+  const xleft = -1.3;            // left edge: where the horizontal lines terminate
+  const rng = createRNG(91);     // persistent: advances on every draw
+  let ranks = [];
+  let last = null;               // {theta_star, x, approx, dens, qstar, rank}
+  let L = 20, b = 0, s = 1;
+
+  function genTrial() {
+    const theta_star = -1 + 2*rng();             // θ* ~ prior U(-1,1)
+    const x = theta_star + sigma*gaussN(rng);    // x ~ N(θ*, σ²)
+    const t = sampleAt(theta_star, x);
+    ranks.push(t.rank);
+    return t;
+  }
+  // q(θ|x) = N(θ; x+b, (sσ)²); rank by density, F_x = #{ q(θ_i) ≥ q(θ*) }.
+  function sampleAt(theta_star, x) {
+    const sq = s*sigma, mu_q = x + b;
+    const qstar = normPdf(theta_star, mu_q, sq);
+    const approx = [], dens = [];
+    let rank = 0;
+    for (let i = 0; i < L; i++) {
+      const a = mu_q + sq*gaussN(rng);
+      const qa = normPdf(a, mu_q, sq);
+      approx.push(a); dens.push(qa);
+      if (qa >= qstar) rank++;                   // closer to the mode than θ*
+    }
+    return { theta_star, x, approx, dens, qstar, rank };
+  }
+
+  function readControls() {
+    b = parseFloat(document.getElementById('demoH-bias').value);
+    s = parseFloat(document.getElementById('demoH-scale').value);
+    L = parseInt(document.getElementById('demoH-L').value, 10);
+    document.getElementById('demoH-bias-val').textContent = b.toFixed(3);
+    document.getElementById('demoH-scale-val').textContent = s.toFixed(2);
+    document.getElementById('demoH-L-val').textContent = L;
+  }
+
+  function render() {
+    const total = ranks.length;
+    const counts = new Array(L+1).fill(0);
+    for (const r of ranks) counts[r]++;
+    const xax = counts.map((_, i) => i / L);
+    const barColor = counts.map((_, i) => (last && i === last.rank) ? '#e67e22' : '#2980b9');
+
+    const sq = s*sigma;
+    const ytop = Math.max(normPdf(0,0,sigma), normPdf(0,0,sq)) * 1.12;
+
+    const traces = [];
+    // --- bottom panel: histogram of accumulated HPDR ranks (raw counts) ---
+    traces.push({ x: xax, y: counts, type:'bar', xaxis:'x2', yaxis:'y2',
+      marker:{color:barColor, line:{color:'#fff', width:1}}, opacity:0.9, showlegend:false, hoverinfo:'y' });
+    if (total > 0) {
+      const expected = total/(L+1);
+      traces.push({ x:[-0.05, 1.05], y:[expected, expected], mode:'lines', xaxis:'x2', yaxis:'y2',
+        line:{color:'#7f8c8d', width:1.5, dash:'dash'}, showlegend:false, hoverinfo:'skip' });
+    }
+    // --- top panel: the two posteriors and the density ladder ---
+    const annotations = [];
+    if (last) {
+      const grid = [];
+      for (let t = -1.3; t <= 1.3001; t += 0.004) grid.push(t);
+      const pdfTrue   = grid.map(t => normPdf(t, last.x, sigma));
+      const pdfApprox = grid.map(t => normPdf(t, last.x + b, sq));
+      traces.push({ x: grid, y: pdfTrue, mode:'lines', xaxis:'x', yaxis:'y',
+        line:{color:'#2980b9', width:2}, fill:'tozeroy', fillcolor:'rgba(41,128,185,0.07)',
+        name:'true p(θ|x)', showlegend:true, hoverinfo:'skip' });
+      traces.push({ x: grid, y: pdfApprox, mode:'lines', xaxis:'x', yaxis:'y',
+        line:{color:'#e67e22', width:2}, fill:'tozeroy', fillcolor:'rgba(230,126,34,0.07)',
+        name:'approx q(θ|x)', showlegend:true, hoverinfo:'skip' });
+      // horizontal density lines from each sample to the left axis
+      const hx = [], hy = [];
+      for (let i = 0; i < L; i++) { hx.push(xleft, last.approx[i], null); hy.push(last.dens[i], last.dens[i], null); }
+      traces.push({ x: hx, y: hy, mode:'lines', xaxis:'x', yaxis:'y',
+        line:{color:'rgba(230,126,34,0.45)', width:1}, showlegend:false, hoverinfo:'skip' });
+      // the θ* threshold line (red), drawn across the whole panel
+      traces.push({ x:[xleft, last.theta_star], y:[last.qstar, last.qstar], mode:'lines', xaxis:'x', yaxis:'y',
+        line:{color:'#c0392b', width:2}, showlegend:false, hoverinfo:'skip' });
+      // vertical guide locating θ* on the axis
+      traces.push({ x:[last.theta_star, last.theta_star], y:[0, last.qstar], mode:'lines', xaxis:'x', yaxis:'y',
+        line:{color:'#c0392b', width:1, dash:'dot'}, showlegend:false, hoverinfo:'skip' });
+      // dots on the q-curve
+      traces.push({ x: last.approx, y: last.dens, mode:'markers', xaxis:'x', yaxis:'y',
+        marker:{size:7, color:'#e67e22'}, showlegend:false, hoverinfo:'skip' });
+      traces.push({ x:[last.theta_star], y:[last.qstar], mode:'markers', xaxis:'x', yaxis:'y',
+        marker:{size:12, color:'#c0392b', line:{color:'#fff', width:1}}, showlegend:false, hoverinfo:'skip' });
+      annotations.push({ x:0, y:0.97*ytop, xref:'paper', yref:'y', text:'rank = '+last.rank+' / '+L,
+        showarrow:false, xanchor:'left', font:{size:13, color:'#2c3e50'} });
+    } else {
+      annotations.push({ x:0, y:0.55*ytop, xref:'x', yref:'y', text:'press “Draw one trial” to begin',
+        showarrow:false, font:{size:13, color:'#95a5a6'} });
+    }
+
+    Plotly.react('demoH-plot', traces, {
+      xaxis:{title:'θ', range:[-1.3, 1.3], domain:[0,1], anchor:'y'},
+      yaxis:{title:'q(θ|x)', range:[0, ytop], domain:[0.54, 1.0], anchor:'x', tickfont:{size:10}},
+      xaxis2:{title:'rank / L', range:[-0.05, 1.05], domain:[0,1], anchor:'y2'},
+      yaxis2:{title:'count', range:[0, Math.max(5, Math.max.apply(null, counts))*1.15 + 1],
+        domain:[0, 0.40], anchor:'x2'},
+      annotations: annotations,
+      margin:{t:14, r:16, b:38, l:50},
+      paper_bgcolor:'rgba(0,0,0,0)', plot_bgcolor:'rgba(0,0,0,0)',
+      font:{size:12}, showlegend:true,
+      legend:{x:0.02, y:1.0, font:{size:11}, bgcolor:'rgba(255,255,255,0.6)'},
+      autosize:true
+    }, {displayModeBar:false, responsive:true});
+    Plotly.Plots.resize('demoH-plot');
+
+    const c = document.getElementById('demoH-count'); if (c) c.textContent = total;
+  }
+
+  function nextTrial() { last = genTrial(); render(); }
+  function fill() { while (ranks.length < 1000) last = genTrial(); render(); }
+  function reset() { ranks = []; last = null; render(); }
+  function onSlider() {
+    readControls(); ranks = [];
+    if (last) last = sampleAt(last.theta_star, last.x);
+    render();
+  }
+
+  function wire() {
+    const b1 = document.getElementById('demoH-next');
+    if (!b1 || b1.dataset.wired) return;
+    b1.dataset.wired = '1';
+    b1.addEventListener('click', nextTrial);
+    document.getElementById('demoH-fill').addEventListener('click', fill);
+    document.getElementById('demoH-reset').addEventListener('click', reset);
+    ['demoH-bias', 'demoH-scale', 'demoH-L'].forEach(id =>
+      document.getElementById(id).addEventListener('input', onSlider));
+  }
+
+  function init(e) {
+    if (e.currentSlide && e.currentSlide.querySelector('#demoH-plot')) { wire(); readControls(); render(); }
   }
   Reveal.on('slidechanged', init); Reveal.on('ready', init);
 })();
@@ -981,7 +1400,3 @@ function runSBC_HPDR(N, L, b, s, sigma, seed) {
   }
   Reveal.on('slidechanged', init); Reveal.on('ready', init);
 })();
-
-</script>
-</body>
-</html>
