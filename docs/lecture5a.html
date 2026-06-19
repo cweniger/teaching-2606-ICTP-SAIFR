@@ -31,6 +31,42 @@
   <p class="subtitle">Christoph Weniger &mdash; University of Amsterdam (GRAPPA)</p>
 </section>
 
+<!-- ============================================================ -->
+<!-- 3. SETUP: TAXONOMY + FW-BW PRINCIPLE                         -->
+<!-- ============================================================ -->
+<section>
+  <h2>Where can our inference go wrong?</h2>
+  <p style="font-size:26px; text-align:left;">A taxonomy of <strong>epistemic uncertainties</strong> in SBI: three failure modes, each with its own diagnostic strategy.</p>
+  <div style="display:flex; gap:16px; align-items:flex-start; margin-top:10px;">
+    <div style="flex:1.1;">
+      <img src="figures/lecture6/fig_sbi_pipeline2.png" style="width:100%;">
+    </div>
+    <div style="flex:1;">
+      <table class="tax-table" style="font-size:26px">
+        <thead>
+          <tr><th style="width:11%;">Category</th><th style="width:14%;">Type</th><th>Description</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td rowspan="3" style="font-weight:600; color:#2c3e50;">Epistemic</td>
+            <td class="type">Type A</td>
+            <td>Misspecified model<br><span class="quote">"I'm simulating the wrong world"</span></td>
+          </tr>
+          <tr>
+            <td class="type">Type B</td>
+            <td>Lossy summary<br><span class="quote">"I'm discarding relevant information"</span></td>
+          </tr>
+          <tr>
+            <td class="type">Type C</td>
+            <td>Inexact inference<br><span class="quote">"I can't compute the posterior exactly"</span></td>
+          </tr>
+          <tr class="aleo"><td>Aleatoric</td><td>&mdash;</td><td>Irreducible randomness in the data</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
 <section>
   <h2>Information Content: A Venn Diagram View</h2>
   <div style="font-size:22px">
@@ -87,94 +123,7 @@
   </div>
 </section>
 
-<!-- ============================================================ -->
-<!-- 2. BUILDING SYSTEMS THAT WORK                               -->
-<!-- ============================================================ -->
-<section>
-  <h2>Building Systems That Work</h2>
-  <div style="display:flex; gap:16px; margin-top:10px; align-items:flex-start; font-size:26px;">
-    <div style="flex:1;">
-      <div class="box" style="font-style:italic; color:#555; line-height:1.5;">
-        "A complex system that works is invariably found to have evolved from a simple system that worked.
-        A complex system designed from scratch never works and cannot be patched up to make it work.
-        You have to start over with a working simple system."
-        <div style="margin-top:4px; text-align:right; font-style:normal; color:#7f8c8d; font-size:0.88em;">
-          — John Gall, <em>The Systems Bible</em>, 1977
-        </div>
-      </div>
-      <p style="margin-top:10px; font-size:26px; text-align:left">
-        A <strong>clockmaker</strong> does not assemble every gear and escapement at once and expect it to tick.
-        Start with the gear train — verify it rotates. Add the escapement, check regulation. Add the pendulum,
-        verify synchronization. <em>At each step, the mechanism works.</em>
-      </p>
-      <br>
-      <p style="font-size: 26px; text-align:left">
-        SBI pipelines (and anything deep learning related) obey the same law. The diagnostics ahead are designed to pinpoint failures in
-        <strong>nearly-working</strong> systems. Applied to a completely broken pipeline they generate noise;
-        applied to an incrementally refined system they can tell you exactly what broke.
-      </p>
-    </div>
-  </div>
-</section>
 
-<section>
-  <h2>Building Systems That Work</h2>
-  <div style="display:flex; gap:16px; margin-top:20px; align-items:flex-start; font-size:26px;">
-    <div style="flex:1;">
-      <div class="box box-blue">
-        <strong style="color:#2980b9;">The Iterative Refinement Workflow</strong>
-        <ol style="margin:6px 0 0; line-height:1.65;">
-          <li><strong>Start minimal</strong> — toy data, known sufficient statistics, simple network</li>
-          <li><strong>Validate thoroughly</strong> — SBC, coverage, posterior predictive checks</li>
-          <li><strong>Add one component</strong> — learned summaries <em>or</em> realistic noise <em>or</em> more parameters; not all at once</li>
-          <li><strong>Re-validate</strong> — pass → proceed; fail → you know what broke</li>
-          <li><strong>Iterate</strong> — repeat until full problem complexity</li>
-        </ol>
-      </div>
-      <div class="box box-orange" style="margin-top:8px;">
-        <strong>Rules of thumb:</strong> trust validated components when progressing &mdash;
-        question everything when stuck &mdash;
-        if you can't describe the failure in 5&nbsp;sentences, the example isn't minimal enough.
-      </div>
-    </div>
-  </div>
-</section>
-
-<!-- ============================================================ -->
-<!-- 3. SETUP: TAXONOMY + FW-BW PRINCIPLE                         -->
-<!-- ============================================================ -->
-<section>
-  <h2>Where can our inference go wrong?</h2>
-  <p style="font-size:26px; text-align:left;">A taxonomy of <strong>epistemic uncertainties</strong> in SBI: three failure modes, each with its own diagnostic strategy.</p>
-  <div style="display:flex; gap:16px; align-items:flex-start; margin-top:10px;">
-    <div style="flex:1.1;">
-      <img src="figures/lecture6/fig_sbi_pipeline2.png" style="width:100%;">
-    </div>
-    <div style="flex:1;">
-      <table class="tax-table" style="font-size:26px">
-        <thead>
-          <tr><th style="width:11%;">Category</th><th style="width:14%;">Type</th><th>Description</th></tr>
-        </thead>
-        <tbody>
-          <tr>
-            <td rowspan="3" style="font-weight:600; color:#2c3e50;">Epistemic</td>
-            <td class="type">Type A</td>
-            <td>Misspecified model<br><span class="quote">"I'm simulating the wrong world"</span></td>
-          </tr>
-          <tr>
-            <td class="type">Type B</td>
-            <td>Lossy summary<br><span class="quote">"I'm discarding relevant information"</span></td>
-          </tr>
-          <tr>
-            <td class="type">Type C</td>
-            <td>Inexact inference<br><span class="quote">"I can't compute the posterior exactly"</span></td>
-          </tr>
-          <tr class="aleo"><td>Aleatoric</td><td>&mdash;</td><td>Irreducible randomness in the data</td></tr>
-        </tbody>
-      </table>
-    </div>
-  </div>
-</section>
 
 <!-- ============================================================ -->
 <!-- 2. ROADMAP                                                   -->
@@ -509,7 +458,7 @@
 <section>
   <h2>Model-based ranks: recovering Type B sensitivity</h2>
   <p>If we can evaluate the simulator's likelihood \(p(x\mid\theta)\) or score \(\nabla_\theta \log p(x\mid\theta)\), use those as ordering functions instead.</p>
-  <div style="display:flex; gap:12px; margin-top:6px;">
+  <div style="font-size:24px; display:flex; gap:12px; margin-top:6px;">
     <div class="box box-blue" style="flex:1;">
       <strong>Likelihood ranks</strong>
       \[ F_x(\theta^*) = \tfrac{1}{L}\sum_i \mathbb{1}\bigl(p(x\mid\theta_i) \ge p(x\mid\theta^*)\bigr) \]
@@ -596,6 +545,61 @@
     <strong>Completeness.</strong> If the rank statistic is uniform for <em>every</em> ordering \(f(\boldsymbol\theta, x)\), then \(q_\phi = p\) almost everywhere (Lemos et al. 2023). Any finite set of orderings is necessary but not sufficient.
   </div>
 </section>
+
+
+<!-- ============================================================ -->
+<!-- 2. BUILDING SYSTEMS THAT WORK                               -->
+<!-- ============================================================ -->
+<section>
+  <h2>Building Systems That Work</h2>
+  <div style="display:flex; gap:16px; margin-top:10px; align-items:flex-start; font-size:26px;">
+    <div style="flex:1;">
+      <div class="box" style="font-style:italic; color:#555; line-height:1.5;">
+        "A complex system that works is invariably found to have evolved from a simple system that worked.
+        A complex system designed from scratch never works and cannot be patched up to make it work.
+        You have to start over with a working simple system."
+        <div style="margin-top:4px; text-align:right; font-style:normal; color:#7f8c8d; font-size:0.88em;">
+          — John Gall, <em>The Systems Bible</em>, 1977
+        </div>
+      </div>
+      <p style="margin-top:10px; font-size:26px; text-align:left">
+        A <strong>clockmaker</strong> does not assemble every gear and escapement at once and expect it to tick.
+        Start with the gear train — verify it rotates. Add the escapement, check regulation. Add the pendulum,
+        verify synchronization. <em>At each step, the mechanism works.</em>
+      </p>
+      <br>
+      <p style="font-size: 26px; text-align:left">
+        SBI pipelines (and anything deep learning related) obey the same law. The diagnostics ahead are designed to pinpoint failures in
+        <strong>nearly-working</strong> systems. Applied to a completely broken pipeline they generate noise;
+        applied to an incrementally refined system they can tell you exactly what broke.
+      </p>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2>Building Systems That Work</h2>
+  <div style="display:flex; gap:16px; margin-top:20px; align-items:flex-start; font-size:26px;">
+    <div style="flex:1;">
+      <div class="box box-blue">
+        <strong style="color:#2980b9;">The Iterative Refinement Workflow</strong>
+        <ol style="margin:6px 0 0; line-height:1.65;">
+          <li><strong>Start minimal</strong> — toy data, known sufficient statistics, simple network</li>
+          <li><strong>Validate thoroughly</strong> — SBC, coverage, posterior predictive checks</li>
+          <li><strong>Add one component</strong> — learned summaries <em>or</em> realistic noise <em>or</em> more parameters; not all at once</li>
+          <li><strong>Re-validate</strong> — pass → proceed; fail → you know what broke</li>
+          <li><strong>Iterate</strong> — repeat until full problem complexity</li>
+        </ol>
+      </div>
+      <div class="box box-orange" style="margin-top:8px;">
+        <strong>Rules of thumb:</strong> trust validated components when progressing &mdash;
+        question everything when stuck &mdash;
+        if you can't describe the failure in 5&nbsp;sentences, the example isn't minimal enough.
+      </div>
+    </div>
+  </div>
+</section>
+
 
 <!-- ============================================================ -->
 <!-- 18. KEY TAKEAWAYS                                            -->
