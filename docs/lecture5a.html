@@ -77,13 +77,58 @@
       </div>
       <div class="box box-green" style="margin-top:10px;">
         <strong>Sufficient Statistic</strong>
+        <p style="font-size:18px">
         \[ T(x)\ \text{sufficient} \;\Leftrightarrow\; I(\theta;\,T(x)) = I(\theta;\,x) \]
+        </p>
         <p style="margin:6px 0 0;">Equality holds iff \(\theta \perp x \mid T(x)\): the statistic captures <em>everything</em> about \(\theta\).</p>
       </div>
       <p style="font-size:0.9em; color:#7f8c8d; margin-top:10px;">
         Compressing \(x \to T(x)\) before SBI can only widen posteriors. The ideal learned summary is a sufficient statistic.
       </p>
     </div>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<!-- NPE LOSS -> INFORMATION-MAXIMIZING SUMMARIES                 -->
+<!-- ============================================================ -->
+<section>
+  <h2>What Does the NPE Loss Optimize?</h2>
+  <div style="font-size:22px; margin-top:6px;">
+    <p style="text-align:left;">Maximize \(\log q_\phi(\theta\mid x)\) on the training set:</p>
+      \[ \mathcal{L}_\text{NPE} = -\frac{1}{|\mathcal{D}|}\sum_{(\theta,x)\in\mathcal{D}} \log q_\phi(\theta\mid x) \]
+    <p style="text-align:left;">As \(N\to\infty\), the empirical loss becomes an expectation over the joint:</p>
+      \[ \mathcal{L}_\text{NPE} \longrightarrow \mathbb{E}_{x\sim p(x)}\!\Big[ D_\text{KL}\big(p(\theta\mid x)\,\|\,q_\phi(\theta\mid x)\big) + H\big(p(\theta\mid x)\big) \Big] \]
+    <p style="text-align:left;">where the <strong style="color:#27ae60;">KL divergence</strong> measures the (non-symmetric) "distance" between distributions, with \(D_\text{KL}\ge 0\) and equality iff \(p=q\):</p>
+      \[ D_\text{KL}(p\,\|\,q) = \mathbb{E}_{p}\!\left[\log\frac{p(\theta)}{q(\theta)}\right] = \sum_\theta p(\theta)\log\frac{p(\theta)}{q(\theta)} \]
+    <p style="margin:12px 0 0; font-size:0.95em;">
+      So the loss is minimized <strong>exactly</strong> when \(q_\phi(\theta\mid x) = p(\theta\mid x)\) for all \(x\). Requires a normalized density estimator (e.g. a normalizing flow).
+    </p>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<!-- NPE -> INFORMATION-MAXIMIZING SUMMARIES                      -->
+<!-- ============================================================ -->
+<section>
+  <h2>NPE Learns Information-Maximizing Summaries</h2>
+  <div style="font-size:22px; margin-top:6px;">
+    <p style="text-align:left;">Add a <strong>summary network</strong> \(q_\phi(\theta\mid x)\to q_\phi(\theta\mid T_\phi(x))\). Then</p>
+    <div class="box box-green">
+      \[ \mathcal{L}_\text{NPE} \;\ge\; \mathbb{E}_{p(x)} H\big(p(\theta\mid T_\phi(x))\big) \;\ge\; \mathbb{E}_{p(x)} H\big(p(\theta\mid x)\big) \]
+    </div>
+    <p style="text-align:left">Tight when the estimator is exact. Training \(T_\phi\) end-to-end pushes summaries toward minimal posterior entropy.</p>
+    <br>
+    <p style="text-align:left">Using the identity</p>
+      \[ \mathbb{E}_{p(x)} H\big(p(\theta\mid T_\phi(x))\big) = H\big(p(\theta)\big) - I\big(\theta; T_\phi(x)\big) \]
+    <p style="text-align:left">we find that</p>
+    <div class="box box-blue" style="text-align:center; margin-top:10px;">
+      <p style="margin:0;">minimizing posterior entropy \(\;\Leftrightarrow\;\) <strong>maximizing</strong> \(I(\theta; T_\phi(x))\).</p>
+    </div>
+    <p style="color:#d53641;">
+      Summaries learned in the context of NPE (but also NRE, score matching, ..., not NLE) 
+      are <em>information-maximizing</em> &mdash; a key strength. But it brings the challenge of knowing when they are sufficient.
+    </p>
   </div>
 </section>
 
