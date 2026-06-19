@@ -773,10 +773,10 @@ function ppCurve(scores) {
       traces.push({ x:[last.theta_star], y:[0.55], mode:'markers', xaxis:'x', yaxis:'y',
         marker:{size:18, color:'#c0392b', symbol:'x-thin', line:{color:'#c0392b', width:4}},
         showlegend:false, hoverinfo:'skip' });
-      annotations.push({ x:0.5, y=4.3, xref:'x', yref:'y', text:'rank = '+last.rank+' / '+L,
+      annotations.push({ x:0.5, y:4.3, xref:'x', yref:'y', text:'rank = '+last.rank+' / '+L,
         showarrow:false, font:{size:13, color:'#2c3e50'} });
     } else {
-      annotations.push({ x:0.0, y=2.3, xref:'x', yref:'y', text:'press “Draw one trial” to begin',
+      annotations.push({ x:0.0, y:2.3, xref:'x', yref:'y', text:'press “Draw one trial” to begin',
         showarrow:false, font:{size:13, color:'#95a5a6'} });
     }
 
@@ -1400,3 +1400,7 @@ function runSBC_HPDR(N, L, b, s, sigma, seed) {
   }
   Reveal.on('slidechanged', init); Reveal.on('ready', init);
 })();
+
+</script>
+</body>
+</html>
