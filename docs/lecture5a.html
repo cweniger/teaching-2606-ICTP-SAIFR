@@ -82,6 +82,25 @@
 </section>
 
 <section>
+  <h2>Overdispersion vs lossy summaries</h2>
+  <div style="display:flex; gap:14px; font-size:24px">
+    <div style="flex:1; text-align:center;">
+      <img src="figures/lecture6/fig_under_and_overdispersion.png" style="width:80%; max-width:350px;">
+      <p> Approximate posteriors $q_\phi(\theta \mid x)$ are overdispered (underdispersed) when they overestimate
+      (underestimate) their coverage of the data generating parameters.
+      </p>
+    </div>
+    <div style="flex:1; text-align:center;">
+      <img src="figures/lecture6/fig_lossy_vs_overdispersed.png" style="width:80%; max-width:350px;">
+      <p>Posteriors that are exact but based on lossy summaries, $q_\phi(\theta \mid x) = p(\theta \mid T(x))$, are wider but not overdispersed. Their width correctly 
+        represents information loss and additional scatter in the posterior position.
+      </p>
+    </div>
+  </div>
+</section>
+
+
+<section>
   <h2>Information Content: A Venn Diagram View</h2>
   <div style="font-size:22px">
     <table style="width:100%; border-collapse:collapse;">
