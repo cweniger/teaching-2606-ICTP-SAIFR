@@ -67,6 +67,20 @@
   </div>
 </section>
 
+<!-- ============================================================ -->
+<!-- 4. SECTION DIVIDER 1                                         -->
+<!-- ============================================================ -->
+<section>
+  <div style="display:flex; align-items:center; justify-content:center; height:100%;">
+    <div style="text-align:center;">
+      <div style="width:200px; height:4px; background:linear-gradient(90deg,#2980b9,#e74c3c); margin:0 auto 25px;"></div>
+      <h1 style="font-size:2em; margin:0;">Lossy summaries</h1>
+      <p style="font-size:1.1em; color:#7f8c8d; margin-top:15px;">When the embedding network fails to extract all relevant information from the data.</p>
+      <div style="width:200px; height:4px; background:linear-gradient(90deg,#2980b9,#e74c3c); margin:25px auto 0;"></div>
+    </div>
+  </div>
+</section>
+
 <section>
   <h2>Information Content: A Venn Diagram View</h2>
   <div style="font-size:22px">
@@ -113,7 +127,9 @@
       </div>
       <div class="box box-green" style="margin-top:10px;">
         <strong>Sufficient Statistic</strong>
+        <p style="font-size:18px">
         \[ T(x)\ \text{sufficient} \;\Leftrightarrow\; I(\theta;\,T(x)) = I(\theta;\,x) \]
+        </p>
         <p style="margin:6px 0 0;">Equality holds iff \(\theta \perp x \mid T(x)\): the statistic captures <em>everything</em> about \(\theta\).</p>
       </div>
       <p style="font-size:0.9em; color:#7f8c8d; margin-top:10px;">
@@ -123,33 +139,49 @@
   </div>
 </section>
 
-
-
 <!-- ============================================================ -->
-<!-- 2. ROADMAP                                                   -->
+<!-- NPE LOSS -> INFORMATION-MAXIMIZING SUMMARIES                 -->
 <!-- ============================================================ -->
 <section>
-  <h2>Today's Roadmap</h2>
-  <div class="box" style="margin-top:18px; text-align:center; font-size:1.0em;">
-    <strong>The question:</strong> our network spat out a posterior \(q_\phi(\theta\mid x)\). How do we know if it is right, and how can it fool us?
-  </div>
-  <div class="fragment" style="display:flex; gap:8px; margin-top:18px;">
-    <div class="box box-blue" style="flex:1; text-align:center;">
-      <strong style="color:#2980b9;">1</strong><br>
-      Rank Diagnostics<br>
-      <span style="font-size:0.85em;">Forward-backward consistency, SBC, HPDR coverage</span>
-    </div>
-    <div style="align-self:center; font-size:1.4em; color:#bdc3c7;">&rarr;</div>
-    <div class="box box-orange" style="flex:1; text-align:center;">
-      <strong style="color:#e67e22;">2</strong><br>
-      Failure Modes &amp; Generalization<br>
-      <span style="font-size:0.85em;">Where rank tests are blind, and the unifying framework</span>
-    </div>
-  </div>
-  <div class="box fragment" style="margin-top:18px; text-align:center; font-size:0.95em;">
-    <strong>The thread:</strong> rank tests turn one universal property, the uniformity of ranks, into a deck of complementary diagnostics. No single one is sufficient.
+  <h2>What Does the NPE Loss Optimize?</h2>
+  <div style="font-size:22px; margin-top:6px;">
+    <p style="text-align:left;">Maximize \(\log q_\phi(\theta\mid x)\) on the training set:</p>
+      \[ \mathcal{L}_\text{NPE} = -\frac{1}{|\mathcal{D}|}\sum_{(\theta,x)\in\mathcal{D}} \log q_\phi(\theta\mid x) \]
+    <p style="text-align:left;">As \(N\to\infty\), the empirical loss becomes an expectation over the joint:</p>
+      \[ \mathcal{L}_\text{NPE} \longrightarrow \mathbb{E}_{x\sim p(x)}\!\Big[ D_\text{KL}\big(p(\theta\mid x)\,\|\,q_\phi(\theta\mid x)\big) + H\big(p(\theta\mid x)\big) \Big] \]
+    <p style="text-align:left;">where the <strong style="color:#27ae60;">KL divergence</strong> measures the (non-symmetric) "distance" between distributions, with \(D_\text{KL}\ge 0\) and equality iff \(p=q\):</p>
+      \[ D_\text{KL}(p\,\|\,q) = \mathbb{E}_{p}\!\left[\log\frac{p(\theta)}{q(\theta)}\right] = \sum_\theta p(\theta)\log\frac{p(\theta)}{q(\theta)} \]
+    <p style="margin:12px 0 0; font-size:0.95em;">
+      So the loss is minimized <strong>exactly</strong> when \(q_\phi(\theta\mid x) = p(\theta\mid x)\) for all \(x\). Requires a normalized density estimator (e.g. a normalizing flow).
+    </p>
   </div>
 </section>
+
+<!-- ============================================================ -->
+<!-- NPE -> INFORMATION-MAXIMIZING SUMMARIES                      -->
+<!-- ============================================================ -->
+<section>
+  <h2>NPE Learns Information-Maximizing Summaries</h2>
+  <div style="font-size:22px; margin-top:6px;">
+    <p style="text-align:left;">Add a <strong>summary network</strong> \(q_\phi(\theta\mid x)\to q_\phi(\theta\mid T_\phi(x))\). Then</p>
+    <div class="box box-green">
+      \[ \mathcal{L}_\text{NPE} \;\ge\; \mathbb{E}_{p(x)} H\big(p(\theta\mid T_\phi(x))\big) \;\ge\; \mathbb{E}_{p(x)} H\big(p(\theta\mid x)\big) \]
+    </div>
+    <p style="text-align:left">Tight when the estimator is exact. Training \(T_\phi\) end-to-end pushes summaries toward minimal posterior entropy.</p>
+    <br>
+    <p style="text-align:left">Using the identity</p>
+      \[ \mathbb{E}_{p(x)} H\big(p(\theta\mid T_\phi(x))\big) = H\big(p(\theta)\big) - I\big(\theta; T_\phi(x)\big) \]
+    <p style="text-align:left">we find that</p>
+    <div class="box box-blue" style="text-align:center; margin-top:10px;">
+      <p style="margin:0;">minimizing posterior entropy \(\;\Leftrightarrow\;\) <strong>maximizing</strong> \(I(\theta; T_\phi(x))\).</p>
+    </div>
+    <p style="color:#d53641;">
+      Summaries learned in the context of NPE (but also NRE, score matching, ..., not NLE) 
+      are <em>information-maximizing</em> &mdash; a key strength. But it brings the challenge of knowing when they are sufficient.
+    </p>
+  </div>
+</section>
+
 
 
 <!-- ============================================================ -->
@@ -197,30 +229,6 @@
   </div>
 </section>
 
-<section>
-  <h2>The forward&ndash;backward consistency principle</h2>
-  <div style="font-size:26px;">
-    <p style="text-align:left;">Now, given rank test samples</p>
-    \[ \theta^* \sim p(\theta),\quad x \sim p(x\mid\theta^*),\quad \theta_{1:L} \sim q_\phi(\theta\mid x) \]
-    <p style="text-align:left">we can use some rank statistics arguments to construct a test.</p>
-    <p style="text-align:left;">The <strong>position (rank)</strong> of the true posterior sample
-      \(\theta^*\) among the approximate posterior samples
-      \(\theta_{1:L}\),
-      is given by
-    <p>
-      \(F(\theta^*) = \tfrac{1}{L}\sum_i \mathbb{1}(\theta_i \le \theta^*)\).
-    </p>
-    <br>
-    <p style="text-align:left;">
-      Assuming that \(q_\phi = p\), all \(L+1\) positions are equally likely, and hence we expect:</p>
-    <p>
-      \[ F(\theta^*) \;\sim\; \text{Uniform}\bigl(\{0, \tfrac{1}{L}, \ldots, 1\}\bigr) \]
-    </p>
-    <div class="box box-blue">Any deviations from this uniform distribution are a sign of miscalibration. This is the core
-      idea of SBC.</p>
-    </div>
-  </div>
-</section>
 
 <!-- ============================================================ -->
 <!-- 6. WHAT SBC ACTUALLY DOES (visual)                           -->
@@ -248,6 +256,31 @@
         <span style="font-size:0.85em; color:#7f8c8d;">trials: <span id="sbc-cartoon-count">0</span></span>
       </div>
       <p style="text-align:center; font-size:0.8em; color:#7f8c8d; margin:4px 0 0;">Top: one trial &mdash; the true value (red &times;) among the approx-posterior samples (orange). Bottom: the trial's rank drops into the histogram.</p>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2>The forward&ndash;backward consistency principle</h2>
+  <div style="font-size:26px;">
+    <p style="text-align:left;">Now, given rank test samples</p>
+    \[ \theta^* \sim p(\theta),\quad x \sim p(x\mid\theta^*),\quad \theta_{1:L} \sim q_\phi(\theta\mid x) \]
+    <p style="text-align:left">we can use some rank statistics arguments to construct a test.</p>
+    <p style="text-align:left;">The <strong>position (rank)</strong> of the true posterior sample
+      \(\theta^*\) among the approximate posterior samples
+      \(\theta_{1:L}\),
+      is given by
+    <p>
+      \(F(\theta^*) = \tfrac{1}{L}\sum_i \mathbb{1}(\theta_i \le \theta^*)\).
+    </p>
+    <br>
+    <p style="text-align:left;">
+      Assuming that \(q_\phi = p\), all \(L+1\) positions are equally likely, and hence we expect:</p>
+    <p>
+      \[ F(\theta^*) \;\sim\; \text{Uniform}\bigl(\{0, \tfrac{1}{L}, \ldots, 1\}\bigr) \]
+    </p>
+    <div class="box box-blue">Any deviations from this uniform distribution are a sign of miscalibration. This is the core
+      idea of SBC.</p>
     </div>
   </div>
 </section>
@@ -546,6 +579,20 @@
   </div>
 </section>
 
+<!-- ============================================================ -->
+<!-- 4. SECTION DIVIDER 1                                         -->
+<!-- ============================================================ -->
+<section>
+  <div style="display:flex; align-items:center; justify-content:center; height:100%;">
+    <div style="text-align:center;">
+      <div style="width:200px; height:4px; background:linear-gradient(90deg,#2980b9,#e74c3c); margin:0 auto 25px;"></div>
+      <h1 style="font-size:2em; margin:0;">Building complex systems</h1>
+      <p style="font-size:1.1em; color:#7f8c8d; margin-top:15px;">Any complex system, really.</p>
+      <div style="width:200px; height:4px; background:linear-gradient(90deg,#2980b9,#e74c3c); margin:25px auto 0;"></div>
+    </div>
+  </div>
+</section>
+
 
 <!-- ============================================================ -->
 <!-- 2. BUILDING SYSTEMS THAT WORK                               -->
@@ -614,42 +661,6 @@
   </ul>
 </section>
 
-<!-- ============================================================ -->
-<!-- 19. SUMMARY & WHAT'S NEXT                                    -->
-<!-- ============================================================ -->
-<section>
-  <h2>Summary &amp; What's Next</h2>
-  <div style="display:flex; gap:15px; font-size:0.9em;">
-    <div class="box" style="flex:1;">
-      <h3 style="margin-top:0; color:#2980b9;">Rank Diagnostics</h3>
-      <ul style="font-size:0.9em; line-height:1.5;">
-        <li>FW&ndash;BW consistency principle</li>
-        <li>SBC rank statistic, flat under \(q_\phi = p\)</li>
-        <li>HPDR coverage as a rank test on \(q_\phi(\theta\mid x)\</li>
-      </ul>
-    </div>
-    <div class="box" style="flex:1;">
-      <h3 style="margin-top:0; color:#e67e22;">Failure Modes &amp; Generalization</h3>
-      <ul style="font-size:0.9em; line-height:1.5;">
-        <li>Spatial-bias cancellation; stratify</li>
-        <li>Type B blindness; recovered by likelihood / score ranks</li>
-        <li>HPDR shape-distortion blind spot</li>
-        <li>Cram&eacute;r&ndash;Wold completeness over all orderings</li>
-      </ul>
-    </div>
-  </div>
-  <div class="box" style="text-align:center; margin-top:12px; padding:8px; font-size:0.85em;">
-    <strong>Key equations:</strong> &nbsp;
-    \(F(\theta^*) \sim \mathrm{Uniform}\)
-    &nbsp;|&nbsp;
-    \(\mathcal{C}_{1-\alpha} = \{q_\phi \ge \gamma\}\)
-    &nbsp;|&nbsp;
-    \(f(\boldsymbol\theta, x) = p(x\mid\boldsymbol\theta)\)
-  </div>
-  <p style="text-align:center; margin-top:10px; font-size:0.85em; color:#7f8c8d;">
-    Next lecture: robust inference under model misspecification &mdash; what to do when Type A bites back.
-  </p>
-</section>
 
 </div>
 </div>
